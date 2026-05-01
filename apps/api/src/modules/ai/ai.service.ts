@@ -1,6 +1,16 @@
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { env } from '../../config/env';
 import { prisma } from '../../config/prisma';
+
+// Use OpenRouter endpoint
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: env.OPENAI_API_KEY || 'dummy',
+  defaultHeaders: {
+    "HTTP-Referer": "https://dora-sheet.com",
+    "X-Title": "Dora Sheet AI"
+  }
+});
 
 export class AIService {
   static async chat(userId: string, sheetId: string, prompt: string, fileData?: string, mimeType?: string) {
@@ -62,81 +72,89 @@ CRITICAL INSTRUCTIONS:
    - Support multiple entries in a single input.
    - Clean and standardize text.
    - If discount is present, calculate Final Price = Price - (Price * Discount / 100).
-5. If a PDF or document is attached, thoroughly analyze it, extract all relevant tables or structured data, and output it using the \`fill_data\` tool. You MUST maintain 100% precision. Do not omit any rows or columns. Do not hallucinate.
+5. If a document or image is attached, thoroughly analyze it, extract all relevant tables or structured data, and output it using the \`fill_data\` tool. You MUST maintain 100% precision. Do not omit any rows or columns. Do not hallucinate.
 6. You are perfect and make no mistakes.
     `.trim();
 
-    const functionDeclarations = [
-      { 
-        name: "apply_formula", 
-        description: "Generate a spreadsheet formula", 
-        parameters: { 
-          type: SchemaType.OBJECT, 
-          properties: { 
-            formula: { type: SchemaType.STRING }, 
-            targetCell: { type: SchemaType.STRING } 
-          }, 
-          required: ["formula", "targetCell"] 
-        } 
+    const tools: any[] = [
+      {
+        type: "function",
+        function: {
+          name: "apply_formula",
+          description: "Generate a spreadsheet formula",
+          parameters: {
+            type: "object",
+            properties: {
+              formula: { type: "string" },
+              targetCell: { type: "string" }
+            },
+            required: ["formula", "targetCell"],
+            additionalProperties: false
+          }
+        }
       },
-      { 
-        name: "fill_data", 
-        description: "Fills the spreadsheet with structured data extracted from the user's messy natural language input.", 
-        parameters: { 
-          type: SchemaType.OBJECT, 
-          properties: { 
-            startRow: { type: SchemaType.INTEGER, description: "Row index (0-based) to start." }, 
-            startCol: { type: SchemaType.INTEGER, description: "Column index (0-based) to start." }, 
-            columns: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }, 
-            rowsJson: { type: SchemaType.STRING, description: "A JSON string containing a 2D array of the rows data (e.g. '[[\"val1\",\"val2\"]]')" } 
-          }, 
-          required: ["startRow", "startCol", "columns", "rowsJson"]  
-        } 
+      {
+        type: "function",
+        function: {
+          name: "fill_data",
+          description: "Fills the spreadsheet with structured data extracted from the user's messy natural language input.",
+          parameters: {
+            type: "object",
+            properties: {
+              startRow: { type: "integer", description: "Row index (0-based) to start." },
+              startCol: { type: "integer", description: "Column index (0-based) to start." },
+              columns: { type: "array", items: { type: "string" } },
+              rowsJson: { type: "string", description: "A JSON string containing a 2D array of the rows data (e.g. '[[\"val1\",\"val2\"]]')" }
+            },
+            required: ["startRow", "startCol", "columns", "rowsJson"],
+            additionalProperties: false
+          }
+        }
       }
     ];
 
     try {
-      const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY || 'dummy');
-      const modelConfig: any = {
-        model: "gemini-1.5-pro",
-        systemInstruction: { role: "system", parts: [{ text: `${smartInstructions}\n\nContext:\n${systemPrompt}` }] },
-        tools: [{ functionDeclarations: functionDeclarations as any }],
-        generationConfig: { temperature: 0.0 }
-      };
+      const messages: any[] = [
+        { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` }
+      ];
 
-      // If a file is attached, FORCE the model to extract data.
-      // This skips the model's "decision phase", speeding up response time and guaranteeing structured JSON output.
-      if (fileData) {
-        modelConfig.toolConfig = {
-          functionCallingConfig: {
-            mode: "ANY",
-            allowedFunctionNames: ["fill_data"]
-          }
-        };
-      }
-
-      const model = genAI.getGenerativeModel(modelConfig);
-
-      const promptParts: any[] = [{ text: prompt }];
-      
-      if (fileData && mimeType) {
-        // Strip the data URL prefix if present (e.g., "data:application/pdf;base64,")
-        const base64Content = fileData.includes(',') ? fileData.split(',')[1] : fileData;
-        promptParts.push({
-          inlineData: {
-            data: base64Content,
-            mimeType: mimeType
-          }
+      if (fileData && mimeType && mimeType.startsWith('image/')) {
+        messages.push({
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: fileData } }
+          ]
         });
+      } else {
+        messages.push({ role: "user", content: prompt });
       }
 
-      const result = await model.generateContent(promptParts);
-      const response = result.response;
-      const call = response.functionCalls()?.[0];
+      let toolChoice: any = "auto";
+      if (fileData) {
+        toolChoice = { type: "function", function: { name: "fill_data" } };
+      }
 
-      if (call) {
-        const args = call.args as any;
-        if (call.name === 'fill_data' && args.rowsJson) {
+      const response = await openai.chat.completions.create({
+        model: "meta-llama/llama-3.3-70b-instruct",
+        messages: messages,
+        tools: tools,
+        tool_choice: toolChoice,
+        temperature: 0.0
+      });
+
+      const message = response.choices[0].message;
+
+      if (message.tool_calls && message.tool_calls.length > 0) {
+        const call = message.tool_calls[0];
+        let args: any = {};
+        try {
+          args = JSON.parse(call.function.arguments);
+        } catch(e) {
+          console.error("Failed to parse tool arguments", e);
+        }
+
+        if (call.function.name === 'fill_data' && args.rowsJson) {
           try {
             args.rows = JSON.parse(args.rowsJson);
             delete args.rowsJson;
@@ -144,21 +162,22 @@ CRITICAL INSTRUCTIONS:
             args.rows = [];
           }
         }
+        
         return {
-          tool_used: call.name,
-          result: call.args,
+          tool_used: call.function.name,
+          result: args,
           suggestion: "I have suggested an action based on your request. Please accept or reject."
         };
       }
 
       return {
         tool_used: "none",
-        result: response.text(),
+        result: message.content || "",
         suggestion: "No specific action taken."
       };
     } catch (e: any) {
       console.error(e);
-      throw new Error("Generative API Error: " + e.message);
+      throw new Error("OpenRouter API Error: " + e.message);
     }
   }
 }
