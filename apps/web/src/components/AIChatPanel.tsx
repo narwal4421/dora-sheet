@@ -146,7 +146,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                   {JSON.stringify(msg.result, null, 2)}
                 </div>
                 <button 
-                  onClick={() => handleApplyAction(msg.tool, msg.result)}
+                  onClick={() => msg.tool && handleApplyAction(msg.tool, msg.result)}
                   className="mt-2 flex items-center justify-center gap-2 bg-accent/20 hover:bg-accent hover:text-white text-accent py-2 rounded-lg text-xs font-semibold border border-accent/30 transition-all duration-200 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]"
                 >
                   <Check size={16} /> Accept Suggestion

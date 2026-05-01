@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
-import { Save, Clock, Check, RefreshCw } from 'lucide-react';
+import { Save, Clock, RefreshCw } from 'lucide-react';
 
-export const VersionHistory = ({ workbookId, onClose }: { workbookId: string, onClose: () => void }) => {
+export const VersionHistory = ({ onClose }: { workbookId: string, onClose: () => void }) => {
   const { snapshots, saveSnapshot, restoreSnapshot } = useSheetStore();
   const [newLabel, setNewLabel] = useState('');
   const [isSaving, setIsSaving] = useState(false);

@@ -321,6 +321,19 @@ export const useSheetStore = create<SheetState>((set) => ({
     return { lockedCells: newLocks };
   }),
   
-  setConnectedUsers: (users) => set({ connectedUsers: users })
+  setConnectedUsers: (users) => set({ connectedUsers: users }),
+
+  saveSnapshot: (label) => set((state) => ({
+    snapshots: [
+      { id: Date.now().toString(), label, createdAt: new Date().toISOString(), data: state.data },
+      ...state.snapshots
+    ]
+  })),
+
+  restoreSnapshot: (id) => set((state) => {
+    const snap = state.snapshots.find(s => s.id === id);
+    if (!snap) return state;
+    return { data: snap.data, history: [...state.history, state.data], future: [] };
+  })
 }));
 
