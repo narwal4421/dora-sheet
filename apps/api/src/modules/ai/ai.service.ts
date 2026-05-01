@@ -98,7 +98,7 @@ CRITICAL INSTRUCTIONS:
     try {
       const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY || 'dummy');
       const modelConfig: any = {
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-flash-latest",
         systemInstruction: { role: "system", parts: [{ text: `${smartInstructions}\n\nContext:\n${systemPrompt}` }] },
         tools: [{ functionDeclarations: functionDeclarations as any }],
         generationConfig: { temperature: 0.0 }
