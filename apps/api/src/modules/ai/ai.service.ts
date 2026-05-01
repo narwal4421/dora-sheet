@@ -88,9 +88,9 @@ CRITICAL INSTRUCTIONS:
             startRow: { type: SchemaType.INTEGER, description: "Row index (0-based) to start." }, 
             startCol: { type: SchemaType.INTEGER, description: "Column index (0-based) to start." }, 
             columns: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }, 
-            rows: { type: SchemaType.ARRAY, items: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } } } 
+            rowsJson: { type: SchemaType.STRING, description: "A JSON string containing a 2D array of the rows data (e.g. '[[\"val1\",\"val2\"]]')" } 
           }, 
-          required: ["startRow", "startCol", "columns", "rows"]  
+          required: ["startRow", "startCol", "columns", "rowsJson"]  
         } 
       }
     ];
@@ -98,7 +98,7 @@ CRITICAL INSTRUCTIONS:
     try {
       const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY || 'dummy');
       const modelConfig: any = {
-        model: "gemini-1.5-flash-latest",
+        model: "gemini-1.5-pro",
         systemInstruction: { role: "system", parts: [{ text: `${smartInstructions}\n\nContext:\n${systemPrompt}` }] },
         tools: [{ functionDeclarations: functionDeclarations as any }],
         generationConfig: { temperature: 0.0 }
@@ -135,6 +135,14 @@ CRITICAL INSTRUCTIONS:
       const call = response.functionCalls()?.[0];
 
       if (call) {
+        if (call.name === 'fill_data' && call.args.rowsJson) {
+          try {
+            call.args.rows = JSON.parse(call.args.rowsJson);
+            delete call.args.rowsJson;
+          } catch (e) {
+            call.args.rows = [];
+          }
+        }
         return {
           tool_used: call.name,
           result: call.args,
