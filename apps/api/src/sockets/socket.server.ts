@@ -9,7 +9,12 @@ export let io: SocketServer;
 
 export const initSockets = (httpServer: Server) => {
   io = new SocketServer(httpServer, {
-    cors: { origin: env.CORS_ORIGIN, credentials: true }
+    cors: { 
+      origin: (origin: any, callback: any) => {
+        callback(null, true);
+      }, 
+      credentials: true 
+    }
   });
 
   io.use((socket, next) => {
