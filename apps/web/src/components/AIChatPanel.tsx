@@ -149,11 +149,15 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
             const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
             const val = cellValue as string | number;
             updates[ref] = { v: val };
-            socketService.emitCellUpdate('default-workbook-id', ref, { v: val });
           });
         });
         
         bulkSetCellData(updates);
+        
+        // Batch socket updates to avoid overwhelming the connection
+        Object.entries(updates).forEach(([ref, cell]) => {
+          socketService.emitCellUpdate('default-workbook-id', ref, cell);
+        });
         alert("bulkSetCellData executed successfully!");
         setMessages(prev => {
           const updated = [...prev];

@@ -8,7 +8,7 @@ import { Cell } from './Cell';
 
 const ROWS = 1000;
 const COLS = 26;
-const SHEET_ID = 'default-sheet-id';
+const SHEET_ID = 'default-workbook-id';
 
 const getColName = (c: number) => {
   let name = '';
