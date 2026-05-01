@@ -8,7 +8,8 @@ import * as xlsx from 'xlsx';
 const chatSchema = z.object({
   sheetId: z.string(),
   prompt: z.string().min(1),
-  activeCell: z.string().optional()
+  activeCell: z.string().optional(),
+  history: z.string().optional()
 });
 
 export class AIController {
@@ -38,9 +39,12 @@ export class AIController {
       return;
     }
 
-    let { sheetId, prompt } = chatSchema.parse(req.body);
+    let { sheetId, prompt, history } = chatSchema.parse(req.body);
     let fileData: string | undefined = undefined;
     let mimeType: string | undefined = undefined;
+    
+    // Parse history if present
+    const parsedHistory = history ? JSON.parse(history) : [];
     
     if (req.file) {
       const isExcel = 
@@ -67,7 +71,7 @@ export class AIController {
         mimeType = req.file.mimetype;
       }
     }
-    const result = await AIService.chat(userId, sheetId, prompt, fileData, mimeType);
+    const result = await AIService.chat(userId, sheetId, prompt, fileData, mimeType, parsedHistory);
 
     res.json({
       success: true,

@@ -113,6 +113,46 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
-server.listen(port, () => {
+server.listen(port, async () => {
   logger.info(`SmartSheet API running on port ${port} in ${env.NODE_ENV} mode`);
+  
+  // SEED DEFAULT DATA FOR DEMO
+  try {
+    const defaultId = 'default-workbook-id';
+    const existingSheet = await prisma.sheet.findUnique({ where: { id: defaultId } });
+    
+    if (!existingSheet) {
+      logger.info('Seeding default workbook and sheet...');
+      
+      const workspace = await prisma.workspace.create({
+        data: { name: 'Public Workspace', id: 'default-workspace-id' }
+      });
+      
+      await prisma.workspaceMember.create({
+        data: { workspaceId: workspace.id, userId: 'local-dev-user', role: 'ADMIN' }
+      });
+
+      const workbook = await prisma.workbook.create({
+        data: { 
+          id: defaultId, 
+          name: 'Demo Workbook', 
+          workspaceId: workspace.id 
+        }
+      });
+      
+      await prisma.sheet.create({
+        data: {
+          id: defaultId,
+          name: 'Sheet 1',
+          workbookId: workbook.id,
+          data: JSON.stringify({}),
+          rowCount: 100,
+          colCount: 26
+        }
+      });
+      logger.info('Default data seeded successfully.');
+    }
+  } catch (err) {
+    logger.error('Startup seeding failed:', err);
+  }
 });

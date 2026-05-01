@@ -100,9 +100,25 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
-    socket.on('cell_update', (payload: { sheetId: string, cellKey: string, cell: any }) => {
+    socket.on('cell_update', async (payload: { sheetId: string, cellKey: string, cell: any }) => {
       if (!currentRoom) return;
       socket.to(currentRoom).emit('cell_updated', { ...payload, userId });
+
+      // Persist to DB in background
+      try {
+        const { sheetId, cellKey, cell } = payload;
+        const sheet = await prisma.sheet.findUnique({ where: { id: sheetId } });
+        if (sheet) {
+          const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
+          currentData[cellKey] = { ...currentData[cellKey], ...cell };
+          await prisma.sheet.update({
+            where: { id: sheetId },
+            data: { data: JSON.stringify(currentData) }
+          });
+        }
+      } catch (err) {
+        console.error('Socket persistence error:', err);
+      }
     });
 
     socket.on('cursor_move', (payload: { userName: string, sheetId: string, row: number, col: number, color: string }) => {

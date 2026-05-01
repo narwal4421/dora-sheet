@@ -13,7 +13,7 @@ const openai = new OpenAI({
 });
 
 export class AIService {
-  static async chat(userId: string, sheetId: string, prompt: string, fileData?: string, mimeType?: string) {
+  static async chat(userId: string, sheetId: string, prompt: string, fileData?: string, mimeType?: string, history: any[] = []) {
     let sheet;
     try {
       sheet = await prisma.sheet.findUnique({
@@ -108,7 +108,8 @@ CRITICAL INSTRUCTIONS:
 
     try {
       const messages: any[] = [
-        { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` }
+        { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` },
+        ...history.map(h => ({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.content }))
       ];
 
       if (fileData && mimeType && mimeType.startsWith('image/')) {

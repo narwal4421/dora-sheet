@@ -85,6 +85,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       const formData = new FormData();
       formData.append('sheetId', 'default-workbook-id');
       formData.append('prompt', userMsg);
+      // Include last 10 messages for context
+      const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+      formData.append('history', JSON.stringify(history));
       if (activeCell) formData.append('activeCell', activeCell);
       if (currentFile) formData.append('attachedFile', currentFile);
 
@@ -154,7 +157,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
           rowArray.forEach((cellValue: unknown, cIndex: number) => {
             const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
             const val = cellValue as string | number;
-            updates[ref] = { v: val };
+            
+            if (typeof val === 'string' && val.startsWith('=')) {
+              updates[ref] = { f: val };
+            } else {
+              updates[ref] = { v: val };
+            }
           });
         });
         
