@@ -90,7 +90,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
 
       const apiUrl = import.meta.env.VITE_API_URL || 
         (window.location.hostname.includes('vercel.app') 
-          ? 'https://dora-sheet-api.vercel.app' 
+          ? 'https://dora-sheet-api.onrender.com' 
           : 'http://localhost:3002');
       const response = await fetch(`${apiUrl}/api/v1/ai/chat`, {
         method: 'POST',

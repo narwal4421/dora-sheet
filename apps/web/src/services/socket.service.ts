@@ -11,7 +11,7 @@ class SocketService {
 
     const apiUrl = import.meta.env.VITE_API_URL || 
       (window.location.hostname.includes('vercel.app') 
-        ? 'https://dora-sheet-api.vercel.app' 
+        ? 'https://dora-sheet-api.onrender.com' 
         : 'http://localhost:3002');
     this.socket = io(apiUrl, {
       auth: { token },

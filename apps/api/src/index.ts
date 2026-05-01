@@ -46,11 +46,8 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || origin.includes('vercel.app') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Fallback to true for maximum compatibility in public demo
-    }
+    // Dynamic origin reflection for demo - allows any requester to connect
+    callback(null, origin || true);
   },
   credentials: true
 }));
