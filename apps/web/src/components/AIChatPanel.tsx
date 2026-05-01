@@ -112,7 +112,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         const data = result.data as unknown[][];
         
         const dataToFill = data || (columns ? [columns, ...rows] : rows);
-        const updates: Record<string, any> = {};
+        const updates: Record<string, { v: string | number }> = {};
         
         dataToFill.forEach((row: unknown, rIndex: number) => {
           const rowArray = Array.isArray(row) ? row : [row];
@@ -133,8 +133,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       } else {
          setMessages(prev => [...prev, { role: 'ai', content: `Cannot automatically apply action for ${tool}.` }]);
       }
-    } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${err.message}` }]);
+    } catch (err: unknown) {
+      setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${(err as Error).message}` }]);
     }
   };
 
