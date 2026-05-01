@@ -42,13 +42,13 @@ export class AIService {
       if (cell && cell.v) columns.push({ index: c, header: cell.v, type: "text" });
     }
 
-    for (let r = 0; r < Math.min(10, sheet.rowCount); r++) {
+    for (let r = 0; r < Math.min(50, sheet.rowCount); r++) {
       const rowData: any = {};
       for (let c = 0; c < sheet.colCount; c++) {
         const cell = dataObj[`r_${r}_c_${c}`];
-        if (cell && cell.v) rowData[`c_${c}`] = cell.v;
+        if (cell && (cell.v || cell.f)) rowData[`c_${c}`] = cell.v || cell.f;
       }
-      if (Object.keys(rowData).length > 0) sampleData.push(rowData);
+      if (Object.keys(rowData).length > 0) sampleData.push({ row: r, ...rowData });
     }
 
     const systemPrompt = JSON.stringify({
@@ -107,6 +107,22 @@ CRITICAL INSTRUCTIONS:
             additionalProperties: false
           }
         }
+      },
+      {
+        type: "function",
+        function: {
+          name: "analyze_data",
+          description: "Analyzes the provided spreadsheet context and gives deep insights, summaries, or detects errors.",
+          parameters: {
+            type: "object",
+            properties: {
+              analysis: { type: "string", description: "A detailed professional analysis of the data." },
+              suggestions: { type: "array", items: { type: "string" }, description: "Specific actionable suggestions to improve the sheet." }
+            },
+            required: ["analysis", "suggestions"],
+            additionalProperties: false
+          }
+        }
       }
     ];
 
@@ -129,7 +145,7 @@ CRITICAL INSTRUCTIONS:
       }
 
       const response = await openai.chat.completions.create({
-        model: "google/gemini-flash-1.5",
+        model: "google/gemini-pro-1.5",
         messages: messages,
         tools: tools,
         tool_choice: "auto",

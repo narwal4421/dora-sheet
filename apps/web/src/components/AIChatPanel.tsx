@@ -113,10 +113,18 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         const result = await response.json();
         const { tool_used, suggestion, result: toolResult } = result.data;
         
+        let displayContent = tool_used === 'none' ? toolResult : `I can help with that. ${suggestion ? `Suggestion: ${suggestion}` : ''}`;
+        
+        if (tool_used === 'analyze_data') {
+          const analysis = (toolResult as any).analysis;
+          const suggestions = (toolResult as any).suggestions as string[];
+          displayContent = `${analysis}\n\n**Suggestions:**\n${suggestions.map(s => `• ${s}`).join('\n')}`;
+        }
+        
         setMessages(prev => [...prev, { 
           role: 'ai', 
-          content: tool_used === 'none' ? toolResult : `I can help with that. ${suggestion ? `Suggestion: ${suggestion}` : ''}`,
-          tool: tool_used === 'none' ? undefined : tool_used,
+          content: displayContent as string,
+          tool: (tool_used === 'none' || tool_used === 'analyze_data') ? undefined : tool_used,
           result: toolResult
         }]);
       }
