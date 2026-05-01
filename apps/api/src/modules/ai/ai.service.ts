@@ -135,12 +135,13 @@ CRITICAL INSTRUCTIONS:
       const call = response.functionCalls()?.[0];
 
       if (call) {
-        if (call.name === 'fill_data' && call.args.rowsJson) {
+        const args = call.args as any;
+        if (call.name === 'fill_data' && args.rowsJson) {
           try {
-            call.args.rows = JSON.parse(call.args.rowsJson);
-            delete call.args.rowsJson;
+            args.rows = JSON.parse(args.rowsJson);
+            delete args.rowsJson;
           } catch (e) {
-            call.args.rows = [];
+            args.rows = [];
           }
         }
         return {
