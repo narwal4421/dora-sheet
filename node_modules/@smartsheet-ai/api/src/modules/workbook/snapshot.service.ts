@@ -25,7 +25,7 @@ export class SnapshotService {
         workbookId,
         userId,
         label: label || `Auto-save ${new Date().toISOString()}`,
-        data: snapshotData as any
+        data: JSON.stringify(snapshotData)
       }
     });
   }
@@ -55,7 +55,7 @@ export class SnapshotService {
       throw { statusCode: 403, message: 'Forbidden' };
     }
 
-    const sheetsData = snapshot.data as any[];
+    const sheetsData = (typeof snapshot.data === 'string' ? JSON.parse(snapshot.data) : snapshot.data) as any[];
 
     // Transaction to replace sheets
     await prisma.$transaction(async (tx) => {

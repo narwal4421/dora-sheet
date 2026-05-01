@@ -1,5 +1,4 @@
 import { prisma } from '../../config/prisma';
-import { Role } from '@prisma/client';
 
 export class WorkspaceService {
   static async getUserWorkspaces(userId: string) {
@@ -29,7 +28,7 @@ export class WorkspaceService {
         name,
         members: {
           create: [
-            { userId, role: Role.ADMIN }
+            { userId, role: 'ADMIN' }
           ]
         }
       }

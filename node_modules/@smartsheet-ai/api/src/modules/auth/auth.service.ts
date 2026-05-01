@@ -4,7 +4,6 @@ import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 import { redis } from '../../config/redis';
 import { JWTPayload } from '@smartsheet-ai/types';
-import { JWTPayload } from '@smartsheet-ai/types';
 
 export class AuthService {
   static async register(email: string, passwordRaw: string, name: string) {

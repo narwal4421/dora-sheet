@@ -68,10 +68,10 @@ export const initSockets = (httpServer: Server) => {
       // Release locks
       const locks = await redis.smembers(`user:locks:${userId}:${payload.workbookId}`);
       if (locks.length > 0) {
-        const keys = locks.map(l => `cell:lock:${payload.workbookId}:${l}`);
+        const keys = locks.map((l: string) => `cell:lock:${payload.workbookId}:${l}`);
         await redis.del(...keys);
         await redis.del(`user:locks:${userId}:${payload.workbookId}`);
-        locks.forEach(cellKey => {
+        locks.forEach((cellKey: string) => {
           socket.to(room).emit('cell_locked', { userId, cellKey, action: 'unlock' });
         });
       }
@@ -85,10 +85,10 @@ export const initSockets = (httpServer: Server) => {
         // Release locks
         const locks = await redis.smembers(`user:locks:${userId}:${workbookId}`);
         if (locks.length > 0) {
-          const keys = locks.map(l => `cell:lock:${workbookId}:${l}`);
+          const keys = locks.map((l: string) => `cell:lock:${workbookId}:${l}`);
           await redis.del(...keys);
           await redis.del(`user:locks:${userId}:${workbookId}`);
-          locks.forEach(cellKey => {
+          locks.forEach((cellKey: string) => {
             socket.to(currentRoom!).emit('cell_locked', { userId, cellKey, action: 'unlock' });
           });
         }
