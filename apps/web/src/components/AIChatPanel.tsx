@@ -5,7 +5,7 @@ import { socketService } from '../services/socket.service';
 
 export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai', content: string, tool?: string, result?: unknown, suggestion?: string }[]>([
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai', content: string, tool?: string, result?: unknown, suggestion?: string, applied?: boolean }[]>([
     { role: 'ai', content: 'Hi! I am your SmartSheet AI Assistant. Ask me to apply formulas, filter data, or analyze the spreadsheet!' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +16,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeCell = useSheetStore(state => state.activeCell);
   const setCellData = useSheetStore(state => state.setCellData);
+  const bulkSetCellData = useSheetStore(state => state.bulkSetCellData);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -89,7 +90,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const handleApplyAction = (tool: string, rawResult: unknown) => {
+  const handleApplyAction = (tool: string, rawResult: unknown, msgIndex: number) => {
     const result = rawResult as Record<string, unknown>;
     try {
       // If the tool was apply_formula and we have an active cell, apply it!
@@ -97,7 +98,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         const formula = result.formula as string;
         setCellData(activeCell, { f: formula });
         socketService.emitCellUpdate('default-workbook-id', activeCell, { f: formula });
-        setMessages(prev => [...prev, { role: 'ai', content: `Applied formula ${formula} to ${activeCell}!` }]);
+        
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Applied formula ${formula} to ${activeCell}!` }];
+        });
       } else if (tool === 'fill_data' && (result?.data || result?.rows)) {
         const startRow = (result.startRow as number) || 0;
         const startCol = (result.startCol as number) || 0;
@@ -106,16 +112,24 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         const data = result.data as unknown[][];
         
         const dataToFill = data || (columns ? [columns, ...rows] : rows);
+        const updates: Record<string, any> = {};
+        
         dataToFill.forEach((row: unknown, rIndex: number) => {
           const rowArray = Array.isArray(row) ? row : [row];
           rowArray.forEach((cellValue: unknown, cIndex: number) => {
             const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
             const val = cellValue as string | number;
-            setCellData(ref, { v: val });
+            updates[ref] = { v: val };
             socketService.emitCellUpdate('default-workbook-id', ref, { v: val });
           });
         });
-        setMessages(prev => [...prev, { role: 'ai', content: `Successfully filled ${dataToFill.length} rows of data!` }]);
+        
+        bulkSetCellData(updates);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Successfully filled ${dataToFill.length} rows of data!` }];
+        });
       } else {
          setMessages(prev => [...prev, { role: 'ai', content: `Cannot automatically apply action for ${tool}.` }]);
       }
@@ -151,10 +165,11 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                   {JSON.stringify(msg.result, null, 2)}
                 </div>
                 <button 
-                  onClick={() => msg.tool && handleApplyAction(msg.tool, msg.result)}
-                  className="mt-2 flex items-center justify-center gap-2 bg-accent/20 hover:bg-accent hover:text-white text-accent py-2 rounded-lg text-xs font-semibold border border-accent/30 transition-all duration-200 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]"
+                  disabled={msg.applied}
+                  onClick={() => msg.tool && handleApplyAction(msg.tool, msg.result, i)}
+                  className={`mt-2 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all duration-200 ${msg.applied ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-accent/20 hover:bg-accent hover:text-white text-accent border-accent/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]'}`}
                 >
-                  <Check size={16} /> Accept Suggestion
+                  <Check size={16} /> {msg.applied ? 'Applied' : 'Accept Suggestion'}
                 </button>
               </div>
             )}
