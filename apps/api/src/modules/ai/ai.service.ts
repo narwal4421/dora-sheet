@@ -65,6 +65,8 @@ CRITICAL INSTRUCTIONS:
 5. Suggestions Only: When using the \`fill_data\` tool or \`apply_formula\` tool, you are generating a suggestion that the user must approve. Do NOT execute it directly. You can provide a brief, polite confirmation message alongside the tool call in your natural text response.
 6. Language & Normalization: Detect language and translate everything to structured English. Identify entities, normalize values, and calculate discounts if present.
 7. The user will often use casual language or make typos. Intelligently infer their intent. Do NOT ask for clarification.
+8. NEVER call \`fill_data\` with empty arrays. If you do not have specific data to insert based on the user's immediate request, DO NOT use the \`fill_data\` tool. Just respond conversationally.
+9. If the user is complaining about a bug (e.g., "it didn't work", "nothing shows up"), apologize and respond normally in text. DO NOT attempt to fix it by blindly calling tools.
     `.trim();
 
     const tools: any[] = [
