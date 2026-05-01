@@ -39,7 +39,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     const currentFile = attachedFile;
     
     // Check if this is an acceptance of a previous suggestion
-    const isAcceptance = /^(yes|yeah|yep|accept|do it|apply|sure|ok|okay)/i.test(userMsg);
+    const isAcceptance = /^(yes|yeah|yep|accept|do it|apply|sure|ok|okay|approve|agree|confirm)/i.test(userMsg) || 
+                         userMsg.toLowerCase() === 'yes' || 
+                         userMsg.toLowerCase() === 'accept suggestion';
     
     if (isAcceptance && !currentFile) {
       let lastActionableMsgIndex = -1;
@@ -62,6 +64,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         // Apply the action automatically
         handleApplyAction(lastMsg.tool!, lastMsg.result, lastActionableMsgIndex);
         return; // Skip sending to AI
+      } else {
+        // Diagnostic: If we think it's an acceptance but can't find the tool
+        console.log('Acceptance detected but no actionable message found. Messages count:', messages.length);
       }
     }
     
