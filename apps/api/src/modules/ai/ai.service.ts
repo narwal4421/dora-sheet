@@ -63,10 +63,14 @@ CRITICAL INSTRUCTIONS:
 3. Data Insertion & File Uploads: If the user says "put this data into sheet", provides messy text/raw data, or attaches a document/image containing data, extract and structure it perfectly. Use the \`fill_data\` tool to suggest filling this data into the sheet. You MUST maintain 100% precision. Do not omit any rows or columns.
 4. Inventory Management: If the user gives instructions regarding inventory management (e.g., "add 10 apples to inventory", "update stock"), understand the intent, format it as structured data, and use the \`fill_data\` tool to suggest putting it in the sheet. Create appropriate columns automatically.
 5. Suggestions Only: When using the \`fill_data\` tool or \`apply_formula\` tool, you are generating a suggestion that the user must approve. Do NOT execute it directly. You can provide a brief, polite confirmation message alongside the tool call in your natural text response.
-6. Language & Normalization: Detect language and translate everything to structured English. Identify entities, normalize values, and calculate discounts if present.
-7. The user will often use casual language or make typos. Intelligently infer their intent. Do NOT ask for clarification.
-8. NEVER call \`fill_data\` with empty arrays. If you do not have specific data to insert based on the user's immediate request, DO NOT use the \`fill_data\` tool. Just respond conversationally.
-9. If the user is complaining about a bug (e.g., "it didn't work", "nothing shows up"), apologize and respond normally in text. DO NOT attempt to fix it by blindly calling tools.
+6. Smart File Understanding: You possess advanced capabilities to understand and extract data from various file types:
+   - Bills & Receipts: Extract line items, dates, and totals from images or PDFs with 100% precision.
+   - CSV & Excel: Analyze structured data and map it intelligently to the spreadsheet grid.
+   - You MUST extract data with extreme accuracy, maintaining the original structure and values.
+7. Language & Normalization: Detect language and translate everything to structured English. Identify entities, normalize values, and calculate discounts if present.
+8. The user will often use casual language or make typos. Intelligently infer their intent. Do NOT ask for clarification.
+9. NEVER call \`fill_data\` with empty arrays. If you do not have specific data to insert based on the user's immediate request, DO NOT use the \`fill_data\` tool. Just respond conversationally.
+10. If the user is complaining about a bug (e.g., "it didn't work", "nothing shows up"), apologize and respond normally in text. DO NOT attempt to fix it by blindly calling tools.
     `.trim();
 
     const tools: any[] = [
@@ -125,7 +129,7 @@ CRITICAL INSTRUCTIONS:
       }
 
       const response = await openai.chat.completions.create({
-        model: "meta-llama/llama-3.3-70b-instruct",
+        model: "google/gemini-flash-1.5",
         messages: messages,
         tools: tools,
         tool_choice: "auto",
