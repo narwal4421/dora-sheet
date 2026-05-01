@@ -68,7 +68,7 @@ class FileService {
                     workbookId,
                     rowCount: Math.max(100, maxR + 10),
                     colCount: Math.max(26, maxC + 5),
-                    data
+                    data: JSON.stringify(data)
                 }
             });
         }
@@ -92,7 +92,7 @@ class FileService {
             data: {
                 name: 'Imported CSV',
                 workbookId,
-                data
+                data: JSON.stringify(data)
             }
         });
     }
@@ -106,7 +106,7 @@ class FileService {
         }
         const wb = xlsx.utils.book_new();
         for (const sheet of workbook.sheets) {
-            const dataObj = sheet.data || {};
+            const dataObj = (typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data) || {};
             const aoa = [];
             for (let r = 0; r < sheet.rowCount; r++) {
                 aoa[r] = [];
@@ -127,7 +127,7 @@ class FileService {
         });
         if (!sheet || sheet.workbook.workspace.members.length === 0)
             throw { statusCode: 403, message: 'Forbidden' };
-        const dataObj = sheet.data || {};
+        const dataObj = (typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data) || {};
         const aoa = [];
         for (let r = 0; r < sheet.rowCount; r++) {
             aoa[r] = [];
@@ -153,7 +153,7 @@ class FileService {
     </style></head><body>`;
         for (const sheet of workbook.sheets) {
             html += `<h2>${sheet.name}</h2><table>`;
-            const dataObj = sheet.data || {};
+            const dataObj = (typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data) || {};
             for (let r = 0; r < sheet.rowCount; r++) {
                 // Only render rows that have some data to save PDF space
                 let hasData = false;

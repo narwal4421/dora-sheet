@@ -33,5 +33,18 @@ class WorkspaceController {
             data: workspace
         });
     }
+    static async addMember(req, res) {
+        const userId = req.user.userId;
+        const { id } = req.params;
+        const { email, role } = req.body;
+        await workspace_service_1.WorkspaceService.addMember(id, userId, email, role);
+        res.json({ success: true });
+    }
+    static async getMembers(req, res) {
+        const userId = req.user.userId;
+        const { id } = req.params;
+        const members = await workspace_service_1.WorkspaceService.getMembers(id, userId);
+        res.json({ success: true, data: members });
+    }
 }
 exports.WorkspaceController = WorkspaceController;

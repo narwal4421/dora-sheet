@@ -13,6 +13,7 @@ const envSchema = zod_1.z.object({
     JWT_SECRET: zod_1.z.string().min(32),
     JWT_REFRESH_SECRET: zod_1.z.string().min(32),
     OPENAI_API_KEY: zod_1.z.string(),
+    GEMINI_API_KEY: zod_1.z.string().optional(),
     PORT: zod_1.z.string().default('3001'),
     NODE_ENV: zod_1.z.enum(['development', 'production', 'test']).default('development'),
     CORS_ORIGIN: zod_1.z.string(),

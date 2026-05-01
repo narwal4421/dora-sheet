@@ -49,7 +49,7 @@ class WorkbookService {
                     order: 0,
                     rowCount: 100,
                     colCount: 26,
-                    data: {} // Empty JSON
+                    data: "{}" // Empty JSON string
                 }
             });
             return newWorkbook;

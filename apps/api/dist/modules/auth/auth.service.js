@@ -9,7 +9,6 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const prisma_1 = require("../../config/prisma");
 const env_1 = require("../../config/env");
 const redis_1 = require("../../config/redis");
-const client_1 = require("@prisma/client");
 class AuthService {
     static async register(email, passwordRaw, name) {
         const existingUser = await prisma_1.prisma.user.findUnique({ where: { email } });
@@ -23,7 +22,7 @@ class AuthService {
                     email,
                     name,
                     passwordHash,
-                    role: client_1.Role.EDITOR, // Default a new user to EDITOR or let's say ADMIN of their workspace
+                    role: "EDITOR", // Default a new user to EDITOR or let's say ADMIN of their workspace
                 },
             });
             const newWorkspace = await tx.workspace.create({
@@ -31,7 +30,7 @@ class AuthService {
                     name: `${name}'s Workspace`,
                     members: {
                         create: [
-                            { userId: newUser.id, role: client_1.Role.ADMIN },
+                            { userId: newUser.id, role: "ADMIN" },
                         ],
                     },
                 },

@@ -1,9 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.aiRouter = void 0;
 const express_1 = require("express");
 const ai_controller_1 = require("./ai.controller");
-const auth_middleware_1 = require("../../middleware/auth.middleware");
+const multer_1 = __importDefault(require("multer"));
+const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 exports.aiRouter = (0, express_1.Router)();
-exports.aiRouter.use(auth_middleware_1.requireAuth);
-exports.aiRouter.post('/chat', ai_controller_1.AIController.chat);
+/** @swagger /api/v1/ai/chat: post: summary: AI Chat tags: [AI] */
+exports.aiRouter.post('/chat', upload.single('attachedFile'), ai_controller_1.AIController.chat);

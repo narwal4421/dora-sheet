@@ -12,19 +12,13 @@ declare global {
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw { name: 'UnauthorizedError', message: 'Missing or invalid token' };
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as JWTPayload;
-    req.user = payload;
-    next();
-  } catch (error) {
-    throw { name: 'UnauthorizedError', message: 'Token expired or invalid' };
-  }
+  // Bypass authentication for public access - make the site free for all
+  req.user = {
+    userId: 'public-user-id',
+    email: 'public@dora-sheet.com',
+    role: 'ADMIN',
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (100 * 365 * 24 * 60 * 60) // 100 years
+  };
+  next();
 }
