@@ -15,6 +15,7 @@ import { aiRouter } from './modules/ai/ai.router';
 import { fileRouter } from './modules/file/file.router';
 
 const app = express();
+app.set('trust proxy', 1); // Trust the Render proxy for accurate rate-limiting IP detection
 
 const swaggerOptions = {
   definition: {
