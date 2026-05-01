@@ -116,8 +116,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         let displayContent = tool_used === 'none' ? toolResult : `I can help with that. ${suggestion ? `Suggestion: ${suggestion}` : ''}`;
         
         if (tool_used === 'analyze_data') {
-          const analysis = (toolResult as any).analysis;
-          const suggestions = (toolResult as any).suggestions as string[];
+          const analysis = (toolResult as { analysis: string }).analysis;
+          const suggestions = (toolResult as { suggestions: string[] }).suggestions;
           displayContent = `${analysis}\n\n**Suggestions:**\n${suggestions.map(s => `• ${s}`).join('\n')}`;
         }
         
@@ -158,7 +158,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         const data = result.data as unknown[][];
         
         const dataToFill = data || (columns ? [columns, ...rows] : rows);
-        const updates: Record<string, { v: string | number }> = {};
+        const updates: Record<string, { v?: string | number; f?: string }> = {};
         
         dataToFill.forEach((row: unknown, rIndex: number) => {
           const rowArray = Array.isArray(row) ? row : [row];
