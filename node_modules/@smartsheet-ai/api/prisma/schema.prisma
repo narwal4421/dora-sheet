@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("VIEWER")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  workspaces   WorkspaceMember[]
+  snapshots    Snapshot[]
+  comments     Comment[]
+  aiUsage      AIUsageLog[]
+}
+
+
+
+model Workspace {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  members   WorkspaceMember[]
+  workbooks Workbook[]
+}
+
+model WorkspaceMember {
+  userId      String
+  workspaceId String
+  role        String
+  user        User      @relation(fields:[userId], references:[id])
+  workspace   Workspace @relation(fields:[workspaceId], references:[id])
+  @@id([userId, workspaceId])
+}
+
+model Workbook {
+  id          String   @id @default(uuid())
+  name        String
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspace   Workspace @relation(fields:[workspaceId], references:[id])
+  sheets      Sheet[]
+  snapshots   Snapshot[]
+}
+
+model Sheet {
+  id         String   @id @default(uuid())
+  name       String
+  workbookId String
+  order      Int      @default(0)
+  data       String   @default("{}")
+  // data format: { "r_0_c_0": { "v": "value", "f": "=SUM(A1:A5)", "fmt": {...} } }
+  rowCount   Int      @default(100)
+  colCount   Int      @default(26)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  workbook   Workbook @relation(fields:[workbookId], references:[id])
+  comments   Comment[]
+}
+
+model Snapshot {
+  id         String   @id @default(uuid())
+  workbookId String
+  userId     String
+  data       String     // full workbook sheets snapshot
+  label      String?
+  createdAt  DateTime @default(now())
+  workbook   Workbook @relation(fields:[workbookId], references:[id])
+  user       User     @relation(fields:[userId], references:[id])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  sheetId   String
+  cellRef   String   // e.g. "A1"
+  userId    String
+  content   String
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  sheet     Sheet    @relation(fields:[sheetId], references:[id])
+  user      User     @relation(fields:[userId], references:[id])
+}
+
+model AIUsageLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      String   // YYYY-MM-DD
+  count     Int      @default(0)
+  user      User     @relation(fields:[userId], references:[id])
+  @@unique([userId, date])
+}

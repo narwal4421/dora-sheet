@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.workbookRouter = void 0;
+const express_1 = require("express");
+const workbook_controller_1 = require("./workbook.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+exports.workbookRouter = (0, express_1.Router)();
+exports.workbookRouter.use(auth_middleware_1.requireAuth);
+exports.workbookRouter.get('/workspace/:workspaceId', workbook_controller_1.WorkbookController.getWorkbooks);
+exports.workbookRouter.post('/', workbook_controller_1.WorkbookController.createWorkbook);
+exports.workbookRouter.get('/:id', workbook_controller_1.WorkbookController.getWorkbook);
