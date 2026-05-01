@@ -38,6 +38,33 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     const userMsg = input.trim() || 'Please extract data from this document.';
     const currentFile = attachedFile;
     
+    // Check if this is an acceptance of a previous suggestion
+    const isAcceptance = /^(yes|yeah|yep|accept|do it|apply|sure|ok|okay)/i.test(userMsg);
+    
+    if (isAcceptance && !currentFile) {
+      let lastActionableMsgIndex = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'ai' && messages[i].tool && !messages[i].applied) {
+          lastActionableMsgIndex = i;
+          break;
+        }
+      }
+      
+      if (lastActionableMsgIndex !== -1) {
+        const lastMsg = messages[lastActionableMsgIndex];
+        
+        setInput('');
+        setMessages(prev => [
+          ...prev, 
+          { role: 'user', content: userMsg }
+        ]);
+        
+        // Apply the action automatically
+        handleApplyAction(lastMsg.tool!, lastMsg.result, lastActionableMsgIndex);
+        return; // Skip sending to AI
+      }
+    }
+    
     setInput('');
     setAttachedFile(null);
     setMessages(prev => [
@@ -91,10 +118,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleApplyAction = (tool: string, rawResult: unknown, msgIndex: number) => {
+    alert("Button click registered! Tool: " + tool);
     const result = rawResult as Record<string, unknown>;
     try {
       // If the tool was apply_formula and we have an active cell, apply it!
       if (tool === 'apply_formula' && result?.formula && activeCell) {
+        alert("Applying formula!");
         const formula = result.formula as string;
         setCellData(activeCell, { f: formula });
         socketService.emitCellUpdate('default-workbook-id', activeCell, { f: formula });
@@ -125,15 +154,18 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         });
         
         bulkSetCellData(updates);
+        alert("bulkSetCellData executed successfully!");
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
           return [...updated, { role: 'ai', content: `Successfully filled ${dataToFill.length} rows of data!` }];
         });
       } else {
+         alert("Cannot automatically apply action for " + tool);
          setMessages(prev => [...prev, { role: 'ai', content: `Cannot automatically apply action for ${tool}.` }]);
       }
     } catch (err: unknown) {
+      alert("Error: " + (err as Error).message);
       setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${(err as Error).message}` }]);
     }
   };
