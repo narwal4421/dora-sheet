@@ -105,8 +105,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
           return [...updated, { role: 'ai', content: `Applied formula ${formula} to ${activeCell}!` }];
         });
       } else if (tool === 'fill_data' && (result?.data || result?.rows)) {
-        const startRow = (result.startRow as number) || 0;
-        const startCol = (result.startCol as number) || 0;
+        const startRow = result.startRow !== undefined ? Number(result.startRow) : 0;
+        const startCol = result.startCol !== undefined ? Number(result.startCol) : 0;
         const columns = result.columns as unknown[];
         const rows = result.rows as unknown[];
         const data = result.data as unknown[][];
