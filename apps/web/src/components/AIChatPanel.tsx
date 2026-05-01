@@ -118,12 +118,10 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleApplyAction = (tool: string, rawResult: unknown, msgIndex: number) => {
-    alert("Button click registered! Tool: " + tool);
     const result = rawResult as Record<string, unknown>;
     try {
       // If the tool was apply_formula and we have an active cell, apply it!
       if (tool === 'apply_formula' && result?.formula && activeCell) {
-        alert("Applying formula!");
         const formula = result.formula as string;
         setCellData(activeCell, { f: formula });
         socketService.emitCellUpdate('default-workbook-id', activeCell, { f: formula });
@@ -158,18 +156,17 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         Object.entries(updates).forEach(([ref, cell]) => {
           socketService.emitCellUpdate('default-workbook-id', ref, cell);
         });
-        alert("bulkSetCellData executed successfully!");
+        
+        const cellList = Object.keys(updates).join(', ');
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
-          return [...updated, { role: 'ai', content: `Successfully filled ${dataToFill.length} rows of data!` }];
+          return [...updated, { role: 'ai', content: `Successfully updated cells: ${cellList}` }];
         });
       } else {
-         alert("Cannot automatically apply action for " + tool);
          setMessages(prev => [...prev, { role: 'ai', content: `Cannot automatically apply action for ${tool}.` }]);
       }
     } catch (err: unknown) {
-      alert("Error: " + (err as Error).message);
       setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${(err as Error).message}` }]);
     }
   };

@@ -103,6 +103,16 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
           <Bot size={16} />
           <span>Dora AI</span>
         </button>
+        <button 
+          onClick={() => {
+            const store = useSheetStore.getState();
+            store.setCellData('r_0_c_0', { v: 'TEST' });
+            alert('Manual update: Set r_0_c_0 to TEST. Check the top-left cell!');
+          }}
+          className="ml-2 px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded font-bold text-xs hover:bg-green-500/20 transition-all"
+        >
+          TEST DATA
+        </button>
       </div>
     </div>
   );
