@@ -145,7 +145,7 @@ CRITICAL INSTRUCTIONS:
       }
 
       const response = await openai.chat.completions.create({
-        model: "google/gemini-pro-1.5",
+        model: "anthropic/claude-3.5-sonnet",
         messages: messages,
         tools: tools,
         tool_choice: "auto",
