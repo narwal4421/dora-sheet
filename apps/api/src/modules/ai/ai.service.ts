@@ -114,7 +114,7 @@ CRITICAL INSTRUCTIONS:
           role: "user",
           content: [
             { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: \`data:\${mimeType};base64,\${fileData}\` } }
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${fileData}` } }
           ]
         });
       } else {
