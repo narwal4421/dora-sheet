@@ -9,7 +9,10 @@ class SocketService {
   connect() {
     const token = localStorage.getItem('token') || 'dummy-token';
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+    const apiUrl = import.meta.env.VITE_API_URL || 
+      (window.location.hostname.includes('vercel.app') 
+        ? 'https://dora-sheet-api.vercel.app' 
+        : 'http://localhost:3002');
     this.socket = io(apiUrl, {
       auth: { token },
       transports: ['websocket']

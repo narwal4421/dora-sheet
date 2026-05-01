@@ -83,7 +83,10 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       if (activeCell) formData.append('activeCell', activeCell);
       if (currentFile) formData.append('attachedFile', currentFile);
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        (window.location.hostname.includes('vercel.app') 
+          ? 'https://dora-sheet-api.vercel.app' 
+          : 'http://localhost:3002');
       const response = await fetch(`${apiUrl}/api/v1/ai/chat`, {
         method: 'POST',
         headers: {
