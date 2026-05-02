@@ -35,14 +35,14 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
     <div className="dark flex items-center px-4 py-2 border-b border-border bg-surface shadow-sm z-10 gap-4">
       {/* Undo/Redo */}
       <div className="flex items-center gap-1 border-r border-border pr-4">
-        <button 
+        <button
           onClick={undo}
           disabled={history.length === 0}
           className={`p-1.5 rounded transition-colors ${history.length === 0 ? 'text-border cursor-not-allowed' : 'text-textMuted hover:bg-surfaceHover hover:text-textMain'}`}
         >
           <Undo size={16} />
         </button>
-        <button 
+        <button
           onClick={redo}
           disabled={future.length === 0}
           className={`p-1.5 rounded transition-colors ${future.length === 0 ? 'text-border cursor-not-allowed' : 'text-textMuted hover:bg-surfaceHover hover:text-textMain'}`}
@@ -50,7 +50,7 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
         >
           <Redo size={16} />
         </button>
-        <button 
+        <button
           onClick={() => setFindReplace({ isOpen: !findReplace.isOpen })}
           className={`p-1.5 rounded transition-colors ml-1 ${findReplace.isOpen ? 'bg-accent/20 text-accent' : 'text-textMuted hover:bg-surfaceHover hover:text-textMain'}`}
           title="Find & Replace"
@@ -96,12 +96,12 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
 
       {/* AI Bot Button */}
       <div className="flex-1 flex justify-end">
-        <button 
+        <button
           onClick={onToggleAI}
-          className="flex items-center gap-2 p-1.5 rounded bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors font-medium text-sm shadow-[0_0_15px_rgba(99,102,241,0.2)]"
-          title="Dora AI Assistant"
+          className="flex items-center gap-2 px-3 py-1.5 rounded bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors font-medium text-sm shadow-[0_0_15px_rgba(99,102,241,0.2)]"
         >
-          <Bot size={20} />
+          <Bot size={16} />
+          <span>Dora AI</span>
         </button>
       </div>
     </div>

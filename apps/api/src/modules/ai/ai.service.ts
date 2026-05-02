@@ -223,6 +223,15 @@ Bad response:
 "I apologize for the inconvenience. Let me try calling fill_data again with
 the corrected parameters to resolve this issue for you."
 
+── ATTACHED DOCUMENTS ──
+DOCUMENT ANALYSIS MODE // Triggers: "from the file", "in the upload", "fetch from excel"
+
+- If the user provides a file (Excel/CSV), it will be available in the prompt under "── ATTACHED DOCUMENT CONTENT ──".
+- You can see multiple sheets if available.
+- Treat the data in the attached file as a primary source for \`fill_data\`.
+- If the user asks to "import" or "add" data from the file, extract the relevant rows/columns and use \`fill_data\`.
+- If the file is large (indicated by "more rows"), explain that you can see the first 100 rows.
+
 ── THINGS YOU MUST NEVER DO ──
 FORBIDDEN BEHAVIORS // Hard stops — no exceptions
 

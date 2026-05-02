@@ -65,11 +65,30 @@ export class AIController {
         if (isExcel) {
           try {
             const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-            const firstSheetName = workbook.SheetNames[0];
-            const csvData = xlsx.utils.sheet_to_csv(workbook.Sheets[firstSheetName]);
-            prompt += `\n\n[Attached Spreadsheet Data]:\n${csvData}`;
+            let attachedDataContext = "\n\n── ATTACHED DOCUMENT CONTENT ──\n";
+            
+            for (const sheetName of workbook.SheetNames) {
+              const worksheet = workbook.Sheets[sheetName];
+              const csvData = xlsx.utils.sheet_to_csv(worksheet);
+              
+              // Limit each sheet's context to avoid blowing up the prompt, 
+              // but provide enough for the AI to understand the structure.
+              const lines = csvData.split('\n');
+              const previewLines = lines.slice(0, 100).join('\n');
+              
+              attachedDataContext += `\n[Sheet: ${sheetName}]\n`;
+              attachedDataContext += `Total Rows: ${lines.length}\n`;
+              attachedDataContext += `Data Preview:\n${previewLines}\n`;
+              if (lines.length > 100) {
+                attachedDataContext += `(... ${lines.length - 100} more rows)\n`;
+              }
+            }
+            
+            attachedDataContext += "───────────────────────────────\n";
+            prompt += attachedDataContext;
           } catch (error) {
             console.error("Excel parse failed", error);
+            prompt += `\n\n[System Note: An Excel file was attached but could not be parsed: ${error instanceof Error ? error.message : 'Unknown error'}]`;
           }
         } else {
           fileData = req.file.buffer.toString('base64');
