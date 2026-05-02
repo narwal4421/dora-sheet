@@ -237,7 +237,7 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
 ✗ Repeat the data back as text if a tool already shows it.
 ✗ Explain what you're about to do at length — just do it.
 ✗ Use corporate tone. You're a brilliant friend, not a helpdesk ticket.
-    \`.trim();
+    `.trim();
 
     const tools: any[] = [
       {
