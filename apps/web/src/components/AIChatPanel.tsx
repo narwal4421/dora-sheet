@@ -216,17 +216,57 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
             </div>
             
             {msg.tool && msg.role === 'ai' && (
-              <div className="mt-2 bg-background/50 border border-white/10 p-3 rounded-xl w-full flex flex-col gap-2 shadow-inner">
-                <div className="text-xs text-textMuted uppercase font-bold tracking-wider">Action: {msg.tool}</div>
-                <div className="font-mono text-xs text-accent/90 break-all bg-black/20 p-2 rounded-md border border-white/5">
-                  {JSON.stringify(msg.result, null, 2)}
+              <div className="mt-3 bg-background/40 border border-white/10 p-4 rounded-xl w-full flex flex-col gap-3 shadow-lg backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  {msg.tool === 'apply_formula' ? 'Suggested Calculation' : 
+                   msg.tool === 'fill_data' ? 'Data Insertion' : 'AI Action'}
                 </div>
+                
+                <div className="flex flex-col gap-2 py-1">
+                  {msg.tool === 'apply_formula' && (msg.result as any)?.formula && (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-textMuted uppercase font-semibold">Formula</span>
+                        <code className="px-2 py-1.5 bg-black/30 rounded border border-white/5 text-accent font-mono text-xs">
+                          {(msg.result as any).formula}
+                        </code>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-textMuted uppercase font-semibold">Target Cell</span>
+                        <div className="text-white font-medium text-xs">
+                          {(msg.result as any).targetCell || 'Selected Cell'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {msg.tool === 'fill_data' && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-textMuted">Proposed Rows:</span>
+                        <span className="text-white font-bold">{(msg.result as any).rows?.length || (msg.result as any).data?.length || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-textMuted">Columns:</span>
+                        <span className="text-white truncate max-w-[120px]">{(msg.result as any).columns?.join(', ') || 'Auto-detect'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.tool !== 'apply_formula' && msg.tool !== 'fill_data' && (
+                    <div className="font-mono text-[11px] text-textMuted/80 break-all bg-black/20 p-2 rounded border border-white/5">
+                      {JSON.stringify(msg.result, null, 2)}
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   disabled={msg.applied}
                   onClick={() => msg.tool && handleApplyAction(msg.tool, msg.result, i)}
-                  className={`mt-2 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all duration-200 ${msg.applied ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-accent/20 hover:bg-accent hover:text-white text-accent border-accent/30 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_20px_rgba(99,102,241,0.5)]'}`}
+                  className={`mt-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold border transition-all duration-300 ${msg.applied ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-accent/20 hover:bg-accent hover:text-white text-accent border-accent/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]'}`}
                 >
-                  <Check size={16} /> {msg.applied ? 'Applied' : 'Accept Suggestion'}
+                  <Check size={16} /> {msg.applied ? 'Action Applied' : 'Approve & Apply'}
                 </button>
               </div>
             )}
