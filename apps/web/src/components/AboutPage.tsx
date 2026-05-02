@@ -129,7 +129,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
             <div className="flex items-center gap-4 justify-center md:justify-start">
               <span className="h-[2px] w-12 bg-accent/40" />
               <p className="text-textMuted font-bold tracking-[0.5em] uppercase text-[10px] md:text-xs">
-                Visionary Developer
+                Founder & Lead Engineer
               </p>
             </div>
           </div>
