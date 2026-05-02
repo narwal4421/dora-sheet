@@ -101,14 +101,14 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
 
       <div 
         ref={cardRef}
-        className="relative w-full max-w-6xl mx-6 bg-white/[0.01] backdrop-blur-[120px] border border-white/[0.08] rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row overflow-hidden z-20"
+        className="relative w-full max-w-6xl mx-6 my-8 bg-white/[0.01] backdrop-blur-[120px] border border-white/[0.08] rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-20 max-h-[90vh] scrollbar-none"
       >
         {/* Physical Glass Reflection Effect */}
         <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.02] via-transparent to-white/[0.05] pointer-events-none" />
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
 
         {/* Left: Identity Section */}
-        <div className="flex-[1.2] p-12 md:p-20 flex flex-col justify-center items-center md:items-start space-y-12 relative border-b md:border-b-0 md:border-r border-white/5">
+        <div className="flex-1 md:flex-[1.2] p-8 md:p-16 flex flex-col justify-center items-center md:items-start space-y-8 md:space-y-12 relative border-b md:border-b-0 md:border-r border-white/5">
           <div className="relative group">
             <div className="w-48 h-48 md:w-56 md:h-56 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative z-10 transition-transform duration-1000 group-hover:scale-[1.02] rotate-[-2deg] group-hover:rotate-0">
               <img 
@@ -151,7 +151,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         {/* Right: Vision Section */}
-        <div className="flex-1 p-12 md:p-20 flex flex-col justify-between bg-white/[0.01]">
+        <div className="flex-1 p-8 md:p-16 flex flex-col justify-between bg-white/[0.01]">
           <div className="space-y-12">
             <div className="space-y-8 stagger-in">
               <div className="flex items-center gap-3 text-accent/60">
