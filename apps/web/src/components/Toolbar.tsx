@@ -98,10 +98,10 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
       <div className="flex-1 flex justify-end">
         <button 
           onClick={onToggleAI}
-          className="flex items-center gap-2 px-3 py-1.5 rounded bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors font-medium text-sm shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+          className="flex items-center gap-2 p-1.5 rounded bg-accent/10 text-accent hover:bg-accent/20 border border-accent/20 transition-colors font-medium text-sm shadow-[0_0_15px_rgba(99,102,241,0.2)]"
+          title="Dora AI Assistant"
         >
-          <Bot size={16} />
-          <span>Dora AI</span>
+          <Bot size={20} />
         </button>
       </div>
     </div>
