@@ -6,6 +6,7 @@ import { Toolbar } from './components/Toolbar';
 import { AIChatPanel } from './components/AIChatPanel';
 import { VersionHistory } from './components/VersionHistory';
 import { ShareModal } from './components/Modals/ShareModal';
+import { AboutPage } from './components/AboutPage';
 import { FindReplace } from './components/FindReplace';
 
 const WORKBOOK_ID = 'default-workbook-id'; // To be dynamically passed
@@ -14,6 +15,7 @@ function App() {
   const [showAI, setShowAI] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
 
   useEffect(() => {
     socketService.connect();
@@ -30,6 +32,7 @@ function App() {
       <TopNav 
         onShowVersionHistory={() => setShowVersionHistory(true)} 
         onShowShare={() => setShowShare(true)} 
+        onShowAbout={() => setShowAbout(true)}
       />
 
       {/* Formatting Toolbar */}
@@ -70,6 +73,9 @@ function App() {
             workbookId={WORKBOOK_ID} 
             onClose={() => setShowShare(false)} 
           />
+        )}
+        {showAbout && (
+          <AboutPage onClose={() => setShowAbout(false)} />
         )}
       </div>
     </div>

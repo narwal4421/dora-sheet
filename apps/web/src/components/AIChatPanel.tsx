@@ -16,7 +16,7 @@ interface ToolResult {
   formula?: string;
   targetCell?: string;
   data?: unknown[][];
-  rows?: any[];
+  rows?: unknown[];
   columns?: string[];
   startRow?: number;
   startCol?: number;
@@ -117,8 +117,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         tool: (tool_used === 'none' || tool_used === 'analyze_data') ? undefined : tool_used,
         result: toolResult as ToolResult
       }]);
-    } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'ai', content: `Error: ${err.message}` }]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setMessages(prev => [...prev, { role: 'ai', content: `Error: ${message}` }]);
     } finally {
       setIsLoading(false);
       setIsAnalyzingDoc(false);
@@ -143,13 +144,13 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         const dataToFill = result.data || (result.columns ? [result.columns, ...(result.rows || [])] : (result.rows || []));
         const updates: Record<string, { v?: string | number; f?: string }> = {};
         
-        dataToFill.forEach((row: any, rIndex: number) => {
+        dataToFill.forEach((row: unknown, rIndex: number) => {
           const rowArray = Array.isArray(row) ? row : [row];
-          rowArray.forEach((cellValue: any, cIndex: number) => {
+          rowArray.forEach((cellValue: unknown, cIndex: number) => {
             const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
             if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
               updates[ref] = { f: cellValue };
-            } else {
+            } else if (typeof cellValue === 'string' || typeof cellValue === 'number') {
               updates[ref] = { v: cellValue };
             }
           });
@@ -166,8 +167,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
           return [...updated, { role: 'ai', content: `Successfully updated ${Object.keys(updates).length} cells.` }];
         });
       }
-    } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${err.message}` }]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${message}` }]);
     }
   };
 
@@ -176,7 +178,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       <div className="flex items-center justify-between px-4 py-4 border-b border-white/5">
         <div className="flex items-center gap-2 text-accent font-semibold tracking-wide drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]">
           <Bot size={20} className="animate-pulse" />
-          <span>SmartSheet AI</span>
+          <span>Dora AI</span>
         </div>
         <button onClick={onClose} className="text-textMuted hover:text-textMain transition-colors">
           <X size={18} />
@@ -273,6 +275,6 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-function resultHasFormula(result: any): result is { formula: string; targetCell?: string } {
-  return result && typeof result.formula === 'string';
+function resultHasFormula(result: unknown): result is { formula: string; targetCell?: string } {
+  return !!result && typeof (result as { formula: string }).formula === 'string';
 }

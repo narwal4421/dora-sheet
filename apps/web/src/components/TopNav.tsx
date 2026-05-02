@@ -5,7 +5,15 @@ import * as XLSX from 'xlsx';
 
 import { DropdownMenu, type MenuItem } from './DropdownMenu';
 
-export const TopNav = ({ onShowVersionHistory, onShowShare }: { onShowVersionHistory: () => void, onShowShare: () => void }) => {
+export const TopNav = ({ 
+  onShowVersionHistory, 
+  onShowShare,
+  onShowAbout
+}: { 
+  onShowVersionHistory: () => void, 
+  onShowShare: () => void,
+  onShowAbout: () => void
+}) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const isLightMode = useSheetStore(state => state.isLightMode);
   const setIsLightMode = useSheetStore(state => state.setIsLightMode);
@@ -46,7 +54,7 @@ export const TopNav = ({ onShowVersionHistory, onShowShare }: { onShowVersionHis
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, "SmartSheet_Export.xlsx");
+    XLSX.writeFile(wb, "DoraAI_Export.xlsx");
   };
 
   const fileMenu: MenuItem[] = [
@@ -130,9 +138,13 @@ export const TopNav = ({ onShowVersionHistory, onShowShare }: { onShowVersionHis
             </div>
           ))}
           {connectedUsers.length === 0 && (
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-textMuted text-xs font-medium border-2 border-background bg-surface" title="Only you">
-              Me
-            </div>
+            <button 
+              onClick={onShowAbout}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-surface text-textMuted hover:text-white hover:border-accent transition-all text-xs font-bold uppercase tracking-wider shadow-sm"
+              title="Learn about Dora AI"
+            >
+              Contact Us
+            </button>
           )}
         </div>
 
