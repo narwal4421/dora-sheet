@@ -295,7 +295,12 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
     try {
       const messages: any[] = [
         { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` },
-        ...history.map(h => ({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.content }))
+        ...history
+          .filter(h => h.role && h.content)
+          .map(h => ({ 
+            role: h.role === 'ai' || h.role === 'assistant' ? 'assistant' : 'user', 
+            content: String(h.content) 
+          }))
       ];
 
       if (fileData && mimeType && mimeType.startsWith('image/')) {
@@ -310,8 +315,10 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
         messages.push({ role: "user", content: prompt });
       }
 
+      console.log(`[AI Request] Model: google/gemini-flash-1.5-8b, Messages: ${messages.length}`);
+
       const response = await openai.chat.completions.create({
-        model: "anthropic/claude-3.5-sonnet",
+        model: "google/gemini-flash-1.5-8b",
         messages: messages,
         tools: tools,
         tool_choice: "auto",
