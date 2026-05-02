@@ -51,8 +51,12 @@ export const FormulaBar = () => {
   };
 
   return (
-    <div className="flex items-center border-b border-border bg-surface p-1 shadow-sm relative z-10 h-9">
+    <div className="flex items-center border-b border-border bg-surface p-1 shadow-sm relative z-10">
+      <div className="w-12 text-center font-semibold text-textMuted border-r border-border px-2 py-1 bg-surfaceHover text-sm">
+        {displayRef}
+      </div>
       <div className="flex flex-1 items-center px-2">
+        <span className="text-accent font-mono font-bold mr-2 opacity-70 italic text-sm">fx</span>
         <input
           type="text"
           className="w-full bg-transparent outline-none font-mono text-sm text-textMain placeholder-textMuted/50"

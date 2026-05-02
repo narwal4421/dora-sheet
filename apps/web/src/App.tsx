@@ -39,7 +39,6 @@ function App() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Main Content Area (Formula Bar + Grid) */}
         <div className="flex flex-col flex-1 overflow-hidden border-r border-border shadow-inner relative">
-          <FormulaBar />
           <Grid />
           <FindReplace />
         </div>
