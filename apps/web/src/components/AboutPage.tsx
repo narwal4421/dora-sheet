@@ -135,16 +135,18 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 w-full stagger-in">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full stagger-in">
             {[
-              { icon: Zap, label: 'Performance' },
-              { icon: Sparkles, label: 'Aesthetics' },
-              { icon: Cpu, label: 'Intelligence' },
-              { icon: Code, label: 'Craftmanship' }
+              { icon: Zap, label: 'React 18' },
+              { icon: Cpu, label: 'GPT-4o-mini' },
+              { icon: Database, label: 'PostgreSQL' },
+              { icon: Globe, label: 'Socket.io' },
+              { icon: Code, label: 'TypeScript' },
+              { icon: Sparkles, label: 'Three.js' }
             ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:border-white/20 transition-all duration-500 group">
-                <Icon size={16} className="text-accent group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
+              <div key={label} className="flex items-center gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-accent/30 hover:bg-accent/5 transition-all duration-500 group">
+                <Icon size={14} className="text-accent/60 group-hover:text-accent group-hover:scale-110 transition-all" />
+                <span className="text-[9px] font-black text-white/40 group-hover:text-white/80 uppercase tracking-[0.2em] transition-colors">{label}</span>
               </div>
             ))}
           </div>
