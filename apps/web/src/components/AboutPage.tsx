@@ -122,10 +122,9 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
             <div className="absolute inset-[-20px] border border-accent/20 rounded-[40px] animate-pulse-slow pointer-events-none" />
           </div>
 
-          <div className="text-center md:text-left space-y-4 stagger-in">
-            <h1 className="text-6xl md:text-8xl font-black tracking-[-0.04em] text-white leading-[0.9] font-syne">
-              Pranjal <br /> 
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-white to-accent animate-liquid-chrome">Narwal</span>
+          <div className="text-center md:text-left space-y-2 stagger-in">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-none font-outfit uppercase">
+              Pranjal <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-white to-accent animate-liquid-chrome drop-shadow-[0_0_30px_rgba(123,94,246,0.3)]">Narwal</span>
             </h1>
             <div className="flex items-center gap-4 justify-center md:justify-start">
               <span className="h-[2px] w-12 bg-accent/40" />
@@ -212,7 +211,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Syne:wght@700;800&family=Inter:wght@300;400;500;700;900&display=swap');
         
         .animate-drift-slow { animation: drift 20s ease-in-out infinite; }
         .animate-drift-slow-reverse { animation: drift-reverse 25s ease-in-out infinite; }
@@ -242,6 +241,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
           100% { background-position: 0% 50%; }
         }
 
+        .font-outfit { font-family: 'Outfit', sans-serif; }
         .font-syne { font-family: 'Syne', sans-serif; }
         .font-inter { font-family: 'Inter', sans-serif; }
       `}} />
