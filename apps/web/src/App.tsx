@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { FormulaBar } from './components/FormulaBar';
 import { Grid } from './components/Grid';
 import { socketService } from './services/socket.service';
 import { TopNav } from './components/TopNav';

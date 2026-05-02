@@ -3,9 +3,30 @@ import { Bot, Send, X, Check, Loader2, Paperclip, FileText } from 'lucide-react'
 import { useSheetStore } from '../store/useSheetStore';
 import { socketService } from '../services/socket.service';
 
+interface Message {
+  role: 'user' | 'ai';
+  content: string;
+  tool?: string;
+  result?: ToolResult;
+  suggestion?: string;
+  applied?: boolean;
+}
+
+interface ToolResult {
+  formula?: string;
+  targetCell?: string;
+  data?: unknown[][];
+  rows?: any[];
+  columns?: string[];
+  startRow?: number;
+  startCol?: number;
+  analysis?: string;
+  suggestions?: string[];
+}
+
 export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai', content: string, tool?: string, result?: unknown, suggestion?: string, applied?: boolean }[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { role: 'ai', content: 'Hi! I am your SmartSheet AI Assistant. Ask me to apply formulas, filter data, or analyze the spreadsheet!' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -25,10 +46,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    // Gemini supports PDFs, images, CSV, text, etc.
     setAttachedFile(file);
-    // Reset input so the same file can be uploaded again if removed
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -38,35 +56,17 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     const userMsg = input.trim() || 'Please extract data from this document.';
     const currentFile = attachedFile;
     
-    // Check if this is an acceptance of a previous suggestion
-    const isAcceptance = /^(yes|yeah|yep|accept|do it|apply|sure|ok|okay|approve|agree|confirm)/i.test(userMsg) || 
-                         userMsg.toLowerCase() === 'yes' || 
-                         userMsg.toLowerCase() === 'accept suggestion';
+    const isAcceptance = /^(yes|yeah|yep|accept|do it|apply|sure|ok|okay|approve|agree|confirm)/i.test(userMsg);
     
     if (isAcceptance && !currentFile) {
-      let lastActionableMsgIndex = -1;
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].role === 'ai' && messages[i].tool && !messages[i].applied) {
-          lastActionableMsgIndex = i;
-          break;
-        }
-      }
+      const lastActionableMsgIndex = messages.findLastIndex(m => m.role === 'ai' && m.tool && !m.applied);
       
       if (lastActionableMsgIndex !== -1) {
         const lastMsg = messages[lastActionableMsgIndex];
-        
         setInput('');
-        setMessages(prev => [
-          ...prev, 
-          { role: 'user', content: userMsg }
-        ]);
-        
-        // Apply the action automatically
+        setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
         handleApplyAction(lastMsg.tool!, lastMsg.result, lastActionableMsgIndex);
-        return; // Skip sending to AI
-      } else {
-        // Diagnostic: If we think it's an acceptance but can't find the tool
-        console.log('Acceptance detected but no actionable message found. Messages count:', messages.length);
+        return;
       }
     }
     
@@ -81,123 +81,98 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
 
     try {
       const token = localStorage.getItem('accessToken');
-      
       const formData = new FormData();
       formData.append('sheetId', 'default-workbook-id');
       formData.append('prompt', userMsg);
-      // Include last 10 messages for context
-      const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      formData.append('history', JSON.stringify(history));
+      formData.append('history', JSON.stringify(messages.slice(-10).map(m => ({ role: m.role, content: m.content }))));
       if (activeCell) formData.append('activeCell', activeCell);
       if (currentFile) formData.append('attachedFile', currentFile);
 
       const apiUrl = import.meta.env.VITE_API_URL || 
-        (window.location.hostname.includes('vercel.app') 
-          ? 'https://dora-sheet-api.onrender.com' 
-          : 'http://localhost:3002');
+        (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');
+      
       const response = await fetch(`${apiUrl}/api/v1/ai/chat`, {
         method: 'POST',
-        headers: {
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        },
+        headers: { ...(token && { 'Authorization': `Bearer ${token}` }) },
         body: formData
       });
 
       if (!response.ok) {
-        if (response.status === 429) {
-           setMessages(prev => [...prev, { role: 'ai', content: 'You have hit the rate limit (50 requests/day). Please try again tomorrow.' }]);
-        } else {
-           throw new Error('Failed to get AI response');
-        }
-      } else {
-        const result = await response.json();
-        const { tool_used, suggestion, result: toolResult } = result.data;
-        
-        let displayContent = tool_used === 'none' ? toolResult : `I can help with that. ${suggestion ? `Suggestion: ${suggestion}` : ''}`;
-        
-        if (tool_used === 'analyze_data') {
-          const analysis = (toolResult as { analysis: string }).analysis;
-          const suggestions = (toolResult as { suggestions: string[] }).suggestions;
-          displayContent = `${analysis}\n\n**Suggestions:**\n${suggestions.map(s => `• ${s}`).join('\n')}`;
-        }
-        
-        setMessages(prev => [...prev, { 
-          role: 'ai', 
-          content: displayContent as string,
-          tool: (tool_used === 'none' || tool_used === 'analyze_data') ? undefined : tool_used,
-          result: toolResult
-        }]);
+        throw new Error(response.status === 429 ? 'Rate limit exceeded' : 'Failed to get AI response');
       }
-    } catch (err: unknown) {
-      setMessages(prev => [...prev, { role: 'ai', content: `Error: ${(err as Error).message}` }]);
+
+      const result = await response.json();
+      const { tool_used, suggestion, result: toolResult } = result.data;
+      
+      let displayContent = tool_used === 'none' ? toolResult : `I can help with that. ${suggestion ? `Suggestion: ${suggestion}` : ''}`;
+      
+      if (tool_used === 'analyze_data') {
+        const r = toolResult as ToolResult;
+        displayContent = `${r.analysis}\n\n**Suggestions:**\n${r.suggestions?.map(s => `• ${s}`).join('\n')}`;
+      }
+      
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: displayContent as string,
+        tool: (tool_used === 'none' || tool_used === 'analyze_data') ? undefined : tool_used,
+        result: toolResult as ToolResult
+      }]);
+    } catch (err: any) {
+      setMessages(prev => [...prev, { role: 'ai', content: `Error: ${err.message}` }]);
     } finally {
       setIsLoading(false);
       setIsAnalyzingDoc(false);
     }
   };
 
-  const handleApplyAction = (tool: string, rawResult: unknown, msgIndex: number) => {
-    const result = rawResult as Record<string, unknown>;
+  const handleApplyAction = (tool: string, result: ToolResult | undefined, msgIndex: number) => {
+    if (!result) return;
     try {
-      // If the tool was apply_formula and we have an active cell, apply it!
-      if (tool === 'apply_formula' && result?.formula && activeCell) {
-        const formula = result.formula as string;
-        setCellData(activeCell, { f: formula });
-        socketService.emitCellUpdate('default-workbook-id', activeCell, { f: formula });
+      if (tool === 'apply_formula' && result.formula && activeCell) {
+        setCellData(activeCell, { f: result.formula });
+        socketService.emitCellUpdate('default-workbook-id', activeCell, { f: result.formula });
         
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
-          return [...updated, { role: 'ai', content: `Applied formula ${formula} to ${activeCell}!` }];
+          return [...updated, { role: 'ai', content: `Applied formula ${result.formula} to ${activeCell}!` }];
         });
-      } else if (tool === 'fill_data' && (result?.data || result?.rows)) {
+      } else if (tool === 'fill_data' && (result.data || result.rows)) {
         const startRow = result.startRow !== undefined ? Number(result.startRow) : 0;
         const startCol = result.startCol !== undefined ? Number(result.startCol) : 0;
-        const columns = result.columns as unknown[];
-        const rows = result.rows as unknown[];
-        const data = result.data as unknown[][];
-        
-        const dataToFill = data || (columns ? [columns, ...rows] : rows);
+        const dataToFill = result.data || (result.columns ? [result.columns, ...(result.rows || [])] : (result.rows || []));
         const updates: Record<string, { v?: string | number; f?: string }> = {};
         
-        dataToFill.forEach((row: unknown, rIndex: number) => {
+        dataToFill.forEach((row: any, rIndex: number) => {
           const rowArray = Array.isArray(row) ? row : [row];
-          rowArray.forEach((cellValue: unknown, cIndex: number) => {
+          rowArray.forEach((cellValue: any, cIndex: number) => {
             const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
-            const val = cellValue as string | number;
-            
-            if (typeof val === 'string' && val.startsWith('=')) {
-              updates[ref] = { f: val };
+            if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
+              updates[ref] = { f: cellValue };
             } else {
-              updates[ref] = { v: val };
+              updates[ref] = { v: cellValue };
             }
           });
         });
         
         bulkSetCellData(updates);
-        
-        // Batch socket updates to avoid overwhelming the connection
         Object.entries(updates).forEach(([ref, cell]) => {
           socketService.emitCellUpdate('default-workbook-id', ref, cell);
         });
         
-        const cellList = Object.keys(updates).join(', ');
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
-          return [...updated, { role: 'ai', content: `Successfully updated cells: ${cellList}` }];
+          return [...updated, { role: 'ai', content: `Successfully updated ${Object.keys(updates).length} cells.` }];
         });
-      } else {
-         setMessages(prev => [...prev, { role: 'ai', content: `Cannot automatically apply action for ${tool}.` }]);
       }
-    } catch (err: unknown) {
-      setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${(err as Error).message}` }]);
+    } catch (err: any) {
+      setMessages(prev => [...prev, { role: 'ai', content: `Failed to apply action: ${err.message}` }]);
     }
   };
 
   return (
     <div className="w-80 h-full bg-surface/90 backdrop-blur-xl border-l border-white/5 flex flex-col shadow-[-8px_0_30px_-5px_rgba(0,0,0,0.5)] flex-shrink-0 z-20 relative">
-      <div className="absolute inset-0 pointer-events-none rounded-l-2xl shadow-[inset_1px_0_0_0_rgba(255,255,255,0.05)]"></div>
       <div className="flex items-center justify-between px-4 py-4 border-b border-white/5">
         <div className="flex items-center gap-2 text-accent font-semibold tracking-wide drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]">
           <Bot size={20} className="animate-pulse" />
@@ -219,24 +194,21 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
               <div className="mt-3 bg-background/40 border border-white/10 p-4 rounded-xl w-full flex flex-col gap-3 shadow-lg backdrop-blur-sm">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
                   <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  {msg.tool === 'apply_formula' ? 'Suggested Calculation' : 
-                   msg.tool === 'fill_data' ? 'Data Insertion' : 'AI Action'}
+                  {msg.tool === 'apply_formula' ? 'Suggested Calculation' : msg.tool === 'fill_data' ? 'Data Insertion' : 'AI Action'}
                 </div>
                 
                 <div className="flex flex-col gap-2 py-1">
-                  {msg.tool === 'apply_formula' && (msg.result as any)?.formula && (
+                  {msg.tool === 'apply_formula' && resultHasFormula(msg.result) && (
                     <>
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] text-textMuted uppercase font-semibold">Formula</span>
                         <code className="px-2 py-1.5 bg-black/30 rounded border border-white/5 text-accent font-mono text-xs">
-                          {(msg.result as any).formula}
+                          {msg.result?.formula}
                         </code>
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] text-textMuted uppercase font-semibold">Target Cell</span>
-                        <div className="text-white font-medium text-xs">
-                          {(msg.result as any).targetCell || 'Selected Cell'}
-                        </div>
+                        <div className="text-white font-medium text-xs">{msg.result?.targetCell || 'Selected Cell'}</div>
                       </div>
                     </>
                   )}
@@ -245,26 +217,20 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-textMuted">Proposed Rows:</span>
-                        <span className="text-white font-bold">{(msg.result as any).rows?.length || (msg.result as any).data?.length || 0}</span>
+                        <span className="text-white font-bold">{msg.result?.rows?.length || msg.result?.data?.length || 0}</span>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-textMuted">Columns:</span>
-                        <span className="text-white truncate max-w-[120px]">{(msg.result as any).columns?.join(', ') || 'Auto-detect'}</span>
+                        <span className="text-white truncate max-w-[120px]">{msg.result?.columns?.join(', ') || 'Auto-detect'}</span>
                       </div>
-                    </div>
-                  )}
-
-                  {msg.tool !== 'apply_formula' && msg.tool !== 'fill_data' && (
-                    <div className="font-mono text-[11px] text-textMuted/80 break-all bg-black/20 p-2 rounded border border-white/5">
-                      {JSON.stringify(msg.result, null, 2)}
                     </div>
                   )}
                 </div>
 
                 <button 
                   disabled={msg.applied}
-                  onClick={() => msg.tool && handleApplyAction(msg.tool, msg.result, i)}
-                  className={`mt-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold border transition-all duration-300 ${msg.applied ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-accent/20 hover:bg-accent hover:text-white text-accent border-accent/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]'}`}
+                  onClick={() => handleApplyAction(msg.tool!, msg.result, i)}
+                  className={`mt-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold border transition-all duration-300 ${msg.applied ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-accent/20 hover:bg-accent hover:text-white text-accent border-accent/30'}`}
                 >
                   <Check size={16} /> {msg.applied ? 'Action Applied' : 'Approve & Apply'}
                 </button>
@@ -275,9 +241,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         {isLoading && (
           <div className="flex items-center gap-2 text-textMuted text-xs">
             <Loader2 size={14} className="animate-spin text-accent" />
-            <span className="animate-pulse">
-              {isAnalyzingDoc ? "Analyzing document (this may take a few seconds)..." : "AI is thinking..."}
-            </span>
+            <span className="animate-pulse">{isAnalyzingDoc ? "Analyzing document..." : "AI is thinking..."}</span>
           </div>
         )}
         <div ref={endRef} />
@@ -288,26 +252,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
           <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-lg text-xs text-accent">
             <FileText size={14} />
             <span className="flex-1 truncate font-medium">{attachedFile.name}</span>
-            <button onClick={() => setAttachedFile(null)} className="hover:text-white transition-colors">
-              <X size={14} />
-            </button>
+            <button onClick={() => setAttachedFile(null)}><X size={14} /></button>
           </div>
         )}
         <div className="flex items-center bg-background/60 border border-white/10 rounded-xl px-2 py-1.5 shadow-inner focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 transition-all duration-200">
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="p-1.5 text-textMuted hover:text-accent transition-colors"
-            title="Attach Document or Image"
-          >
-            <Paperclip size={18} />
-          </button>
-          <input
-            type="file"
-            accept="*/*"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-          />
+          <button onClick={() => fileInputRef.current?.click()} className="p-1.5 text-textMuted hover:text-accent"><Paperclip size={18} /></button>
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
           <input
             type="text"
             className="flex-1 bg-transparent py-1 px-2 outline-none text-sm text-textMain placeholder-textMuted"
@@ -316,15 +266,13 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
           />
-          <button 
-            onClick={handleSend} 
-            disabled={(!input.trim() && !attachedFile) || isLoading}
-            className="text-accent hover:text-white hover:bg-accent p-1.5 rounded-lg disabled:bg-transparent disabled:text-textMuted disabled:opacity-50 transition-all duration-200"
-          >
-            <Send size={18} />
-          </button>
+          <button onClick={handleSend} disabled={(!input.trim() && !attachedFile) || isLoading} className="text-accent hover:text-white hover:bg-accent p-1.5 rounded-lg disabled:opacity-50"><Send size={18} /></button>
         </div>
       </div>
     </div>
   );
 };
+
+function resultHasFormula(result: any): result is { formula: string; targetCell?: string } {
+  return result && typeof result.formula === 'string';
+}
