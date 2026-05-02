@@ -296,7 +296,7 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
       const messages: any[] = [
         { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` },
         ...history
-          .filter(h => h.role && h.content)
+          .filter(h => h && h.role && h.content)
           .map(h => ({ 
             role: h.role === 'ai' || h.role === 'assistant' ? 'assistant' : 'user', 
             content: String(h.content) 
@@ -315,7 +315,7 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
         messages.push({ role: "user", content: prompt });
       }
 
-      console.log(`[AI Request] Model: google/gemini-flash-1.5-8b, Messages: ${messages.length}`);
+      console.log(`[AI] Requesting google/gemini-flash-1.5-8b...`);
 
       const response = await openai.chat.completions.create({
         model: "google/gemini-flash-1.5-8b",
@@ -323,9 +323,20 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
         tools: tools,
         tool_choice: "auto",
         temperature: 0.1
+      }).catch(err => {
+        console.error("[OpenRouter Error]", err);
+        return { error: err };
       });
 
-      const message = response.choices[0].message;
+      if ((response as any).error) {
+        return {
+          tool_used: "none",
+          result: `OpenRouter Error: ${(response as any).error.message || 'Unknown error'}`,
+          suggestion: "Please check your API key and quota."
+        };
+      }
+
+      const message = (response as any).choices[0].message;
 
       if (message.tool_calls && message.tool_calls.length > 0) {
         const call = message.tool_calls[0];
@@ -358,8 +369,12 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
         suggestion: "No specific action taken."
       };
     } catch (e: any) {
-      console.error(e);
-      throw new Error("OpenRouter API Error: " + e.message);
+      console.error("[AIService Critical Error]", e);
+      return {
+        tool_used: "none",
+        result: `Backend Error: ${e.message}`,
+        suggestion: "Something went wrong in the server logic."
+      };
     }
   }
 }
