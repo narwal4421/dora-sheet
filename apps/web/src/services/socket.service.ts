@@ -18,18 +18,8 @@ class SocketService {
       transports: ['websocket']
     });
 
-    this.socket.on('connect_error', async (err) => {
-      if (err.message === 'UNAUTHORIZED') {
-        const refreshed = await authService.refreshToken();
-        if (refreshed) {
-          if (this.socket) {
-            this.socket.auth = { token: refreshed.accessToken };
-            this.socket.connect();
-          }
-        } else {
-          window.location.href = '/login';
-        }
-      }
+    this.socket.on('connect_error', (err) => {
+      console.warn('Socket connection error, falling back to guest mode:', err.message);
     });
 
     this.socket.on('cell_updated', (event: CellUpdateEvent) => {
