@@ -315,10 +315,10 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
         messages.push({ role: "user", content: prompt });
       }
 
-      console.log(`[AI] Requesting google/gemini-flash-1.5-8b...`);
+      console.log(`[AI] Requesting openai/gpt-4o-mini...`);
 
       const response = await openai.chat.completions.create({
-        model: "google/gemini-flash-1.5-8b",
+        model: "openai/gpt-4o-mini",
         messages: messages,
         tools: tools,
         tool_choice: "auto",
