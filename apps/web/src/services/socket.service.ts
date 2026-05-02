@@ -68,6 +68,14 @@ class SocketService {
     if (this.socket) this.socket.emit('leave_workbook', { workbookId });
   }
 
+  requestToJoin(targetRoomId: string, userInfo: { name: string, socketId: string }) {
+    if (this.socket) this.socket.emit('request_to_join', { targetRoomId, userInfo });
+  }
+
+  respondToJoinRequest(requesterSocketId: string, approved: boolean, targetRoomId: string) {
+    if (this.socket) this.socket.emit('respond_to_join', { requesterSocketId, approved, targetRoomId });
+  }
+
   emitCellUpdate(sheetId: string, cellKey: string, cell: unknown) {
     if (this.socket) this.socket.emit('cell_update', { sheetId, cellKey, cell });
   }
