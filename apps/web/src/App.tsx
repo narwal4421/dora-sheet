@@ -12,10 +12,8 @@ import { Check, X as CloseIcon, Sparkles } from 'lucide-react';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
-  if (path.startsWith('/workbook/')) {
-    return path.split('/workbook/')[1];
-  }
-  return null;
+  const match = path.match(/\/workbook\/([^\/]+)/);
+  return match ? match[1] : null;
 };
 
 const generate6DigitCode = () => Math.floor(100000 + Math.random() * 900000).toString();
