@@ -83,7 +83,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 z-[100] bg-[#080808] opacity-0 flex items-center justify-center overflow-hidden font-inter"
+      className="fixed inset-0 z-[100] bg-[#080808] opacity-0 overflow-y-auto overflow-x-hidden font-inter py-20 px-4 md:px-8"
     >
       {/* Soft Noise Texture Overlay */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-10" />
@@ -101,7 +101,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
 
       <div 
         ref={cardRef}
-        className="relative w-full max-w-6xl mx-6 my-8 bg-white/[0.01] backdrop-blur-[120px] border border-white/[0.08] rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-20 max-h-[90vh] scrollbar-none"
+        className="relative w-full max-w-6xl mx-auto bg-white/[0.01] backdrop-blur-[120px] border border-white/[0.08] rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row z-20"
       >
         {/* Physical Glass Reflection Effect */}
         <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.02] via-transparent to-white/[0.05] pointer-events-none" />
