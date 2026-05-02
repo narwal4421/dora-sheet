@@ -89,6 +89,13 @@ function App() {
         onShowVersionHistory={() => setShowVersionHistory(true)} 
         onShowShare={() => setShowShare(true)} 
         onShowAbout={() => setShowAbout(true)}
+        onNewWorkbook={() => {
+          const newId = generate6DigitCode();
+          window.history.pushState(null, '', `/workbook/${newId}`);
+          setWorkbookId(newId);
+          // Optional: clear current sheet data if needed, but usually redirect is enough
+          window.location.reload(); // Hard reload to clear store state for new workbook
+        }}
       />
 
       {/* Formatting Toolbar */}

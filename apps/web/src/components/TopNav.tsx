@@ -8,11 +8,13 @@ import { DropdownMenu, type MenuItem } from './DropdownMenu';
 export const TopNav = ({ 
   onShowVersionHistory, 
   onShowShare,
-  onShowAbout
+  onShowAbout,
+  onNewWorkbook
 }: { 
   onShowVersionHistory: () => void, 
   onShowShare: () => void,
-  onShowAbout: () => void
+  onShowAbout: () => void,
+  onNewWorkbook: () => void
 }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const isLightMode = useSheetStore(state => state.isLightMode);
@@ -58,7 +60,7 @@ export const TopNav = ({
   };
 
   const fileMenu: MenuItem[] = [
-    { label: 'New Workbook', onClick: () => window.location.reload() },
+    { label: 'New Workbook', onClick: onNewWorkbook },
     { divider: true, label: '', onClick: () => {} },
     { label: 'Export to Excel (.xlsx)', onClick: handleExport },
     { label: 'Print', shortcut: 'Ctrl+P', onClick: () => window.print() }
