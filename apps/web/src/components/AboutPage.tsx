@@ -1,4 +1,4 @@
-import { X, Mail, MessageCircle, Github, Info, Zap, Shield, Sparkles } from 'lucide-react';
+import { X, Mail, MessageCircle, Code, Info, Zap, Shield, Sparkles } from 'lucide-react';
 
 export const AboutPage = ({ onClose }: { onClose: () => void }) => {
   return (
@@ -59,7 +59,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
             <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex gap-4">
-              <div className="text-accent shrink-0"><Github size={20} /></div>
+              <div className="text-accent shrink-0"><Code size={20} /></div>
               <div>
                 <h3 className="text-white font-semibold text-sm">Document Analysis</h3>
                 <p className="text-xs text-textMuted mt-1">Upload PDFs, CSVs, or images and let Dora AI extract the data.</p>
