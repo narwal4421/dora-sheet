@@ -160,8 +160,8 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
                 <h2 className="text-xs font-black uppercase tracking-[0.4em]">The Core Vision</h2>
               </div>
               <p className="text-3xl md:text-5xl font-medium text-white/95 leading-[1.1] tracking-tight font-syne italic">
-                "We don't build tools. <br />
-                We build <span className="text-accent">Intelligence</span>."
+                "The speed of <span className="text-accent">thought</span>, <br />
+                applied to the scale of data."
               </p>
               <p className="text-sm md:text-lg text-textMuted leading-relaxed font-light max-w-md">
                 Dora AI is the culmination of a obsession with data clarity. It is designed to be the bridge between human intuition and machine-scale logic.
