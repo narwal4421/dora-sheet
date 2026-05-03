@@ -67,12 +67,49 @@ export const TopNav = ({
   ];
 
   const editMenu: MenuItem[] = [
-    { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => alert("Undo coming soon!") },
-    { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => alert("Redo coming soon!") },
+    { label: 'Undo', shortcut: 'Ctrl+Z', onClick: () => useSheetStore.getState().undo() },
+    { label: 'Redo', shortcut: 'Ctrl+Y', onClick: () => useSheetStore.getState().redo() },
     { divider: true, label: '', onClick: () => {} },
-    { label: 'Cut', shortcut: 'Ctrl+X', onClick: () => document.execCommand('cut') },
-    { label: 'Copy', shortcut: 'Ctrl+C', onClick: () => document.execCommand('copy') },
-    { label: 'Paste', shortcut: 'Ctrl+V', onClick: () => alert("Use keyboard Ctrl+V to paste") },
+    { 
+      label: 'Cut', 
+      shortcut: 'Ctrl+X', 
+      onClick: async () => {
+        const { activeCell, data, clearCell } = useSheetStore.getState();
+        if (!activeCell) return;
+        const val = data[activeCell]?.f || data[activeCell]?.v || '';
+        await navigator.clipboard.writeText(String(val));
+        clearCell(activeCell);
+      } 
+    },
+    { 
+      label: 'Copy', 
+      shortcut: 'Ctrl+C', 
+      onClick: async () => {
+        const { activeCell, data } = useSheetStore.getState();
+        if (!activeCell) return;
+        const val = data[activeCell]?.f || data[activeCell]?.v || '';
+        await navigator.clipboard.writeText(String(val));
+      } 
+    },
+    { 
+      label: 'Paste', 
+      shortcut: 'Ctrl+V', 
+      onClick: async () => {
+        const { activeCell, setCellData } = useSheetStore.getState();
+        if (!activeCell) return;
+        try {
+          const text = await navigator.clipboard.readText();
+          if (!text) return;
+          const isFormula = text.startsWith('=');
+          const update: { v?: string; f?: string } = isFormula 
+            ? { f: text } 
+            : { v: text, f: undefined };
+          setCellData(activeCell, update);
+        } catch {
+          alert("Please use keyboard Ctrl+V to paste (browser security restriction)");
+        }
+      } 
+    },
     { divider: true, label: '', onClick: () => {} },
     { 
       label: 'Clear', 
@@ -89,18 +126,32 @@ export const TopNav = ({
   ];
 
   const insertMenu: MenuItem[] = [
-    { label: 'Row Above', onClick: () => alert("Insert Row coming soon!") },
-    { label: 'Column Right', onClick: () => alert("Insert Column coming soon!") }
+    { label: 'Row Above', onClick: () => useSheetStore.getState().insertRowAbove() },
+    { label: 'Column Right', onClick: () => useSheetStore.getState().insertColumnRight() }
   ];
 
   const formatMenu: MenuItem[] = [
-    { label: 'Bold', shortcut: 'Ctrl+B', onClick: () => alert("Use the formatting toolbar below") },
-    { label: 'Italic', shortcut: 'Ctrl+I', onClick: () => alert("Use the formatting toolbar below") }
+    { 
+      label: 'Bold', 
+      shortcut: 'Ctrl+B', 
+      onClick: () => {
+        const { activeCell, data, setCellFormat } = useSheetStore.getState();
+        if (activeCell) setCellFormat(activeCell, { bold: !data[activeCell]?.fmt?.bold });
+      } 
+    },
+    { 
+      label: 'Italic', 
+      shortcut: 'Ctrl+I', 
+      onClick: () => {
+        const { activeCell, data, setCellFormat } = useSheetStore.getState();
+        if (activeCell) setCellFormat(activeCell, { italic: !data[activeCell]?.fmt?.italic });
+      } 
+    }
   ];
 
   const dataMenu: MenuItem[] = [
-    { label: 'Sort A-Z', onClick: () => alert("Sorting coming soon!") },
-    { label: 'Filter', onClick: () => alert("Filters coming soon!") }
+    { label: 'Sort A-Z', onClick: () => useSheetStore.getState().sortAZ() },
+    { label: 'Filter', onClick: () => useSheetStore.getState().toggleFilter() }
   ];
 
   return (

@@ -26,7 +26,16 @@ export const Grid = () => {
   
   // Only grab the static updater functions, NO reactive state arrays!
   const { setActiveCell, setCellData } = useSheetStore();
+  const hiddenRows = useSheetStore(state => state.hiddenRows);
   const [engine, setEngine] = useState<EngineWrapper | null>(null);
+
+  const visibleRowIndices = useMemo(() => {
+    const indices = [];
+    for (let i = 0; i < ROWS; i++) {
+      if (!hiddenRows.has(i)) indices.push(i);
+    }
+    return indices;
+  }, [hiddenRows]);
 
   const cursorMoveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,7 +49,7 @@ export const Grid = () => {
   }, []);
 
   const rowVirtualizer = useVirtualizer({
-    count: ROWS,
+    count: visibleRowIndices.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 24,
     overscan: 10,
@@ -202,19 +211,22 @@ export const Grid = () => {
         ))}
 
         {/* Row Headers */}
-        {rowVirtualizer.getVirtualItems().map((virtualRow) => (
-          <div
-            key={`header-row-${virtualRow.index}`}
-            className="absolute left-0 flex items-center justify-center border-b border-r border-border bg-surface text-xs text-textMuted font-semibold z-20 hover:bg-surfaceHover transition-colors"
-            style={{
-              top: 24 + virtualRow.start,
-              width: 40,
-              height: virtualRow.size,
-            }}
-          >
-            {virtualRow.index + 1}
-          </div>
-        ))}
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const rowIndex = visibleRowIndices[virtualRow.index];
+          return (
+            <div
+              key={`header-row-${virtualRow.index}`}
+              className="absolute left-0 flex items-center justify-center border-b border-r border-border bg-surface text-xs text-textMuted font-semibold z-20 hover:bg-surfaceHover transition-colors"
+              style={{
+                top: 24 + virtualRow.start,
+                width: 40,
+                height: virtualRow.size,
+              }}
+            >
+              {rowIndex + 1}
+            </div>
+          );
+        })}
 
         {/* Corner cell */}
         <div 
@@ -223,30 +235,32 @@ export const Grid = () => {
         />
 
         {/* Grid Cells */}
-        {rowVirtualizer.getVirtualItems().map((virtualRow) => (
-          <div key={`row-${virtualRow.index}`}>
-            {colVirtualizer.getVirtualItems().map((virtualCol) => {
-              const r = virtualRow.index;
-              const c = virtualCol.index;
-              return (
-                <Cell 
-                  key={`r_${r}_c_${c}`}
-                  r={r}
-                  c={c}
-                  style={{
-                    top: 24 + virtualRow.start,
-                    left: 40 + virtualCol.start,
-                    width: virtualCol.size,
-                    height: virtualRow.size,
-                  }}
-                  onCellSelect={handleCellSelect}
-                  onCommitChange={commitCellChange}
-                  onCellKeydown={handleCellKeydown}
-                />
-              );
-            })}
-          </div>
-        ))}
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const r = visibleRowIndices[virtualRow.index];
+          return (
+            <div key={`row-${virtualRow.index}`}>
+              {colVirtualizer.getVirtualItems().map((virtualCol) => {
+                const c = virtualCol.index;
+                return (
+                  <Cell 
+                    key={`r_${r}_c_${c}`}
+                    r={r}
+                    c={c}
+                    style={{
+                      top: 24 + virtualRow.start,
+                      left: 40 + virtualCol.start,
+                      width: virtualCol.size,
+                      height: virtualRow.size,
+                    }}
+                    onCellSelect={handleCellSelect}
+                    onCommitChange={commitCellChange}
+                    onCellKeydown={handleCellKeydown}
+                  />
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

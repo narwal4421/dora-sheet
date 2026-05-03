@@ -86,6 +86,12 @@ interface SheetState {
   replaceCurrent: () => void;
   replaceAll: () => void;
 
+  hiddenRows: Set<number>;
+  insertRowAbove: () => void;
+  insertColumnRight: () => void;
+  sortAZ: () => void;
+  toggleFilter: () => void;
+
   setActiveCell: (ref: string) => void;
   setEditingCell: (ref: string | null) => void;
   setCellData: (ref: string, data: Partial<CellData>) => void;
@@ -103,6 +109,12 @@ interface SheetState {
   updateCellLock: (event: CellLockEvent) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
 }
+
+const parseRef = (ref: string) => {
+  const match = ref.match(/r_(\d+)_c_(\d+)/);
+  if (!match) return { r: 0, c: 0 };
+  return { r: parseInt(match[1]), c: parseInt(match[2]) };
+};
 
 export const useSheetStore = create<SheetState>((set) => ({
   data: {},
@@ -334,6 +346,111 @@ export const useSheetStore = create<SheetState>((set) => ({
     const snap = state.snapshots.find(s => s.id === id);
     if (!snap) return state;
     return { data: snap.data, history: [...state.history, state.data], future: [] };
+  }),
+
+  hiddenRows: new Set(),
+
+  insertRowAbove: () => set((state) => {
+    if (!state.activeCell) return {};
+    const { r: activeR } = parseRef(state.activeCell);
+    const newData: SheetData = {};
+    const history = [...state.history, state.data].slice(-50);
+
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const { r, c } = parseRef(ref);
+      if (r >= activeR) {
+        newData[`r_${r + 1}_c_${c}`] = cell;
+      } else {
+        newData[ref] = cell;
+      }
+    });
+
+    return { data: newData, history, future: [] };
+  }),
+
+  insertColumnRight: () => set((state) => {
+    if (!state.activeCell) return {};
+    const { c: activeC } = parseRef(state.activeCell);
+    const newData: SheetData = {};
+    const history = [...state.history, state.data].slice(-50);
+
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const { r, c } = parseRef(ref);
+      if (c > activeC) {
+        newData[`r_${r}_c_${c + 1}`] = cell;
+      } else {
+        newData[ref] = cell;
+      }
+    });
+
+    return { data: newData, history, future: [] };
+  }),
+
+  sortAZ: () => set((state) => {
+    if (!state.activeCell) return {};
+    const { c: activeC } = parseRef(state.activeCell);
+    
+    // Find used range
+    let maxR = 0;
+    Object.keys(state.data).forEach(ref => {
+      const { r } = parseRef(ref);
+      maxR = Math.max(maxR, r);
+    });
+
+    // Extract rows
+    const rows: (CellData | undefined)[][] = [];
+    for (let r = 0; r <= maxR; r++) {
+      const row = [];
+      for (let c = 0; c < 26; c++) { // Assuming 26 cols as in Grid.tsx
+        row.push(state.data[`r_${r}_c_${c}`]);
+      }
+      rows.push(row);
+    }
+
+    // Sort
+    rows.sort((a, b) => {
+      const valA = String(a[activeC]?.v || '').toLowerCase();
+      const valB = String(b[activeC]?.v || '').toLowerCase();
+      if (valA < valB) return -1;
+      if (valA > valB) return 1;
+      return 0;
+    });
+
+    // Reconstruct
+    const newData: SheetData = {};
+    rows.forEach((row, r) => {
+      row.forEach((cell, c) => {
+        if (cell) newData[`r_${r}_c_${c}`] = cell;
+      });
+    });
+
+    const history = [...state.history, state.data].slice(-50);
+    return { data: newData, history, future: [] };
+  }),
+
+  toggleFilter: () => set((state) => {
+    if (!state.activeCell) return {};
+    const { c: activeC } = parseRef(state.activeCell);
+    
+    if (state.hiddenRows.size > 0) {
+      return { hiddenRows: new Set() };
+    }
+
+    const newHidden = new Set<number>();
+    let maxR = 0;
+    Object.keys(state.data).forEach(ref => {
+      const { r } = parseRef(ref);
+      maxR = Math.max(maxR, r);
+    });
+
+    for (let r = 0; r <= maxR; r++) {
+      const cell = state.data[`r_${r}_c_${activeC}`];
+      if (!cell?.v && !cell?.f) {
+        newHidden.add(r);
+      }
+    }
+
+    return { hiddenRows: newHidden };
   })
 }));
 
