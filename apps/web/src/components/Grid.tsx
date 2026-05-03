@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useSheetStore } from '../store/useSheetStore';
 import { EngineWrapper } from '@smartsheet-ai/formula-engine';
