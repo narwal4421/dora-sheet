@@ -22,6 +22,17 @@ interface ToolResult {
   startCol?: number;
   analysis?: string;
   suggestions?: string[];
+  range?: string[];
+  format?: {
+    bold?: boolean;
+    italic?: boolean;
+    color?: string;
+    backgroundColor?: string;
+    align?: 'left' | 'center' | 'right';
+  };
+  action?: string;
+  columnIndex?: number;
+  index?: number;
 }
 
 export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
@@ -166,6 +177,40 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
           return [...updated, { role: 'ai', content: `Successfully updated ${Object.keys(updates).length} cells.` }];
         });
+      } else if (tool === 'format_cells' && result.range && result.format) {
+        const { setCellFormat } = useSheetStore.getState();
+        result.range.forEach((a1: string) => {
+          const refs = expandRange(a1);
+          refs.forEach(ref => {
+            setCellFormat(ref, result.format!);
+            socketService.emitCellUpdate('default-workbook-id', ref, { fmt: result.format });
+          });
+        });
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Style power applied successfully!` }];
+        });
+      } else if (tool === 'organize_data' && result.action) {
+        const { sortAZ, toggleFilter } = useSheetStore.getState();
+        if (result.action === 'sort') sortAZ(result.columnIndex);
+        if (result.action === 'filter' || result.action === 'toggleFilter') toggleFilter(result.columnIndex);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Data organization complete!` }];
+        });
+      } else if (tool === 'modify_structure' && result.action) {
+        const { insertRowAbove, insertColumnRight, deleteRow, deleteColumn } = useSheetStore.getState();
+        if (result.action === 'insertRow') insertRowAbove(result.index);
+        if (result.action === 'insertCol') insertColumnRight(result.index);
+        if (result.action === 'deleteRow') deleteRow(result.index);
+        if (result.action === 'deleteCol') deleteColumn(result.index);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Sheet structure updated!` }];
+        });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -196,7 +241,11 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
               <div className="mt-3 bg-background/40 border border-white/10 p-4 rounded-xl w-full flex flex-col gap-3 shadow-lg backdrop-blur-sm">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-accent">
                   <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  {msg.tool === 'apply_formula' ? 'Suggested Calculation' : msg.tool === 'fill_data' ? 'Data Insertion' : 'AI Action'}
+                  {msg.tool === 'apply_formula' ? 'Suggested Calculation' : 
+                   msg.tool === 'fill_data' ? 'Data Insertion' : 
+                   msg.tool === 'format_cells' ? 'Style Power' :
+                   msg.tool === 'organize_data' ? 'Data Power' :
+                   msg.tool === 'modify_structure' ? 'Structural Power' : 'AI Action'}
                 </div>
                 
                 <div className="flex flex-col gap-2 py-1">
@@ -225,6 +274,24 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                         <span className="text-textMuted">Columns:</span>
                         <span className="text-white truncate max-w-[120px]">{msg.result?.columns?.join(', ') || 'Auto-detect'}</span>
                       </div>
+                    </div>
+                  )}
+
+                  {msg.tool === 'format_cells' && (
+                    <div className="text-xs text-textMuted">
+                      Range: <span className="text-white font-bold">{msg.result?.range?.join(', ')}</span>
+                    </div>
+                  )}
+
+                  {msg.tool === 'organize_data' && (
+                    <div className="text-xs text-textMuted">
+                      Action: <span className="text-white font-bold">{msg.result?.action}</span> on column {msg.result?.columnIndex}
+                    </div>
+                  )}
+
+                  {msg.tool === 'modify_structure' && (
+                    <div className="text-xs text-textMuted">
+                      Action: <span className="text-white font-bold">{msg.result?.action}</span> at index {msg.result?.index}
                     </div>
                   )}
                 </div>
@@ -277,4 +344,37 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
 
 function resultHasFormula(result: unknown): result is { formula: string; targetCell?: string } {
   return !!result && typeof (result as { formula: string }).formula === 'string';
+}
+
+function expandRange(rangeStr: string): string[] {
+  if (!rangeStr.includes(':')) return [a1ToRef(rangeStr)];
+  const [start, end] = rangeStr.split(':');
+  const startRef = a1ToRef(start);
+  const endRef = a1ToRef(end);
+  const startMatch = startRef.match(/r_(\d+)_c_(\d+)/);
+  const endMatch = endRef.match(/r_(\d+)_c_(\d+)/);
+  if (!startMatch || !endMatch) return [startRef];
+  
+  const r1 = parseInt(startMatch[1]), c1 = parseInt(startMatch[2]);
+  const r2 = parseInt(endMatch[1]), c2 = parseInt(endMatch[2]);
+  
+  const refs = [];
+  for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
+    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
+      refs.push(`r_${r}_c_${c}`);
+    }
+  }
+  return refs;
+}
+
+function a1ToRef(a1: string): string {
+  const match = a1.match(/([A-Z]+)(\d+)/);
+  if (!match) return 'r_0_c_0';
+  const colStr = match[1];
+  const row = parseInt(match[2]) - 1;
+  let col = 0;
+  for (let i = 0; i < colStr.length; i++) {
+    col = col * 26 + (colStr.charCodeAt(i) - 64);
+  }
+  return `r_${row}_c_${col - 1}`;
 }

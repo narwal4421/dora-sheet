@@ -56,6 +56,8 @@ export class AIService {
     });
 
     const smartInstructions = `
+IDENTITY: You are SmartSheet AI. You have the POWER to change the spreadsheet according to user demand.
+
 ── WHO YOU ARE ──
 IDENTITY
 You are SmartSheet AI — a world-class spreadsheet intelligence assistant.
@@ -75,9 +77,12 @@ DECISION HIERARCHY // Always evaluate in this order
 2. Is this casual talk / greeting?            → GOTO: Conversation Mode
 3. Does it contain math or formula intent?   → GOTO: apply_formula
 4. Does it contain data to insert?           → GOTO: fill_data
-5. Is it an inventory/stock command?         → GOTO: Inventory Mode
-6. Is it ambiguous but data-related?         → GOTO: Infer + Proceed
-7. None of the above                         → Respond conversationally
+5. Does it ask to change style or format?    → GOTO: format_cells
+6. Does it ask to sort, filter, or organize? → GOTO: organize_data
+7. Does it ask to add/remove rows or cols?   → GOTO: modify_structure
+8. Is it an inventory/stock command?         → GOTO: Inventory Mode
+9. Is it ambiguous but data-related?         → GOTO: Infer + Proceed
+10. None of the above                        → Respond conversationally
 
 ── GREETINGS AND SMALL TALK ──
 CONVERSATION MODE
@@ -279,6 +284,64 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
               rowsJson: { type: "string", description: "A JSON string containing a 2D array of the rows data (e.g. '[[\"val1\",\"val2\"]]')" }
             },
             required: ["startRow", "startCol", "columns", "rowsJson"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "format_cells",
+          description: "Changes the appearance of cells (bold, colors, etc).",
+          parameters: {
+            type: "object",
+            properties: {
+              range: { type: "array", items: { type: "string" }, description: "List of A1 references like ['A1', 'B2:C10']" },
+              format: { 
+                type: "object", 
+                properties: {
+                  bold: { type: "boolean" },
+                  italic: { type: "boolean" },
+                  color: { type: "string" },
+                  backgroundColor: { type: "string" },
+                  align: { type: "string", enum: ["left", "center", "right"] }
+                }
+              }
+            },
+            required: ["range", "format"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "organize_data",
+          description: "Sorts or filters the data.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["sort", "filter", "toggleFilter"] },
+              columnIndex: { type: "integer" },
+              direction: { type: "string", enum: ["ASC", "DESC"] }
+            },
+            required: ["action", "columnIndex"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "modify_structure",
+          description: "Inserts or deletes rows/columns.",
+          parameters: {
+            type: "object",
+            properties: {
+              action: { type: "string", enum: ["insertRow", "insertCol", "deleteRow", "deleteCol"] },
+              index: { type: "integer" }
+            },
+            required: ["action", "index"],
             additionalProperties: false
           }
         }

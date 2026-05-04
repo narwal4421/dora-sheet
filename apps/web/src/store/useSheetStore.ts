@@ -87,10 +87,12 @@ interface SheetState {
   replaceAll: () => void;
 
   hiddenRows: Set<number>;
-  insertRowAbove: () => void;
-  insertColumnRight: () => void;
-  sortAZ: () => void;
-  toggleFilter: () => void;
+  insertRowAbove: (rowIndex?: number) => void;
+  insertColumnRight: (colIndex?: number) => void;
+  deleteRow: (rowIndex?: number) => void;
+  deleteColumn: (colIndex?: number) => void;
+  sortAZ: (colIndex?: number) => void;
+  toggleFilter: (colIndex?: number) => void;
 
   setActiveCell: (ref: string) => void;
   setEditingCell: (ref: string | null) => void;
@@ -350,15 +352,14 @@ export const useSheetStore = create<SheetState>((set) => ({
 
   hiddenRows: new Set(),
 
-  insertRowAbove: () => set((state) => {
-    if (!state.activeCell) return {};
-    const { r: activeR } = parseRef(state.activeCell);
+  insertRowAbove: (rowIndex) => set((state) => {
+    const targetR = rowIndex !== undefined ? rowIndex : (state.activeCell ? parseRef(state.activeCell).r : 0);
     const newData: SheetData = {};
     const history = [...state.history, state.data].slice(-50);
 
     Object.entries(state.data).forEach(([ref, cell]) => {
       const { r, c } = parseRef(ref);
-      if (r >= activeR) {
+      if (r >= targetR) {
         newData[`r_${r + 1}_c_${c}`] = cell;
       } else {
         newData[ref] = cell;
@@ -368,15 +369,14 @@ export const useSheetStore = create<SheetState>((set) => ({
     return { data: newData, history, future: [] };
   }),
 
-  insertColumnRight: () => set((state) => {
-    if (!state.activeCell) return {};
-    const { c: activeC } = parseRef(state.activeCell);
+  insertColumnRight: (colIndex) => set((state) => {
+    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : 0);
     const newData: SheetData = {};
     const history = [...state.history, state.data].slice(-50);
 
     Object.entries(state.data).forEach(([ref, cell]) => {
       const { r, c } = parseRef(ref);
-      if (c > activeC) {
+      if (c > targetC) {
         newData[`r_${r}_c_${c + 1}`] = cell;
       } else {
         newData[ref] = cell;
@@ -386,9 +386,46 @@ export const useSheetStore = create<SheetState>((set) => ({
     return { data: newData, history, future: [] };
   }),
 
-  sortAZ: () => set((state) => {
-    if (!state.activeCell) return {};
-    const { c: activeC } = parseRef(state.activeCell);
+  deleteRow: (rowIndex) => set((state) => {
+    const targetR = rowIndex !== undefined ? rowIndex : (state.activeCell ? parseRef(state.activeCell).r : -1);
+    if (targetR === -1) return {};
+    const newData: SheetData = {};
+    const history = [...state.history, state.data].slice(-50);
+
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const { r, c } = parseRef(ref);
+      if (r === targetR) return; 
+      if (r > targetR) {
+        newData[`r_${r - 1}_c_${c}`] = cell;
+      } else {
+        newData[ref] = cell;
+      }
+    });
+
+    return { data: newData, history, future: [] };
+  }),
+
+  deleteColumn: (colIndex) => set((state) => {
+    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : -1);
+    if (targetC === -1) return {};
+    const newData: SheetData = {};
+    const history = [...state.history, state.data].slice(-50);
+
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const { r, c } = parseRef(ref);
+      if (c === targetC) return;
+      if (c > targetC) {
+        newData[`r_${r}_c_${c - 1}`] = cell;
+      } else {
+        newData[ref] = cell;
+      }
+    });
+
+    return { data: newData, history, future: [] };
+  }),
+
+  sortAZ: (colIndex) => set((state) => {
+    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : 0);
     
     // Find used range
     let maxR = 0;
@@ -409,8 +446,8 @@ export const useSheetStore = create<SheetState>((set) => ({
 
     // Sort
     rows.sort((a, b) => {
-      const valA = String(a[activeC]?.v || '').toLowerCase();
-      const valB = String(b[activeC]?.v || '').toLowerCase();
+      const valA = String(a[targetC]?.v || '').toLowerCase();
+      const valB = String(b[targetC]?.v || '').toLowerCase();
       if (valA < valB) return -1;
       if (valA > valB) return 1;
       return 0;
@@ -428,9 +465,8 @@ export const useSheetStore = create<SheetState>((set) => ({
     return { data: newData, history, future: [] };
   }),
 
-  toggleFilter: () => set((state) => {
-    if (!state.activeCell) return {};
-    const { c: activeC } = parseRef(state.activeCell);
+  toggleFilter: (colIndex) => set((state) => {
+    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : 0);
     
     if (state.hiddenRows.size > 0) {
       return { hiddenRows: new Set() };
@@ -444,7 +480,7 @@ export const useSheetStore = create<SheetState>((set) => ({
     });
 
     for (let r = 0; r <= maxR; r++) {
-      const cell = state.data[`r_${r}_c_${activeC}`];
+      const cell = state.data[`r_${r}_c_${targetC}`];
       if (!cell?.v && !cell?.f) {
         newHidden.add(r);
       }
