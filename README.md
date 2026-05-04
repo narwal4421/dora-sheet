@@ -85,7 +85,6 @@ Dora Sheet combines the power of a real-time collaboration engine with a multi-t
 - Node.js `v18+`
 - PostgreSQL database
 - Redis instance
-- OpenRouter API Key → [Get one here](https://openrouter.ai)
 
 ### 1. Clone the Repository
 
@@ -108,7 +107,6 @@ Create a `.env` file in `apps/api/`:
 DATABASE_URL="postgresql://user:password@localhost:5432/dorasheet"
 REDIS_URL="redis://localhost:6379"
 JWT_SECRET="your-super-secret-key"
-OPENROUTER_API_KEY="sk-or-..."
 ```
 
 Create a `.env` file in `apps/web/`:
