@@ -147,6 +147,14 @@ export const initSockets = (httpServer: Server) => {
         socket.to(currentRoom).emit('cell_locked', { userId, cellKey: payload.cellKey, action: 'unlock' });
       }
     });
+
+    socket.on('sheet_action', async (payload: { sheetId: string, action: string, index?: number, colIndex?: number }) => {
+      if (!currentRoom) return;
+      socket.to(currentRoom).emit('sheet_action_received', payload);
+      
+      // For structural changes, we might need a more complex persistence logic, 
+      // but for now, we broadcast it so other clients can apply it to their local state.
+    });
   });
 };
 

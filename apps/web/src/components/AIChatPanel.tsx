@@ -179,11 +179,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         });
       } else if (tool === 'format_cells' && result.range && result.format) {
         const { setCellFormat } = useSheetStore.getState();
+        const sheetId = getWorkbookIdFromUrl();
         result.range.forEach((a1: string) => {
           const refs = expandRange(a1);
           refs.forEach(ref => {
             setCellFormat(ref, result.format!);
-            socketService.emitCellUpdate('default-workbook-id', ref, { fmt: result.format });
+            socketService.emitCellUpdate(sheetId, ref, { fmt: result.format });
           });
         });
         setMessages(prev => {
@@ -193,8 +194,13 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         });
       } else if (tool === 'organize_data' && result.action) {
         const { sortAZ, toggleFilter } = useSheetStore.getState();
+        const sheetId = getWorkbookIdFromUrl();
+        
         if (result.action === 'sort') sortAZ(result.columnIndex);
         if (result.action === 'filter' || result.action === 'toggleFilter') toggleFilter(result.columnIndex);
+        
+        socketService.emitSheetAction(sheetId, result.action, { columnIndex: result.columnIndex });
+
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
@@ -202,10 +208,15 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         });
       } else if (tool === 'modify_structure' && result.action) {
         const { insertRowAbove, insertColumnRight, deleteRow, deleteColumn } = useSheetStore.getState();
+        const sheetId = getWorkbookIdFromUrl();
+
         if (result.action === 'insertRow') insertRowAbove(result.index);
         if (result.action === 'insertCol') insertColumnRight(result.index);
         if (result.action === 'deleteRow') deleteRow(result.index);
         if (result.action === 'deleteCol') deleteColumn(result.index);
+
+        socketService.emitSheetAction(sheetId, result.action, { index: result.index });
+
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
@@ -345,6 +356,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
 function resultHasFormula(result: unknown): result is { formula: string; targetCell?: string } {
   return !!result && typeof (result as { formula: string }).formula === 'string';
 }
+
+const getWorkbookIdFromUrl = () => {
+  const path = window.location.pathname;
+  const match = path.match(/\/workbook\/([^\/]+)/);
+  return match ? match[1] : 'default-workbook-id';
+};
 
 function expandRange(rangeStr: string): string[] {
   if (!rangeStr.includes(':')) return [a1ToRef(rangeStr)];

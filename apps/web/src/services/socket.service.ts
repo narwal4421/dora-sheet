@@ -33,6 +33,11 @@ class SocketService {
       useSheetStore.getState().updateCellLock(event);
     });
 
+    this.socket.on('sheet_action_received', (payload: unknown) => {
+      // @ts-expect-error - applyRemoteSheetAction exists in store but TS is slow
+      useSheetStore.getState().applyRemoteSheetAction(payload);
+    });
+
     this.socket.on('user_joined', (user: { userId: string, name: string, color: string }) => {
       const state = useSheetStore.getState();
       state.setConnectedUsers([...state.connectedUsers.filter(u => u.userId !== user.userId), user]);
@@ -75,6 +80,10 @@ class SocketService {
 
   emitCellLock(cellKey: string, action: 'lock' | 'unlock') {
     if (this.socket) this.socket.emit('cell_lock', { cellKey, action });
+  }
+
+  emitSheetAction(sheetId: string, action: string, payload: unknown) {
+    if (this.socket) this.socket.emit('sheet_action', { sheetId, action, ...(payload as object) });
   }
 }
 

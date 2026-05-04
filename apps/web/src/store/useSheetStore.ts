@@ -109,6 +109,7 @@ interface SheetState {
   applyRemoteUpdate: (event: CellUpdateEvent) => void;
   updateRemoteCursor: (event: CursorMoveEvent) => void;
   updateCellLock: (event: CellLockEvent) => void;
+  applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number }) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
 }
 
@@ -335,6 +336,20 @@ export const useSheetStore = create<SheetState>((set) => ({
     return { lockedCells: newLocks };
   }),
   
+  applyRemoteSheetAction: (payload) => {
+    const { action, index, colIndex } = payload;
+    const store = useSheetStore.getState();
+    
+    // We call the local actions but WITHOUT re-emitting to avoid loops
+    // Since our local actions use 'set', they already trigger re-renders.
+    if (action === 'insertRow') store.insertRowAbove(index);
+    if (action === 'insertCol') store.insertColumnRight(colIndex);
+    if (action === 'deleteRow') store.deleteRow(index);
+    if (action === 'deleteCol') store.deleteColumn(colIndex);
+    if (action === 'sort') store.sortAZ(colIndex);
+    if (action === 'filter' || action === 'toggleFilter') store.toggleFilter(colIndex);
+  },
+
   setConnectedUsers: (users) => set({ connectedUsers: users }),
 
   saveSnapshot: (label) => set((state) => ({
