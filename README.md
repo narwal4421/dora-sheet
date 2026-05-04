@@ -1,21 +1,15 @@
-<div align="center">
-
-<img src="https://img.shields.io/badge/Dora%20Sheet-AI%20Powered%20Spreadsheet-6366f1?style=for-the-badge&logo=googlesheets&logoColor=white" alt="Dora Sheet" />
-
 # ✦ Dora Sheet
 
-### *The AI-Native Spreadsheet. Built for the Modern Web.*
+## *The AI-Native Spreadsheet. Built for the Modern Web.*
+
+![Dora Sheet](https://img.shields.io/badge/Dora%20Sheet-AI%20Powered%20Spreadsheet-6366f1?style=for-the-badge&logo=googlesheets&logoColor=white)
 
 **Dora Sheet** is a real-time, collaborative spreadsheet platform powered by a proactive AI assistant that doesn't just answer questions — it *acts*. Format cells, restructure your data, sort columns, and run formulas — all from a single chat command.
-
-<br/>
 
 [![Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-Visit%20App-6366f1?style=for-the-badge)](https://dora-sheet.vercel.app)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-
-</div>
 
 ---
 
@@ -23,9 +17,9 @@
 
 Most AI tools give you *suggestions*. Dora gives you *results*.
 
-> **"Make the header row bold and blue"** → Done.  
-> **"Delete the last row"** → Done.  
-> **"Sort column B alphabetically"** → Done.  
+> **"Make the header row bold and blue"** → Done.
+> **"Delete the last row"** → Done.
+> **"Sort column B alphabetically"** → Done.
 > **"Calculate total revenue with a SUM formula"** → Done.
 
 Dora Sheet combines the power of a real-time collaboration engine with a multi-tool AI that has **direct authority** over your spreadsheet. No copy-paste. No friction. Just results.
@@ -35,6 +29,7 @@ Dora Sheet combines the power of a real-time collaboration engine with a multi-t
 ## 🌟 Core Features
 
 ### 🤖 Dora AI — Your Spreadsheet Co-Pilot
+
 - **Formula Engine** — Ask for any calculation and it applies it directly to the correct cell
 - **Data Insertion** — Describe what you need and Dora fills it in, row by row
 - **Style Power** — Bold, color, align — any cell range, any format, one command
@@ -43,12 +38,14 @@ Dora Sheet combines the power of a real-time collaboration engine with a multi-t
 - **Deep Analysis** — Get professional insights and proactive suggestions on your data
 
 ### 🔴 Real-Time Collaboration
+
 - Live multi-user presence with cursor tracking
 - Invitation-only rooms with 6-digit room codes
 - Host approval/denial for join requests
 - All AI actions are synced across all connected users instantly
 
 ### 📊 Spreadsheet Engine
+
 - Full formula support (`=SUM`, `=AVERAGE`, `=IF`, `=VLOOKUP`, and more)
 - Excel (`.xlsx`) file import
 - Cell formatting toolbar (bold, italic, color, alignment, font size)
@@ -58,6 +55,7 @@ Dora Sheet combines the power of a real-time collaboration engine with a multi-t
 - Row filtering and column sorting
 
 ### 🎨 Premium UI
+
 - Dark-mode first, cinematic design
 - Glassmorphism and smooth micro-animations
 - Responsive layout with a slide-out AI chat panel
@@ -68,11 +66,11 @@ Dora Sheet combines the power of a real-time collaboration engine with a multi-t
 ## 🏗️ Tech Stack
 
 | Layer | Technology |
-|---|---|
+| --- | --- |
 | **Frontend** | React 18, TypeScript, Vite, Zustand, Tailwind CSS |
 | **Backend** | Node.js, NestJS, Prisma ORM |
 | **Real-Time** | Socket.IO (WebSockets) |
-| **AI** | OpenRouter API (GPT-4o-mini) with multi-tool function calling |
+| **AI** | Multi-tool function calling with structured JSON output |
 | **Database** | PostgreSQL (via Prisma) |
 | **Cache** | Redis (cell locking & session management) |
 | **Deployment** | Vercel (Frontend) + Render (API) |
@@ -82,6 +80,7 @@ Dora Sheet combines the power of a real-time collaboration engine with a multi-t
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js `v18+`
 - PostgreSQL database
 - Redis instance
@@ -125,7 +124,6 @@ npx prisma migrate dev
 ### 5. Run the Development Servers
 
 ```bash
-# From the root directory — starts both frontend and backend
 npm run dev
 ```
 
@@ -138,7 +136,7 @@ npm run dev
 
 Dora uses a **Decision Hierarchy** to evaluate every message and choose the right action:
 
-```
+```text
 1. Bug report / complaint?          → Error Handling
 2. Casual talk / greeting?          → Conversation Mode
 3. Math or formula intent?          → apply_formula tool
@@ -156,7 +154,7 @@ All AI actions appear as **"Approve & Apply"** suggestions in the chat — givin
 
 ## 📁 Project Structure
 
-```
+```text
 dora-sheet/
 ├── apps/
 │   ├── web/                    # React Frontend (Vite)
@@ -166,7 +164,7 @@ dora-sheet/
 │   │       └── services/       # Socket & API services
 │   └── api/                    # NestJS Backend
 │       └── src/
-│           ├── modules/ai/     # AI Service & OpenRouter integration
+│           ├── modules/ai/     # AI Service & model integration
 │           ├── sockets/        # Socket.IO gateway
 │           └── config/         # DB, Redis, Env config
 └── packages/                   # Shared types & utilities
@@ -178,8 +176,8 @@ dora-sheet/
 
 The project is configured for a split deployment:
 
-- **Frontend** → [Vercel](https://vercel.com) (deploy `apps/web`, build command: `npm run build`)
-- **Backend** → [Render](https://render.com) (deploy `apps/api`, start command: `npm run start:prod`)
+- **Frontend** → [Vercel](https://vercel.com) — deploy `apps/web`, build command: `npm run build`
+- **Backend** → [Render](https://render.com) — deploy `apps/api`, start command: `npm run start:prod`
 
 A `vercel.json` rewrite rule handles SPA routing to ensure direct URL access works correctly.
 
@@ -203,10 +201,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ---
 
-<div align="center">
-
-Built with ❤️ and a lot of ☕
-
-**[⭐ Star this repo if you found it useful!](https://github.com/narwal4421/dora-sheet)**
-
-</div>
+Built with ❤️ and a lot of ☕ — **[⭐ Star this repo if you found it useful!](https://github.com/narwal4421/dora-sheet)**
