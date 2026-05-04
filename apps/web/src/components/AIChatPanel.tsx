@@ -359,7 +359,7 @@ function resultHasFormula(result: unknown): result is { formula: string; targetC
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
-  const match = path.match(/\/workbook\/([^\/]+)/);
+  const match = path.match(/\/workbook\/([^/]+)/);
   return match ? match[1] : 'default-workbook-id';
 };
 
