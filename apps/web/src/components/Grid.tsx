@@ -1,14 +1,19 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { useSheetStore } from '../store/useSheetStore';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useVirtualizerWrapper } from '../hooks/useVirtualizerWrapper';
+import { useSheetStore, type CellData } from '../store/useSheetStore';
 import { EngineWrapper } from '@smartsheet-ai/formula-engine';
 import { socketService } from '../services/socket.service';
 
 import { Cell } from './Cell';
+import { ContextMenu } from './ContextMenu';
+import type { MenuItem } from './ContextMenu';
 
 const ROWS = 1000;
 const COLS = 26;
 const SHEET_ID = 'default-workbook-id';
+
+const HEADER_H = 26;
+const INDEX_W = 46;
 
 const getColName = (c: number) => {
   let name = '';
@@ -20,15 +25,33 @@ const getColName = (c: number) => {
   return name;
 };
 
-export const Grid = () => {
-  'use no memo';
-  const parentRef = useRef<HTMLDivElement>(null);
-  
-  // Only grab the static updater functions, NO reactive state arrays!
-  const { setActiveCell, setCellData } = useSheetStore();
-  const hiddenRows = useSheetStore(state => state.hiddenRows);
-  const [engine, setEngine] = useState<EngineWrapper | null>(null);
+const parseRef = (ref: string) => {
+  const match = ref.match(/r_(\d+)_c_(\d+)/);
+  if (!match) return { r: 0, c: 0 };
+  return { r: parseInt(match[1]), c: parseInt(match[2]) };
+};
 
+export const Grid = () => {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // 1. Store hooks
+  const { setActiveCell, setCellData, setColumnWidth, setRowHeight, setSelectionRange, bulkSetCellData } = useSheetStore();
+  const hiddenRows = useSheetStore(state => state.hiddenRows);
+  const columnWidths = useSheetStore(state => state.columnWidths);
+  const rowHeights = useSheetStore(state => state.rowHeights);
+  const selectionRange = useSheetStore(state => state.selectionRange);
+
+  // 2. State hooks
+  const [engine, setEngine] = useState<EngineWrapper | null>(null);
+  const [resizingCol, setResizingCol] = useState<{ index: number; startX: number; startWidth: number } | null>(null);
+  const [resizingRow, setResizingRow] = useState<{ index: number; startY: number; startHeight: number } | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null);
+
+  const rafId = useRef<number | null>(null);
+
+  // 3. Memos
   const visibleRowIndices = useMemo(() => {
     const indices = [];
     for (let i = 0; i < ROWS; i++) {
@@ -37,229 +60,350 @@ export const Grid = () => {
     return indices;
   }, [hiddenRows]);
 
-  const cursorMoveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectionBounds = useMemo(() => {
+    if (!selectionRange) return null;
+    const start = parseRef(selectionRange.start);
+    const end = parseRef(selectionRange.end);
+    return {
+      minR: Math.min(start.r, end.r),
+      maxR: Math.max(start.r, end.r),
+      minC: Math.min(start.c, end.c),
+      maxC: Math.max(start.c, end.c),
+    };
+  }, [selectionRange]);
 
-  useEffect(() => {
-    const worker = new Worker(new URL('@smartsheet-ai/formula-engine/dist/formula.worker.js', import.meta.url), { type: 'module' });
-    const wrapper = new EngineWrapper(worker);
-    wrapper.init().then(() => {
-      setEngine(wrapper);
-    });
-    return () => worker.terminate();
-  }, []);
-
-  const rowVirtualizer = useVirtualizer({
+  // 4. Virtualizers
+  const rowVirtualizer = useVirtualizerWrapper({
     count: visibleRowIndices.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
+    estimateSize: (index) => rowHeights[visibleRowIndices[index]] || 24,
     overscan: 10,
   });
 
-  const colVirtualizer = useVirtualizer({
+  const colVirtualizer = useVirtualizerWrapper({
     horizontal: true,
     count: COLS,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 100,
+    estimateSize: (index) => columnWidths[index] || 100,
     overscan: 5,
   });
 
-  const parseRef = (ref: string) => {
-    const match = ref.match(/r_(\d+)_c_(\d+)/);
-    if (!match) return { r: 0, c: 0 };
-    return { r: parseInt(match[1]), c: parseInt(match[2]) };
+  // Calculate pixel bounds for the selection overlay
+  const selectionStyle = useMemo(() => {
+    if (!selectionBounds) return null;
+    
+    // Find virtual positions for start/end
+    let top = 0;
+    for (let i = 0; i < visibleRowIndices.indexOf(selectionBounds.minR); i++) {
+      top += rowHeights[visibleRowIndices[i]] || 24;
+    }
+    
+    let left = 0;
+    for (let i = 0; i < selectionBounds.minC; i++) {
+      left += columnWidths[i] || 100;
+    }
+
+    let height = 0;
+    for (let i = visibleRowIndices.indexOf(selectionBounds.minR); i <= visibleRowIndices.indexOf(selectionBounds.maxR); i++) {
+      height += rowHeights[visibleRowIndices[i]] || 24;
+    }
+
+    let width = 0;
+    for (let i = selectionBounds.minC; i <= selectionBounds.maxC; i++) {
+      width += columnWidths[i] || 100;
+    }
+
+    return {
+      top: top + HEADER_H,
+      left: left + INDEX_W,
+      width,
+      height,
+    };
+  }, [selectionBounds, rowHeights, columnWidths, visibleRowIndices]);
+
+  // 5. Effects
+  useEffect(() => {
+    const worker = new Worker(new URL('@smartsheet-ai/formula-engine/dist/formula.worker.js', import.meta.url), { type: 'module' });
+    const wrapper = new EngineWrapper(worker);
+    wrapper.init().then(() => setEngine(wrapper));
+    return () => worker.terminate();
+  }, []);
+
+  useEffect(() => { rowVirtualizer.measure(); }, [rowHeights, rowVirtualizer]);
+  useEffect(() => { colVirtualizer.measure(); }, [columnWidths, colVirtualizer]);
+
+  useEffect(() => {
+    const onUp = () => { setIsSelecting(false); setIsAutoFilling(false); };
+    window.addEventListener('mouseup', onUp);
+    return () => window.removeEventListener('mouseup', onUp);
+  }, []);
+
+  const handleColResizeStart = (e: React.MouseEvent, index: number, width: number) => {
+    e.preventDefault(); e.stopPropagation();
+    setResizingCol({ index, startX: e.clientX, startWidth: width });
   };
 
-  const emitCursorMove = (r: number, c: number) => {
-    if (cursorMoveTimeout.current) clearTimeout(cursorMoveTimeout.current);
-    cursorMoveTimeout.current = setTimeout(() => {
-      socketService.emitCursorMove('Me', SHEET_ID, r, c, '#000000'); 
-    }, 100);
+  const handleRowResizeStart = (e: React.MouseEvent, index: number, height: number) => {
+    e.preventDefault(); e.stopPropagation();
+    setResizingRow({ index, startY: e.clientY, startHeight: height });
   };
 
-  const handleCellSelect = (ref: string) => {
-    setActiveCell(ref);
-    const { r, c } = parseRef(ref);
-    emitCursorMove(r, c);
-  };
+  useEffect(() => {
+    if (!resizingCol && !resizingRow) return;
+    const onMove = (e: MouseEvent) => {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => {
+        if (resizingCol) {
+          const newWidth = Math.max(40, Math.min(800, resizingCol.startWidth + e.clientX - resizingCol.startX));
+          setColumnWidth(resizingCol.index, newWidth);
+        } else if (resizingRow) {
+          const newHeight = Math.max(20, Math.min(400, resizingRow.startHeight + e.clientY - resizingRow.startY));
+          setRowHeight(resizingRow.index, newHeight);
+        }
+      });
+    };
+    const onUp = () => { setResizingCol(null); setResizingRow(null); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [resizingCol, resizingRow, setColumnWidth, setRowHeight]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Read state dynamically so Grid doesn't re-render on keystrokes
-    const state = useSheetStore.getState();
-    const activeCell = state.activeCell;
-    const editingCell = state.editingCell;
-    const lockedCells = state.lockedCells;
+  // ── AutoFill drag logic ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAutoFilling || !selectionBounds || !parentRef.current) return;
 
-    if (!activeCell) return;
-    const { r, c } = parseRef(activeCell);
+    const onMove = (e: MouseEvent) => {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => {
+        if (!parentRef.current) return;
+        const rect = parentRef.current.getBoundingClientRect();
+        const y = e.clientY - rect.top + parentRef.current.scrollTop;
+        const rows = rowVirtualizer.getVirtualItems();
+        const hovered = rows.find(item =>
+          y >= item.start + HEADER_H && y < item.start + HEADER_H + item.size
+        );
+        if (hovered) {
+          const targetR = visibleRowIndices[hovered.index];
+          setSelectionRange({
+            start: selectionRange!.start,
+            end: `r_${targetR}_c_${selectionBounds.maxC}`,
+          });
+        }
+      });
+    };
 
-    if (editingCell) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        // The blur handler on the input will commit the value
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
+    const onUp = () => {
+      if (!selectionRange || !selectionBounds) return;
+      const endParsed = parseRef(selectionRange.end);
+      const updates: Record<string, Partial<CellData>> = {};
+      const data = useSheetStore.getState().data;
+      const srcRows = selectionBounds.maxR - selectionBounds.minR + 1;
+
+      for (let r = selectionBounds.minR; r <= endParsed.r; r++) {
+        for (let c = selectionBounds.minC; c <= selectionBounds.maxC; c++) {
+          const srcR = selectionBounds.minR + ((r - selectionBounds.minR) % srcRows);
+          const srcRef = `r_${srcR}_c_${c}`;
+          if (data[srcRef]) updates[`r_${r}_c_${c}`] = { ...data[srcRef] };
+        }
       }
-      return;
-    }
+      bulkSetCellData(updates);
+      setIsAutoFilling(false);
+    };
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        if (r < ROWS - 1) handleCellSelect(`r_${r + 1}_c_${c}`);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        if (r > 0) handleCellSelect(`r_${r - 1}_c_${c}`);
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        if (c < COLS - 1) handleCellSelect(`r_${r}_c_${c + 1}`);
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        if (c > 0) handleCellSelect(`r_${r}_c_${c - 1}`);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (!lockedCells[activeCell]) {
-          socketService.emitCellLock(activeCell, 'lock');
-          state.setEditingCell(activeCell);
-        }
-        break;
-      case 'Delete':
-      case 'Backspace':
-        e.preventDefault();
-        if (!lockedCells[activeCell]) {
-           state.clearCell(activeCell);
-           socketService.emitCellUpdate(SHEET_ID, activeCell, { v: undefined, f: undefined });
-        }
-        break;
-    }
-  };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isAutoFilling, selectionBounds, selectionRange, rowVirtualizer, visibleRowIndices, setSelectionRange, bulkSetCellData]);
 
-  const commitCellChange = async (r: number, c: number, value: string) => {
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleCellSelect = useCallback((ref: string) => {
+    setActiveCell(ref);
+    setSelectionRange({ start: ref, end: ref });
+    const { r, c } = parseRef(ref);
+    socketService.emitCursorMove('Me', SHEET_ID, r, c, '#000000');
+  }, [setActiveCell, setSelectionRange]);
+
+  const handleCellMouseDown = useCallback((ref: string) => {
+    setIsSelecting(true);
+    setActiveCell(ref);
+    setSelectionRange({ start: ref, end: ref });
+  }, [setActiveCell, setSelectionRange]);
+
+  const handleCellMouseEnter = useCallback((ref: string) => {
+    if (isSelecting && selectionRange) {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => {
+        setSelectionRange({ start: selectionRange.start, end: ref });
+      });
+    }
+  }, [isSelecting, selectionRange, setSelectionRange]);
+
+  const handleAutoFit = useCallback((index: number) => {
+    const data = useSheetStore.getState().data;
+    let maxWidth = 80;
+    Object.entries(data).forEach(([ref, cell]) => {
+      const { c } = parseRef(ref);
+      if (c === index && cell.v) {
+        maxWidth = Math.max(maxWidth, String(cell.v).length * 8 + 32);
+      }
+    });
+    setColumnWidth(index, Math.min(maxWidth, 600));
+  }, [setColumnWidth]);
+
+  // ── Context Menu & Navigation ─────────────────────────────────────────────
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const state = useSheetStore.getState();
+    const active = state.activeCell;
+    if (!active) return;
+
+    const items: MenuItem[] = [
+      { label: 'Copy', icon: '📋', shortcut: 'Ctrl+C', onClick: () => {} },
+      { label: 'Paste', icon: '📌', shortcut: 'Ctrl+V', onClick: () => {} },
+      { divider: true },
+      { label: 'Insert Row', icon: '⬆', onClick: () => state.insertRowAbove() },
+      { label: 'Insert Col', icon: '➡', onClick: () => state.insertColumnRight() },
+      { divider: true },
+      { label: 'Clear Cells', icon: '✕', danger: true, onClick: () => state.clearCell(active) },
+    ];
+    setContextMenu({ x: e.clientX, y: e.clientY, items });
+  }, []);
+
+  const commitCellChange = useCallback(async (r: number, c: number, value: string) => {
     const ref = `r_${r}_c_${c}`;
     const isFormula = value.startsWith('=');
-    
-    const newCellData = { [isFormula ? 'f' : 'v']: value, ...(!isFormula && { f: undefined }) };
-    setCellData(ref, newCellData);
-    socketService.emitCellUpdate(SHEET_ID, ref, newCellData);
+    const newData = { [isFormula ? 'f' : 'v']: value, ...(!isFormula && { f: undefined }) };
+    setCellData(ref, newData);
+    socketService.emitCellUpdate(SHEET_ID, ref, newData);
 
     if (engine) {
       try {
         const result = await engine.setData(r, c, value);
-        const finalCellData = { v: result.v };
-        setCellData(ref, finalCellData);
-        socketService.emitCellUpdate(SHEET_ID, ref, finalCellData);
-      } catch (e) {
-        console.error("Engine calculation error:", e);
+        const final = { v: result.v };
+        setCellData(ref, final);
+        socketService.emitCellUpdate(SHEET_ID, ref, final);
+      } catch (err) {
+        console.error('Engine error:', err);
       }
     }
-  };
+  }, [setCellData, engine]);
 
-  const handleCellKeydown = (e: React.KeyboardEvent, r: number, c: number, ref: string) => {
+  const handleCellKeydown = useCallback((e: React.KeyboardEvent, r: number, c: number, ref: string) => {
     e.stopPropagation();
+    const state = useSheetStore.getState();
     if (e.key === 'Enter') {
       commitCellChange(r, c, (e.target as HTMLInputElement).value);
       socketService.emitCellLock(ref, 'unlock');
-      useSheetStore.getState().setEditingCell(null);
+      state.setEditingCell(null);
       if (r < ROWS - 1) handleCellSelect(`r_${r + 1}_c_${c}`);
-      parentRef.current?.focus();
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      commitCellChange(r, c, (e.target as HTMLInputElement).value);
-      socketService.emitCellLock(ref, 'unlock');
-      useSheetStore.getState().setEditingCell(null);
-      if (c < COLS - 1) handleCellSelect(`r_${r}_c_${c + 1}`);
       parentRef.current?.focus();
     } else if (e.key === 'Escape') {
       socketService.emitCellLock(ref, 'unlock');
-      useSheetStore.getState().setEditingCell(null);
+      state.setEditingCell(null);
       parentRef.current?.focus();
     }
-  };
+  }, [commitCellChange, handleCellSelect]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const state = useSheetStore.getState();
+    const activeCell = state.activeCell;
+    const editingCell = state.editingCell;
+    if (!activeCell || editingCell) return;
+    const { r, c } = parseRef(activeCell);
+
+    const move = (nr: number, nc: number) => {
+      const nextRef = `r_${nr}_c_${nc}`;
+      if (e.shiftKey && selectionRange) {
+        e.preventDefault();
+        setSelectionRange({ start: selectionRange.start, end: nextRef });
+        setActiveCell(nextRef);
+      } else {
+        e.preventDefault();
+        handleCellSelect(nextRef);
+      }
+    };
+
+    switch (e.key) {
+      case 'ArrowDown':  if (r < ROWS - 1) move(r + 1, c); break;
+      case 'ArrowUp':    if (r > 0)        move(r - 1, c); break;
+      case 'ArrowRight': if (c < COLS - 1) move(r, c + 1); break;
+      case 'ArrowLeft':  if (c > 0)        move(r, c - 1); break;
+      case 'Enter':
+        e.preventDefault();
+        if (!state.lockedCells[activeCell]) {
+          socketService.emitCellLock(activeCell, 'lock');
+          state.setEditingCell(activeCell);
+        }
+        break;
+    }
+  }, [handleCellSelect, selectionRange, setSelectionRange, setActiveCell]);
 
   return (
-    <div 
-      ref={parentRef} 
-      className="flex-1 overflow-auto bg-background outline-none select-none relative"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-    >
-      <div
-        style={{
-          height: `${rowVirtualizer.getTotalSize() + 24}px`,
-          width: `${colVirtualizer.getTotalSize() + 40}px`,
-          position: 'relative',
-        }}
-      >
-        {/* Column Headers */}
-        {colVirtualizer.getVirtualItems().map((virtualCol) => (
-          <div
-            key={`header-col-${virtualCol.index}`}
-            className="absolute top-0 flex items-center justify-center border-b border-r border-border bg-surface text-xs text-textMuted font-semibold z-20 hover:bg-surfaceHover transition-colors"
+    <div ref={parentRef} className="flex-1 overflow-auto bg-background outline-none select-none relative scroll-smooth" tabIndex={0} onKeyDown={handleKeyDown} onContextMenu={handleContextMenu}>
+      {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items} onClose={() => setContextMenu(null)} />}
+
+      <div style={{ height: `${rowVirtualizer.getTotalSize() + HEADER_H}px`, width: `${colVirtualizer.getTotalSize() + INDEX_W}px`, position: 'relative', willChange: 'transform' }}>
+        
+        {/* Selection Highlight Layer (THE SECRET TO ZERO LAG) */}
+        {selectionStyle && (
+          <div 
+            className="absolute z-10 pointer-events-none border-2 border-accent bg-accent/10 shadow-[0_0_20px_rgba(99,102,241,0.2)] mix-blend-multiply transition-none"
             style={{
-              left: 40 + virtualCol.start,
-              width: virtualCol.size,
-              height: 24,
+              ...selectionStyle,
+              willChange: 'top, left, width, height',
+              boxShadow: 'inset 0 0 0 1px rgba(99,102,241,0.4)'
             }}
           >
-            {getColName(virtualCol.index)}
+            {/* AutoFill Handle */}
+            <div 
+              className="absolute bottom-[-5px] right-[-5px] w-2.5 h-2.5 bg-accent border-2 border-white rounded-sm cursor-crosshair pointer-events-auto"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsAutoFilling(true); }}
+            />
+          </div>
+        )}
+
+        <div className="sticky top-0 left-0 border-b border-r border-border bg-surface z-50 flex items-center justify-center font-bold text-[10px] text-textMuted" style={{ width: INDEX_W, height: HEADER_H }}>
+          <div className="w-2 h-2 rounded-full bg-accent/20" />
+        </div>
+
+        {colVirtualizer.getVirtualItems().map((virtualCol) => (
+          <div key={`header-col-${virtualCol.index}`} className="sticky top-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-40" style={{ left: INDEX_W + virtualCol.start, width: virtualCol.size, height: HEADER_H, position: 'absolute', top: 0 }}>
+            <div className="sticky top-0 w-full h-full flex items-center justify-center bg-inherit">{getColName(virtualCol.index)}</div>
+            <div className="absolute right-0 top-0 w-1 h-full cursor-col-resize z-50 group" onMouseDown={(e) => handleColResizeStart(e, virtualCol.index, virtualCol.size)} onDoubleClick={() => handleAutoFit(virtualCol.index)}>
+              <div className="absolute right-0 top-0 w-[1px] h-full bg-border group-hover:bg-accent" />
+            </div>
           </div>
         ))}
 
-        {/* Row Headers */}
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const rowIndex = visibleRowIndices[virtualRow.index];
           return (
-            <div
-              key={`header-row-${virtualRow.index}`}
-              className="absolute left-0 flex items-center justify-center border-b border-r border-border bg-surface text-xs text-textMuted font-semibold z-20 hover:bg-surfaceHover transition-colors"
-              style={{
-                top: 24 + virtualRow.start,
-                width: 40,
-                height: virtualRow.size,
-              }}
-            >
-              {rowIndex + 1}
+            <div key={`header-row-${virtualRow.index}`} className="sticky left-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-30" style={{ top: HEADER_H + virtualRow.start, left: 0, width: INDEX_W, height: virtualRow.size, position: 'absolute' }}>
+              <div className="sticky left-0 w-full h-full flex items-center justify-center bg-inherit">{rowIndex + 1}</div>
+              <div className="absolute left-0 bottom-0 w-full h-1 cursor-row-resize z-50 group" onMouseDown={(e) => handleRowResizeStart(e, virtualRow.index, virtualRow.size)}>
+                <div className="absolute left-0 bottom-0 w-full h-[1px] bg-border group-hover:bg-accent" />
+              </div>
             </div>
           );
         })}
 
-        {/* Corner cell */}
-        <div 
-          className="absolute top-0 left-0 border-b border-r border-border bg-surface z-30" 
-          style={{ width: 40, height: 24 }} 
-        />
-
-        {/* Grid Cells */}
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const r = visibleRowIndices[virtualRow.index];
-          return (
-            <div key={`row-${virtualRow.index}`}>
-              {colVirtualizer.getVirtualItems().map((virtualCol) => {
-                const c = virtualCol.index;
-                return (
-                  <Cell 
-                    key={`r_${r}_c_${c}`}
-                    r={r}
-                    c={c}
-                    style={{
-                      top: 24 + virtualRow.start,
-                      left: 40 + virtualCol.start,
-                      width: virtualCol.size,
-                      height: virtualRow.size,
-                    }}
-                    onCellSelect={handleCellSelect}
-                    onCommitChange={commitCellChange}
-                    onCellKeydown={handleCellKeydown}
-                  />
-                );
-              })}
-            </div>
-          );
+          return colVirtualizer.getVirtualItems().map((virtualCol) => {
+            const c = virtualCol.index;
+            const ref = `r_${r}_c_${c}`;
+            return (
+              <Cell 
+                key={ref} r={r} c={c}
+                style={{ top: HEADER_H + virtualRow.start, left: INDEX_W + virtualCol.start, width: virtualCol.size, height: virtualRow.size }}
+                onCellSelect={handleCellSelect} onCommitChange={commitCellChange} onCellKeydown={handleCellKeydown}
+                onMouseDown={() => handleCellMouseDown(ref)} onMouseEnter={() => handleCellMouseEnter(ref)}
+              />
+            );
+          });
         })}
       </div>
     </div>

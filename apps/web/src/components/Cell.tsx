@@ -10,33 +10,64 @@ interface CellProps {
   onCellSelect: (ref: string) => void;
   onCommitChange: (r: number, c: number, value: string) => void;
   onCellKeydown: (e: React.KeyboardEvent, r: number, c: number, ref: string) => void;
+  onMouseDown?: () => void;
+  onMouseEnter?: () => void;
+  children?: React.ReactNode;
 }
 
-export const Cell = memo(({ r, c, style, onCellSelect, onCommitChange, onCellKeydown }: CellProps) => {
+export const Cell = memo(({ 
+  r, c, style, onCellSelect, onCommitChange, onCellKeydown, onMouseDown, onMouseEnter, children 
+}: CellProps) => {
   const ref = `r_${r}_c_${c}`;
   
-  const cell = useSheetStore(state => state.data[ref]);
+  // Use granular selectors to minimize re-renders
+  const cellData = useSheetStore(state => state.data[ref]);
   const isActive = useSheetStore(state => state.activeCell === ref);
   const isEditing = useSheetStore(state => state.editingCell === ref);
   const lockedBy = useSheetStore(state => state.lockedCells[ref]);
   
+  // Only subscribe to the relevant remote cursor
   const remoteCursor = useSheetStore(state => {
-    const now = Date.now();
-    return Object.values(state.cursors).find(cur => cur.row === r && cur.col === c && (now - cur.timestamp < 30000));
+    const cursors = state.cursors;
+    for (const userId in cursors) {
+      const cur = cursors[userId];
+      if (cur.row === r && cur.col === c && (Date.now() - cur.timestamp < 30000)) {
+        return cur;
+      }
+    }
+    return null;
   });
+
+  // Performance: Avoid transitions during layout-heavy states
+  const cellClassName = [
+    "absolute border-b border-r border-border select-none overflow-hidden",
+    isActive && !isEditing ? "z-20 ring-2 ring-accent ring-inset shadow-[0_0_12px_rgba(99,102,241,0.3)] bg-accent/5" : "bg-background/50",
+    isActive && isEditing ? "z-30 shadow-2xl" : "",
+    !isActive ? "hover:bg-surfaceHover/40" : ""
+  ].join(" ");
+
+  const contentStyle: React.CSSProperties = {
+    fontWeight: cellData?.fmt?.bold ? 'bold' : 'normal',
+    fontStyle: cellData?.fmt?.italic ? 'italic' : 'normal',
+    textDecoration: cellData?.fmt?.strikethrough ? 'line-through' : 'none',
+    color: cellData?.fmt?.color || 'inherit',
+    justifyContent: cellData?.fmt?.align === 'center' ? 'center' : cellData?.fmt?.align === 'right' ? 'flex-end' : 'flex-start'
+  };
 
   return (
     <div
-      className={`absolute border-b border-r border-border/60 bg-background/50 backdrop-blur-sm cursor-cell transition-all duration-75
-        ${isActive && !isEditing ? 'border-2 border-accent shadow-[inset_0_0_0_1px_rgba(99,102,241,0.2),0_0_12px_rgba(99,102,241,0.4)] z-10 bg-accent/5' : 'hover:bg-surfaceHover/50'}
-        ${isActive && isEditing ? 'z-20 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)]' : ''}
-      `}
+      className={cellClassName}
       style={{
         ...style,
-        backgroundColor: cell?.fmt?.backgroundColor || undefined,
-        ...(remoteCursor && !isActive && { border: `2px solid ${remoteCursor.color}`, boxShadow: `0 0 8px ${remoteCursor.color}40`, zIndex: 5 })
+        backgroundColor: cellData?.fmt?.backgroundColor || undefined,
+        outline: remoteCursor && !isActive ? `2px solid ${remoteCursor.color}` : undefined,
+        outlineOffset: '-2px',
+        contain: 'layout paint style', // CSS Containment for extreme render perf
       }}
-      onClick={() => {
+      onMouseDown={(e) => { if (e.button === 0) onMouseDown?.(); }}
+      onMouseEnter={onMouseEnter}
+      onClick={(e) => {
+        if (e.shiftKey) return;
         onCellSelect(ref);
         if (isEditing) {
           socketService.emitCellLock(ref, 'unlock');
@@ -50,25 +81,32 @@ export const Cell = memo(({ r, c, style, onCellSelect, onCommitChange, onCellKey
           useSheetStore.getState().setEditingCell(ref);
         }
       }}
-      title={lockedBy ? `Locked by ${lockedBy}` : undefined}
     >
       {remoteCursor && !isActive && (
-        <div className="absolute top-[-20px] left-[-2px] text-xs text-white px-1.5 py-0.5 rounded shadow-md whitespace-nowrap z-20 font-medium" style={{ backgroundColor: remoteCursor.color }}>
-          {remoteCursor.userName}
+        <div 
+          className="absolute top-0 left-0 w-full h-full pointer-events-none z-10" 
+          style={{ boxShadow: `inset 0 0 0 2px ${remoteCursor.color}` }}
+        >
+          <div 
+            className="absolute top-[-18px] left-[-2px] text-[9px] text-white px-1 py-0.5 rounded-t shadow-sm whitespace-nowrap font-bold"
+            style={{ backgroundColor: remoteCursor.color }}
+          >
+            {remoteCursor.userName}
+          </div>
         </div>
       )}
 
       {lockedBy && !isEditing && (
-        <div className="absolute top-0 right-0 p-[2px] opacity-60 text-accent z-10">
-          <Lock size={12} />
+        <div className="absolute top-0 right-0 p-[2px] opacity-40 text-accent z-10">
+          <Lock size={10} />
         </div>
       )}
 
       {isEditing ? (
         <input
           autoFocus
-          className="w-full h-full outline-none border-2 border-accent px-2 text-sm font-sans absolute top-0 left-0 bg-surface/90 backdrop-blur-md text-textMain shadow-[0_4px_20px_rgba(99,102,241,0.3)] rounded-sm"
-          defaultValue={cell?.f ?? cell?.v?.toString() ?? ''}
+          className="w-full h-full outline-none border-2 border-accent px-1 text-sm font-sans absolute top-0 left-0 bg-surface text-textMain z-40 shadow-inner"
+          defaultValue={cellData?.f ?? cellData?.v?.toString() ?? ''}
           onBlur={(e) => {
             onCommitChange(r, c, e.target.value);
             socketService.emitCellLock(ref, 'unlock');
@@ -77,19 +115,21 @@ export const Cell = memo(({ r, c, style, onCellSelect, onCommitChange, onCellKey
           onKeyDown={(e) => onCellKeydown(e, r, c, ref)}
         />
       ) : (
-        <div 
-          className="w-full h-full px-1 overflow-hidden whitespace-nowrap text-sm flex items-center"
-          style={{
-            fontWeight: cell?.fmt?.bold ? 'bold' : 'normal',
-            fontStyle: cell?.fmt?.italic ? 'italic' : 'normal',
-            textDecoration: cell?.fmt?.strikethrough ? 'line-through' : 'none',
-            color: cell?.fmt?.color || 'inherit',
-            justifyContent: cell?.fmt?.align === 'center' ? 'center' : cell?.fmt?.align === 'right' ? 'flex-end' : 'flex-start'
-          }}
-        >
-          {cell?.v ?? ''}
+        <div className="w-full h-full px-1 flex items-center pointer-events-none text-sm truncate" style={contentStyle}>
+          {cellData?.v ?? ''}
         </div>
       )}
+      {children}
     </div>
+  );
+}, (prev, next) => {
+  // Ultra-strict comparison to avoid any unnecessary re-renders
+  return (
+    prev.r === next.r &&
+    prev.c === next.c &&
+    prev.style.width === next.style.width &&
+    prev.style.height === next.style.height &&
+    prev.style.top === next.style.top &&
+    prev.style.left === next.style.left
   );
 });

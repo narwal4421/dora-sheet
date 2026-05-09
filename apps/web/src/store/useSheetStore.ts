@@ -87,13 +87,20 @@ interface SheetState {
   replaceAll: () => void;
 
   hiddenRows: Set<number>;
+  columnWidths: Record<number, number>;
+  rowHeights: Record<number, number>;
+  
   insertRowAbove: (rowIndex?: number) => void;
   insertColumnRight: (colIndex?: number) => void;
   deleteRow: (rowIndex?: number) => void;
   deleteColumn: (colIndex?: number) => void;
   sortAZ: (colIndex?: number) => void;
   toggleFilter: (colIndex?: number) => void;
+  
+  setColumnWidth: (index: number, width: number) => void;
+  setRowHeight: (index: number, height: number) => void;
 
+  setSelectionRange: (range: { start: string, end: string } | null) => void;
   setActiveCell: (ref: string) => void;
   setEditingCell: (ref: string | null) => void;
   setCellData: (ref: string, data: Partial<CellData>) => void;
@@ -366,6 +373,18 @@ export const useSheetStore = create<SheetState>((set) => ({
   }),
 
   hiddenRows: new Set(),
+  columnWidths: {},
+  rowHeights: {},
+
+  setColumnWidth: (index, width) => set((state) => ({
+    columnWidths: { ...state.columnWidths, [index]: width }
+  })),
+
+  setRowHeight: (index, height) => set((state) => ({
+    rowHeights: { ...state.rowHeights, [index]: height }
+  })),
+
+  setSelectionRange: (range) => set({ selectionRange: range }),
 
   insertRowAbove: (rowIndex) => set((state) => {
     const targetR = rowIndex !== undefined ? rowIndex : (state.activeCell ? parseRef(state.activeCell).r : 0);

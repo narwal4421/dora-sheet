@@ -1,5 +1,8 @@
 import { useSheetStore } from '../store/useSheetStore';
-import { useEffect, useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { socketService } from '../services/socket.service';
+
+const SHEET_ID = 'default-workbook-id';
 
 const getColName = (c: number) => {
   let name = '';
@@ -22,16 +25,12 @@ export const FormulaBar = () => {
   const data = useSheetStore(state => state.data);
   const setCellData = useSheetStore(state => state.setCellData);
   
-  const [inputValue, setInputValue] = useState('');
+  const [editingValue, setEditingValue] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (activeCell) {
-      const cell = data[activeCell];
-      setInputValue(cell?.f ?? cell?.v?.toString() ?? '');
-    } else {
-      setInputValue('');
-    }
-  }, [activeCell, data]);
+  const cell = activeCell ? data[activeCell] : null;
+  const storeValue = cell?.f ?? cell?.v?.toString() ?? '';
+  const displayValue = editingValue ?? storeValue;
 
   let displayRef = '';
   if (activeCell) {
@@ -39,31 +38,49 @@ export const FormulaBar = () => {
     displayRef = `${getColName(c)}${r + 1}`;
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-    if (activeCell) {
-      const isFormula = e.target.value.startsWith('=');
-      setCellData(activeCell, { 
-        [isFormula ? 'f' : 'v']: e.target.value,
-        ...(!isFormula && { f: undefined }) 
-      });
+  const handleCommit = useCallback(() => {
+    if (!activeCell || editingValue === null) return;
+    const value = editingValue;
+    const isFormula = value.startsWith('=');
+    const newData = { [isFormula ? 'f' : 'v']: value, ...(!isFormula && { f: undefined }) };
+    
+    setCellData(activeCell, newData);
+    socketService.emitCellUpdate(SHEET_ID, activeCell, newData);
+    setEditingValue(null);
+  }, [activeCell, editingValue, setCellData]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCommit();
+      inputRef.current?.blur();
+    } else if (e.key === 'Escape') {
+      setEditingValue(null);
+      inputRef.current?.blur();
     }
   };
 
   return (
-    <div className="flex items-center border-b border-border bg-surface p-1 shadow-sm relative z-10">
-      <div className="w-12 text-center font-semibold text-textMuted border-r border-border px-2 py-1 bg-surfaceHover text-sm">
-        {displayRef}
+    <div className="flex items-center border-b border-border bg-surface p-1.5 shadow-sm relative z-10 gap-1">
+      <div className="w-16 text-center font-mono font-bold text-accent border border-border/50 rounded bg-accent/5 px-2 py-1 text-xs shadow-inner">
+        {displayRef || '---'}
       </div>
-      <div className="flex flex-1 items-center px-2">
-        <span className="text-accent font-mono font-bold mr-2 opacity-70 italic text-sm">fx</span>
+      
+      <div className="flex flex-1 items-center px-3 py-1 bg-surfaceHover/50 rounded-lg border border-transparent focus-within:border-accent/30 focus-within:bg-surface transition-all duration-200 group">
+        <span className="text-accent font-mono font-black mr-3 opacity-50 group-focus-within:opacity-100 transition-opacity select-none italic text-base">ƒ<sub>x</sub></span>
         <input
+          ref={inputRef}
           type="text"
-          className="w-full bg-transparent outline-none font-mono text-sm text-textMain placeholder-textMuted/50"
-          value={inputValue}
-          onChange={handleChange}
-          placeholder="Enter a value or formula (e.g. =SUM(A1:B2))"
+          className="w-full bg-transparent outline-none font-mono text-sm text-textMain placeholder-textMuted/40"
+          value={displayValue}
+          onChange={(e) => setEditingValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={handleCommit}
+          placeholder="Enter a value or formula (e.g. =SUM(A1:B10))"
         />
+      </div>
+
+      <div className="flex items-center gap-2 px-2 text-[10px] text-textMuted/60 font-medium select-none uppercase tracking-widest hidden sm:flex">
+        Ready
       </div>
     </div>
   );
