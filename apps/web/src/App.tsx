@@ -12,7 +12,7 @@ import { Check, X as CloseIcon, Sparkles } from 'lucide-react';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
-  const match = path.match(/\/workbook\/([^\/]+)/);
+  const match = path.match(/\/workbook\/([^/]+)/);
   return match ? match[1] : null;
 };
 
