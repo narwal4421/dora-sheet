@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
 import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon } from 'lucide-react';
 import * as XLSX from 'xlsx';
