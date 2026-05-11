@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { socketService } from '../../services/socket.service';
-import { X, Copy, Users, Zap, Shield } from 'lucide-react';
+import { X, Copy, Users, Zap, Shield, MessageCircle } from 'lucide-react';
 
 export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: string, workbookId: string, onClose: () => void }) => {
   const [email, setEmail] = useState('');
@@ -74,6 +74,13 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
     alert('Link copied to clipboard!');
   };
 
+  const shareWhatsApp = () => {
+    const url = `${window.location.origin}/workbook/${workbookId}`;
+    const message = `🚀 You are invited to collaborate on a Smart Sheet! 📊\n\nJoin the room using this link:\n${url}\n\nOr use the Room ID: ${workbookId.slice(0,3)}-${workbookId.slice(3)}`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank');
+  };
+
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
       <div className="bg-surface border border-white/10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
@@ -98,13 +105,22 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
             <div className="text-5xl font-black text-white tracking-[0.2em] font-mono drop-shadow-[0_0_15px_rgba(123,94,246,0.3)]">
               {workbookId.slice(0,3)}<span className="text-accent/50">-</span>{workbookId.slice(3)}
             </div>
-            <button 
-              onClick={copyLink} 
-              className="mt-2 flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-xs text-textMuted hover:text-white transition-all border border-white/5"
-            >
-              <Copy size={12} />
-              <span>Copy Invite Link</span>
-            </button>
+            <div className="mt-4 flex gap-2 w-full">
+              <button 
+                onClick={copyLink} 
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-textMuted hover:text-white transition-all border border-white/5"
+              >
+                <Copy size={14} />
+                <span>Copy Link</span>
+              </button>
+              <button 
+                onClick={shareWhatsApp} 
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] text-xs font-bold transition-all border border-[#25D366]/20"
+              >
+                <MessageCircle size={14} />
+                <span>WhatsApp</span>
+              </button>
+            </div>
           </div>
         </div>
 
