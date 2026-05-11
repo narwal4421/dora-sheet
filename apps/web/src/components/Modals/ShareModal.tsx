@@ -34,8 +34,14 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
 
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
-      <div className="bg-surface border border-white/10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+    <div 
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-surface border border-white/10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header with Room ID */}
         <div className="p-8 border-b border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent">
