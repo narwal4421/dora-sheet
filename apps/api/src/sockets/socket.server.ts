@@ -85,10 +85,26 @@ export const initSockets = (httpServer: Server) => {
       } catch (err) { console.error('join_workbook error', err); }
     });
 
-    socket.on('cell_update', async (payload: { workbookId: string, sheetId: string, cellKey: string, cell: any }) => {
-      // 🛡️ SECURITY: Room & Data Affinity
-      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+    socket.on('request_to_join', async (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
+      try {
+        const targetId = sanitize(payload.targetRoomId);
+        const requesterName = sanitize(payload.userInfo.name);
+        const room = `workbook:${targetId}`;
+        const allowed = await checkRateLimit('join', BODYGUARD_LIMITS.JOIN_REQUESTS, 600);
+        if (!allowed) return socket.emit('error', { message: 'RATE_LIMIT: Too many requests.' });
+        
+        const isLocked = await redis.get(`room:locked:${targetId}`);
+        if (isLocked === 'true') {
+          socket.to(room).emit('incoming_join_request', { requesterSocketId: socket.id, name: requesterName });
+        } else {
+          // If not locked, they can just join normally via join_workbook
+          socket.emit('error', { message: 'ROOM_NOT_LOCKED' });
+        }
+      } catch (err) { console.error('request_to_join error', err); }
+    });
 
+    socket.on('cell_update', async (payload: { workbookId: string, sheetId: string, cellKey: string, cell: any }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
       const allowed = await checkRateLimit('grid', BODYGUARD_LIMITS.GRID_UPDATES, 60);
       if (!allowed) return socket.emit('error', { message: 'RATE_LIMIT: Typing too fast!' });
       if (JSON.stringify(payload.cell).length > BODYGUARD_LIMITS.PAYLOAD_MAX_SIZE) return socket.emit('error', { message: 'PAYLOAD_TOO_LARGE' });
@@ -96,10 +112,7 @@ export const initSockets = (httpServer: Server) => {
       socket.to(currentRoom).emit('cell_updated', { ...payload, userId });
       try {
         const { sheetId, cellKey, cell } = payload;
-        // 🛡️ SECURITY: Verify sheet belongs to the workbook
-        const sheet = await prisma.sheet.findFirst({ 
-          where: { id: sheetId, workbookId: currentWorkbookId } 
-        });
+        const sheet = await prisma.sheet.findFirst({ where: { id: sheetId, workbookId: currentWorkbookId } });
         if (sheet) {
           const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
           const sanitizedVal = sanitize(cell.v);
@@ -118,9 +131,7 @@ export const initSockets = (httpServer: Server) => {
       socket.to(currentRoom).emit('bulk_cell_updated', { ...payload, userId });
       try {
         const { sheetId, updates } = payload;
-        const sheet = await prisma.sheet.findFirst({ 
-          where: { id: sheetId, workbookId: currentWorkbookId } 
-        });
+        const sheet = await prisma.sheet.findFirst({ where: { id: sheetId, workbookId: currentWorkbookId } });
         if (sheet) {
           const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
           Object.entries(updates).forEach(([key, val]: [string, any]) => { 
@@ -135,9 +146,7 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('sheet_action', (payload: { workbookId: string, sheetId: string, action: string, index?: number, colIndex?: number }) => {
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
-      // 🛡️ SECURITY: Action Whitelist
       if (!ALLOWED_SHEET_ACTIONS.includes(payload.action)) return;
-      
       socket.to(currentRoom).emit('sheet_action_received', payload);
     });
 
