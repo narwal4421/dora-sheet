@@ -80,7 +80,13 @@ class SocketService {
 
   joinWorkbook(workbookId: string) {
     const name = localStorage.getItem('userName') || 'Guest User';
-    if (this.socket) this.socket.emit('join_workbook', { workbookId, name });
+    if (this.socket) {
+      this.socket.emit('join_workbook', { workbookId, name }, (response: { success: boolean, isHost: boolean }) => {
+        if (response.success) {
+          useSheetStore.getState().setIsHost(response.isHost);
+        }
+      });
+    }
   }
 
   leaveWorkbook(workbookId: string) {

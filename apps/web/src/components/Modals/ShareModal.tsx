@@ -111,24 +111,26 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
             </div>
           </div>
           
-          {/* Room Locking Toggle */}
-          <div className="bg-black/20 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-                <Shield size={18} />
+          {/* Room Locking Toggle (Host Only) */}
+          {useSheetStore(s => s.isHost) && (
+            <div className="bg-black/20 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+                  <Shield size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-white tracking-tight">Lock Session</p>
+                  <p className="text-[10px] text-textMuted">Prevent new users from joining</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold text-white tracking-tight">Lock Session</p>
-                <p className="text-[10px] text-textMuted">Prevent new users from joining</p>
-              </div>
+              <button 
+                onClick={() => socketService.emitToggleRoomLock(workbookId, !useSheetStore.getState().isLocked)}
+                className={`w-12 h-6 rounded-full relative transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'bg-accent' : 'bg-white/10'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'left-7' : 'left-1'}`} />
+              </button>
             </div>
-            <button 
-              onClick={() => socketService.emitToggleRoomLock(workbookId, !useSheetStore.getState().isLocked)}
-              className={`w-12 h-6 rounded-full relative transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'bg-accent' : 'bg-white/10'}`}
-            >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'left-7' : 'left-1'}`} />
-            </button>
-          </div>
+          )}
 
           {/* Active Collaborators */}
           <div className="space-y-4">

@@ -120,6 +120,8 @@ interface SheetState {
   updateCellLock: (event: CellLockEvent) => void;
   applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number }) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
+  isHost: boolean;
+  setIsHost: (isHost: boolean) => void;
   localUserName: string;
   setLocalUserName: (name: string) => void;
   isLocked: boolean;
@@ -143,6 +145,8 @@ export const useSheetStore = create<SheetState>((set) => ({
   cursors: {},
   lockedCells: {},
   connectedUsers: [],
+  isHost: false,
+  setIsHost: (val: boolean) => set({ isHost: val }),
   localUserName: localStorage.getItem('userName') || 'Guest User',
   setLocalUserName: (name: string) => {
     localStorage.setItem('userName', name);

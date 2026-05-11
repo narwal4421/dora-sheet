@@ -43,6 +43,21 @@ export const initSockets = (httpServer: Server) => {
         const { workbookId, name } = payload;
         const room = `workbook:${workbookId}`;
         const userName = name || 'Guest User';
+
+        // 🛡️ SECURITY GATE 1: Check if room is locked
+        const isLocked = await redis.get(`room:locked:${workbookId}`);
+        const currentHost = await redis.get(`room:host:${workbookId}`);
+
+        // If locked and user is NOT the host, deny entry
+        if (isLocked === 'true' && currentHost !== userId) {
+          socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
+          return;
+        }
+
+        // 🛡️ SECURITY GATE 2: Assign Host if none exists
+        if (!currentHost) {
+          await redis.set(`room:host:${workbookId}`, userId);
+        }
         
         if (currentRoom) {
           socket.leave(currentRoom);
@@ -53,9 +68,11 @@ export const initSockets = (httpServer: Server) => {
         currentRoom = room;
 
         const userColor = getUserColor(userId);
-        socket.to(room).emit('user_joined', { userId, name: userName, color: userColor });
+        const isHost = (await redis.get(`room:host:${workbookId}`)) === userId;
+
+        socket.to(room).emit('user_joined', { userId, name: userName, color: userColor, isHost });
         
-        if (callback) callback({ success: true, color: userColor });
+        if (callback) callback({ success: true, color: userColor, isHost });
       } catch (err) {
         console.error('join_workbook error', err);
       }
@@ -79,6 +96,14 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {
       if (!currentRoom) return;
+      
+      // 🛡️ SECURITY CHECK: Only the host can toggle the lock
+      const currentHost = await redis.get(`room:host:${payload.workbookId}`);
+      if (currentHost !== userId) {
+        socket.emit('error', { message: 'ONLY_HOST_CAN_LOCK' });
+        return;
+      }
+
       await redis.set(`room:locked:${payload.workbookId}`, String(payload.locked));
       // Notify all users in the room about the status change
       io.to(currentRoom).emit('room_lock_status', { locked: payload.locked });
