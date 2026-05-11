@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Check, Loader2, Paperclip, FileText } from 'lucide-react';
 import { useSheetStore } from '../store/useSheetStore';
 import { socketService } from '../services/socket.service';
-import { toast } from '../store/useToastStore';
 
 interface Message {
   role: 'user' | 'ai';
