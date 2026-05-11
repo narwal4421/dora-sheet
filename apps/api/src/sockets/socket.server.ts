@@ -137,6 +137,28 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
+    socket.on('bulk_cell_update', async (payload: { sheetId: string, updates: Record<string, any> }) => {
+      if (!currentRoom) return;
+      socket.to(currentRoom).emit('bulk_cell_updated', { ...payload, userId });
+
+      try {
+        const { sheetId, updates } = payload;
+        const sheet = await prisma.sheet.findUnique({ where: { id: sheetId } });
+        if (sheet) {
+          const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
+          Object.entries(updates).forEach(([key, val]) => {
+            currentData[key] = { ...currentData[key], ...val };
+          });
+          await prisma.sheet.update({
+            where: { id: sheetId },
+            data: { data: JSON.stringify(currentData) }
+          });
+        }
+      } catch (err) {
+        console.error('Socket bulk persistence error:', err);
+      }
+    });
+
     socket.on('cursor_move', (payload: { userName: string, sheetId: string, row: number, col: number, color: string }) => {
       if (!currentRoom) return;
       socket.to(currentRoom).emit('cursor_moved', { ...payload, userId });

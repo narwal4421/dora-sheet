@@ -114,6 +114,7 @@ interface SheetState {
   restoreSnapshot: (id: string) => void;
   
   applyRemoteUpdate: (event: CellUpdateEvent) => void;
+  applyRemoteBulkUpdate: (updates: Record<string, Partial<CellData>>) => void;
   updateRemoteCursor: (event: CursorMoveEvent) => void;
   updateCellLock: (event: CellLockEvent) => void;
   applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number }) => void;
@@ -288,6 +289,14 @@ export const useSheetStore = create<SheetState>((set) => ({
       newData[ref] = { ...newData[ref], ...update };
     }
     return { data: newData, history, future: [] };
+  }),
+
+  applyRemoteBulkUpdate: (updates) => set((state) => {
+    const newData = { ...state.data };
+    for (const [ref, update] of Object.entries(updates)) {
+      newData[ref] = { ...newData[ref], ...update };
+    }
+    return { data: newData };
   }),
   
   clearCell: (ref) => set((state) => {

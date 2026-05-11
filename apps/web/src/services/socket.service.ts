@@ -24,6 +24,10 @@ class SocketService {
     this.socket.on('cell_updated', (event: CellUpdateEvent) => {
       useSheetStore.getState().applyRemoteUpdate(event);
     });
+    
+    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, any> }) => {
+      useSheetStore.getState().applyRemoteBulkUpdate(event.updates);
+    });
 
     this.socket.on('cursor_moved', (event: CursorMoveEvent) => {
       useSheetStore.getState().updateRemoteCursor(event);
@@ -73,6 +77,10 @@ class SocketService {
 
   emitCellUpdate(sheetId: string, cellKey: string, cell: unknown) {
     if (this.socket) this.socket.emit('cell_update', { sheetId, cellKey, cell });
+  }
+  
+  emitBulkCellUpdate(sheetId: string, updates: Record<string, unknown>) {
+    if (this.socket) this.socket.emit('bulk_cell_update', { sheetId, updates });
   }
 
   emitCursorMove(userName: string, sheetId: string, row: number, col: number, color: string) {

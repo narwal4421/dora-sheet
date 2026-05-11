@@ -109,8 +109,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
 
     try {
       const token = localStorage.getItem('accessToken');
+      const sheetId = getWorkbookIdFromUrl();
       const formData = new FormData();
-      formData.append('sheetId', 'default-workbook-id');
+      formData.append('sheetId', sheetId);
       formData.append('prompt', userMsg);
       formData.append('history', JSON.stringify(messages.slice(-10).map(m => ({ role: m.role, content: m.content }))));
       if (activeCell) formData.append('activeCell', activeCell);
@@ -159,8 +160,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     if (!result) return;
     try {
       if (tool === 'apply_formula' && result.formula && activeCell) {
+        const sheetId = getWorkbookIdFromUrl();
         setCellData(activeCell, { f: result.formula });
-        socketService.emitCellUpdate('default-workbook-id', activeCell, { f: result.formula });
+        socketService.emitCellUpdate(sheetId, activeCell, { f: result.formula });
         
         setMessages(prev => {
           const updated = [...prev];
@@ -186,9 +188,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         });
         
         bulkSetCellData(updates);
-        Object.entries(updates).forEach(([ref, cell]) => {
-          socketService.emitCellUpdate('default-workbook-id', ref, cell);
-        });
+        const sheetId = getWorkbookIdFromUrl();
+        socketService.emitBulkCellUpdate(sheetId, updates);
         
         setMessages(prev => {
           const updated = [...prev];
