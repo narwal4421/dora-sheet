@@ -172,6 +172,9 @@ function App() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
         {/* Join Notification Toast */}
         {joinNotification && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-8 duration-500">
