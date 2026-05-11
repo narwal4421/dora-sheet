@@ -30,6 +30,7 @@ function App() {
   const [showShare, setShowShare] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [joinRequest, setJoinRequest] = useState<{ requesterSocketId: string, name: string } | null>(null);
+  const [joinNotification, setJoinNotification] = useState<string | null>(null);
 
   useEffect(() => {
     socketService.connect();
@@ -48,12 +49,18 @@ function App() {
       socketService.socket.on('join_request_denied', () => {
         alert('The host denied your request to join.');
       });
+
+      socketService.socket.on('user_joined', (user: { name: string }) => {
+        setJoinNotification(`${user.name} joined the room`);
+        setTimeout(() => setJoinNotification(null), 5000);
+      });
     }
 
     return () => {
       socketService.socket?.off('incoming_join_request');
       socketService.socket?.off('join_request_accepted');
       socketService.socket?.off('join_request_denied');
+      socketService.socket?.off('user_joined');
     };
   }, []);
 
@@ -164,6 +171,13 @@ function App() {
                   <CloseIcon size={14} /> Deny
                 </button>
               </div>
+            </div>
+        {/* Join Notification Toast */}
+        {joinNotification && (
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-8 duration-500">
+            <div className="bg-accent/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full px-6 py-2 flex items-center gap-3">
+              <Sparkles size={16} className="text-white animate-pulse" />
+              <span className="text-sm font-bold text-white uppercase tracking-wider">{joinNotification}</span>
             </div>
           </div>
         )}

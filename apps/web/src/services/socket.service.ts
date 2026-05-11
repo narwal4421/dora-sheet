@@ -55,7 +55,8 @@ class SocketService {
   }
 
   joinWorkbook(workbookId: string) {
-    if (this.socket) this.socket.emit('join_workbook', { workbookId });
+    const name = localStorage.getItem('userName') || 'Guest User';
+    if (this.socket) this.socket.emit('join_workbook', { workbookId, name });
   }
 
   leaveWorkbook(workbookId: string) {

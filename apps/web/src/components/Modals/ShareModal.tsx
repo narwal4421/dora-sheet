@@ -6,6 +6,7 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
   const [email, setEmail] = useState('');
   const [members, setMembers] = useState<{userId: string, user: {name: string, email: string}, role: string}[]>([]);
   const [targetJoinId, setTargetJoinId] = useState('');
+  const [joinerName, setJoinerName] = useState(localStorage.getItem('userName') || '');
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -56,8 +57,11 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
 
   const handleJoinById = () => {
     if (targetJoinId.length !== 6) return alert('Please enter a valid 6-digit ID');
+    if (!joinerName) return alert('Please enter your name first');
+    
+    localStorage.setItem('userName', joinerName);
     socketService.requestToJoin(targetJoinId, { 
-      name: 'Collaborator', 
+      name: joinerName, 
       socketId: socketService.socket?.id || '' 
     });
     alert(`Join request sent to room ${targetJoinId}! Please wait for approval.`);
@@ -105,27 +109,36 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
         </div>
 
         <div className="p-8 flex flex-col gap-8">
-          {/* Join by ID */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold text-textMuted uppercase tracking-widest">
               <Shield size={14} className="text-accent" />
               <span>Join Another Room</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-3">
               <input 
                 type="text" 
-                maxLength={6}
-                placeholder="Enter 6-digit ID..." 
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-accent font-mono tracking-[0.5em] text-center"
-                value={targetJoinId}
-                onChange={(e) => setTargetJoinId(e.target.value.replace(/\D/g, ''))}
+                placeholder="Your Name (e.g. Alex)" 
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-accent transition-all"
+                value={joinerName}
+                onChange={(e) => setJoinerName(e.target.value)}
               />
-              <button 
-                onClick={handleJoinById}
-                className="bg-accent hover:bg-accentHover text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-accent/20 active:scale-95"
-              >
-                Join
-              </button>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  maxLength={6}
+                  placeholder="6-digit ID" 
+                  className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-accent font-mono tracking-[0.5em] text-center"
+                  value={targetJoinId}
+                  onChange={(e) => setTargetJoinId(e.target.value.replace(/\D/g, ''))}
+                />
+                <button 
+                  onClick={handleJoinById}
+                  className="bg-accent hover:bg-accentHover text-white px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-50"
+                  disabled={!joinerName || targetJoinId.length !== 6}
+                >
+                  Join
+                </button>
+              </div>
             </div>
           </div>
 

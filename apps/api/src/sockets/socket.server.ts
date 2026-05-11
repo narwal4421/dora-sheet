@@ -38,14 +38,11 @@ export const initSockets = (httpServer: Server) => {
     const userId = socket.data.userId;
     let currentRoom: string | null = null;
 
-    socket.on('join_workbook', async (payload: { workbookId: string }, callback) => {
+    socket.on('join_workbook', async (payload: { workbookId: string, name?: string }, callback) => {
       try {
-        const { workbookId } = payload;
-        
-        // Bypassed validate access for local demo
-        // const member = await prisma.workspaceMember.findFirst({ ... })
-
+        const { workbookId, name } = payload;
         const room = `workbook:${workbookId}`;
+        const userName = name || 'Guest User';
         
         if (currentRoom) {
           socket.leave(currentRoom);
@@ -56,11 +53,30 @@ export const initSockets = (httpServer: Server) => {
         currentRoom = room;
 
         const userColor = getUserColor(userId);
-        socket.to(room).emit('user_joined', { userId, name: 'Local User', color: userColor });
+        socket.to(room).emit('user_joined', { userId, name: userName, color: userColor });
         
         if (callback) callback({ success: true, color: userColor });
       } catch (err) {
         console.error('join_workbook error', err);
+      }
+    });
+
+    socket.on('request_to_join', (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
+      const room = `workbook:${payload.targetRoomId}`;
+      // Broadcast to everyone in the target room (specifically the host)
+      socket.to(room).emit('incoming_join_request', { 
+        requesterSocketId: socket.id, 
+        name: payload.userInfo.name 
+      });
+    });
+
+    socket.on('respond_to_join', (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {
+      if (payload.approved) {
+        io.to(payload.requesterSocketId).emit('join_request_accepted', { 
+          targetRoomId: payload.targetRoomId 
+        });
+      } else {
+        io.to(payload.requesterSocketId).emit('join_request_denied');
       }
     });
 
