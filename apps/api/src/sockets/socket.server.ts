@@ -111,6 +111,7 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      // 🛡️ SECURITY: Verify user IS the verified host
       const currentHost = await redis.get(`room:host:${payload.workbookId}`);
       if (currentHost !== userId) {
         socket.emit('error', { message: 'ONLY_HOST_CAN_LOCK' });
@@ -120,8 +121,16 @@ export const initSockets = (httpServer: Server) => {
       io.to(currentRoom).emit('room_lock_status', { locked: payload.locked });
     });
 
-    socket.on('respond_to_join', (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {
+    socket.on('respond_to_join', async (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {
       if (!currentRoom || currentWorkbookId !== payload.targetRoomId) return;
+      
+      // 🛡️ SECURITY: Only the verified host can approve/deny join requests
+      const currentHost = await redis.get(`room:host:${payload.targetRoomId}`);
+      if (currentHost !== userId) {
+        socket.emit('error', { message: 'ONLY_HOST_CAN_RESPOND_TO_JOIN' });
+        return;
+      }
+
       if (payload.approved) {
         io.to(payload.requesterSocketId).emit('join_request_accepted', { targetRoomId: payload.targetRoomId });
       } else {
