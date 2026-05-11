@@ -97,32 +97,37 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
-      const targetId = sanitize(payload.targetRoomId);
-      const requesterName = sanitize(payload.userInfo.name);
-      
-      const room = `workbook:${targetId}`;
-      const isLocked = await redis.get(`room:locked:${targetId}`);
-      
-      // 🛡️ THE BODYGUARD: Rate Limit Join Requests
-      const clientIp = socket.handshake.address;
-      const rateKey = `shield:join:${clientIp}`;
-      const count = await redis.incr(rateKey);
-      if (count === 1) await redis.expire(rateKey, 600); // 10 min window
-      if (count > BODYGUARD_LIMITS.JOIN_REQUESTS) {
-        socket.emit('error', { message: 'RATE_LIMIT: Too many join requests. Try again in 10 mins.' });
-        return;
-      }
-      
-      if (isLocked === 'true') {
-        socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
-        return;
-      }
+    socket.on('request_to_join', async (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
+      try {
+        const targetId = sanitize(payload.targetRoomId);
+        const requesterName = sanitize(payload.userInfo.name);
+        
+        const room = `workbook:${targetId}`;
+        const isLocked = await redis.get(`room:locked:${targetId}`);
+        
+        // 🛡️ THE BODYGUARD: Rate Limit Join Requests
+        const clientIp = socket.handshake.address;
+        const rateKey = `shield:join:${clientIp}`;
+        const count = await redis.incr(rateKey);
+        if (count === 1) await redis.expire(rateKey, 600); // 10 min window
+        if (count > BODYGUARD_LIMITS.JOIN_REQUESTS) {
+          socket.emit('error', { message: 'RATE_LIMIT: Too many join requests. Try again in 10 mins.' });
+          return;
+        }
+        
+        if (isLocked === 'true') {
+          socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
+          return;
+        }
 
-      // Broadcast to everyone in the target room (specifically the host)
-      socket.to(room).emit('incoming_join_request', { 
-        requesterSocketId: socket.id, 
-        name: payload.userInfo.name 
-      });
+        // Broadcast to everyone in the target room (specifically the host)
+        socket.to(room).emit('incoming_join_request', { 
+          requesterSocketId: socket.id, 
+          name: requesterName 
+        });
+      } catch (err) {
+        console.error('request_to_join error', err);
+      }
     });
 
     socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {

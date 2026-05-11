@@ -6,6 +6,10 @@ import { toast } from '../../store/useToastStore';
 
 export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClose: () => void }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
+  const isLocked = useSheetStore(state => state.isLocked);
+  const isHost = useSheetStore(state => state.isHost);
+  const localUserName = useSheetStore(state => state.localUserName);
+  
   const [targetJoinId, setTargetJoinId] = useState('');
   const [joinerName, setJoinerName] = useState(localStorage.getItem('userName') || '');
 
@@ -112,10 +116,10 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
           </div>
           
           {/* Room Locking Toggle (Host Only) */}
-          {useSheetStore(s => s.isHost) && (
+          {isHost && (
             <div className="bg-black/20 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+                <div className={`p-2 rounded-xl transition-all duration-300 ${isLocked ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
                   <Shield size={18} />
                 </div>
                 <div>
@@ -124,10 +128,10 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
                 </div>
               </div>
               <button 
-                onClick={() => socketService.emitToggleRoomLock(workbookId, !useSheetStore.getState().isLocked)}
-                className={`w-12 h-6 rounded-full relative transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'bg-accent' : 'bg-white/10'}`}
+                onClick={() => socketService.emitToggleRoomLock(workbookId, !isLocked)}
+                className={`w-12 h-6 rounded-full relative transition-all duration-300 ${isLocked ? 'bg-accent' : 'bg-white/10'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${useSheetStore(s => s.isLocked) ? 'left-7' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${isLocked ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
           )}
@@ -140,9 +144,9 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
               <li className="flex justify-between items-center text-sm p-3 bg-accent/5 rounded-xl border border-accent/20">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-[10px] font-bold uppercase shadow-lg shadow-accent/20">
-                    {useSheetStore.getState().localUserName.charAt(0)}
+                    {localUserName.charAt(0)}
                   </div>
-                  <span className="font-bold text-white tracking-tight">{useSheetStore.getState().localUserName} (You)</span>
+                  <span className="font-bold text-white tracking-tight">{localUserName} (You)</span>
                 </div>
                 <span className="text-[8px] bg-accent/20 px-2 py-1 rounded text-accent uppercase font-bold tracking-widest">Host</span>
               </li>
