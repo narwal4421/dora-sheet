@@ -5,6 +5,24 @@ import { env } from '../config/env';
 import { redis } from '../config/redis';
 import { prisma } from '../config/prisma';
 
+const BODYGUARD_LIMITS = {
+  JOIN_REQUESTS: 5, // max 5 requests per 10 min
+  CHAT_MESSAGES: 30, // max 30 messages per 1 min
+  WINDOW_MS: 60000,
+};
+
+// 🛡️ THE BODYGUARD: Security Sanitization
+const sanitize = (text: string) => {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .slice(0, 500); // Strict length limit
+};
+
 export let io: SocketServer;
 
 export const initSockets = (httpServer: Server) => {
@@ -40,9 +58,10 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('join_workbook', async (payload: { workbookId: string, name?: string }, callback) => {
       try {
-        const { workbookId, name } = payload;
+        const workbookId = sanitize(payload.workbookId);
+        const name = sanitize(payload.name || 'Guest User');
         const room = `workbook:${workbookId}`;
-        const userName = name || 'Guest User';
+        const userName = name;
 
         // 🛡️ SECURITY GATE 1: Check if room is locked
         const isLocked = await redis.get(`room:locked:${workbookId}`);
@@ -78,9 +97,21 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
-    socket.on('request_to_join', async (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
-      const room = `workbook:${payload.targetRoomId}`;
-      const isLocked = await redis.get(`room:locked:${payload.targetRoomId}`);
+      const targetId = sanitize(payload.targetRoomId);
+      const requesterName = sanitize(payload.userInfo.name);
+      
+      const room = `workbook:${targetId}`;
+      const isLocked = await redis.get(`room:locked:${targetId}`);
+      
+      // 🛡️ THE BODYGUARD: Rate Limit Join Requests
+      const clientIp = socket.handshake.address;
+      const rateKey = `shield:join:${clientIp}`;
+      const count = await redis.incr(rateKey);
+      if (count === 1) await redis.expire(rateKey, 600); // 10 min window
+      if (count > BODYGUARD_LIMITS.JOIN_REQUESTS) {
+        socket.emit('error', { message: 'RATE_LIMIT: Too many join requests. Try again in 10 mins.' });
+        return;
+      }
       
       if (isLocked === 'true') {
         socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
@@ -230,11 +261,27 @@ export const initSockets = (httpServer: Server) => {
       socket.to(currentRoom).emit('sheet_action_received', payload);
     });
 
-    socket.on('chat_message', (payload: { message: string, userName: string }) => {
-      if (!currentRoom) return;
-      socket.to(currentRoom).emit('chat_message_received', { 
-        ...payload, 
-        userId, 
+    socket.on('chat_message', async (payload: { workbookId: string, message: string, userName: string }) => {
+      const { workbookId } = payload;
+      const cleanMsg = sanitize(payload.message);
+      const cleanUser = sanitize(payload.userName);
+
+      if (!cleanMsg) return;
+
+      // 🛡️ THE BODYGUARD: Rate Limit Chat
+      const clientIp = socket.handshake.address;
+      const rateKey = `shield:chat:${clientIp}`;
+      const count = await redis.incr(rateKey);
+      if (count === 1) await redis.expire(rateKey, 60);
+      if (count > BODYGUARD_LIMITS.CHAT_MESSAGES) {
+        socket.emit('error', { message: 'ANTI_SPAM: You are typing too fast!' });
+        return;
+      }
+
+      const room = `workbook:${workbookId}`;
+      socket.to(room).emit('chat_message_received', { 
+        userName: cleanUser, 
+        message: cleanMsg, 
         timestamp: new Date().toISOString() 
       });
     });
