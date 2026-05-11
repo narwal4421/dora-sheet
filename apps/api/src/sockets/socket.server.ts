@@ -13,8 +13,11 @@ const BODYGUARD_LIMITS = {
   PAYLOAD_MAX_SIZE: 5000,
 };
 
-const sanitize = (text: string) => {
-  if (!text) return '';
+const ALLOWED_SHEET_ACTIONS = ['add_row', 'delete_row', 'add_column', 'delete_column', 'rename_sheet'];
+
+// 🛡️ THE BODYGUARD: Deep Sanitization
+const sanitize = (text: any): any => {
+  if (typeof text !== 'string') return text;
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').slice(0, 500);
 };
 
@@ -65,7 +68,6 @@ export const initSockets = (httpServer: Server) => {
           socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
           return;
         }
-
         if (!currentHost) await redis.set(`room:host:${workbookId}`, userId);
         
         if (currentRoom) {
@@ -77,58 +79,32 @@ export const initSockets = (httpServer: Server) => {
         currentRoom = room;
         currentWorkbookId = workbookId;
 
-        const userColor = getUserColor(userId);
-        const activeHost = await redis.get(`room:host:${workbookId}`);
-        const isHost = activeHost === userId;
-        socket.to(room).emit('user_joined', { userId, name, color: userColor, isHost });
-        if (callback) callback({ success: true, color: userColor, isHost });
+        const isHost = (await redis.get(`room:host:${workbookId}`)) === userId;
+        socket.to(room).emit('user_joined', { userId, name, color: getUserColor(userId), isHost });
+        if (callback) callback({ success: true, color: getUserColor(userId), isHost });
       } catch (err) { console.error('join_workbook error', err); }
     });
 
-    socket.on('request_to_join', async (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
-      try {
-        const targetId = sanitize(payload.targetRoomId);
-        const requesterName = sanitize(payload.userInfo.name);
-        const room = `workbook:${targetId}`;
-        const allowed = await checkRateLimit('join', BODYGUARD_LIMITS.JOIN_REQUESTS, 600);
-        if (!allowed) return socket.emit('error', { message: 'RATE_LIMIT: Too many requests.' });
-        const isLocked = await redis.get(`room:locked:${targetId}`);
-        if (isLocked === 'true') return socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
-        socket.to(room).emit('incoming_join_request', { requesterSocketId: socket.id, name: requesterName });
-      } catch (err) { console.error('request_to_join error', err); }
-    });
-
-    socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {
-      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
-      const currentHost = await redis.get(`room:host:${payload.workbookId}`);
-      if (currentHost !== userId) return socket.emit('error', { message: 'ONLY_HOST_CAN_LOCK' });
-      await redis.set(`room:locked:${payload.workbookId}`, String(payload.locked));
-      io.to(currentRoom).emit('room_lock_status', { locked: payload.locked });
-    });
-
-    socket.on('respond_to_join', async (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {
-      if (!currentRoom || currentWorkbookId !== payload.targetRoomId) return;
-      const currentHost = await redis.get(`room:host:${payload.targetRoomId}`);
-      if (currentHost !== userId) return socket.emit('error', { message: 'ONLY_HOST_CAN_RESPOND_TO_JOIN' });
-      if (payload.approved) {
-        io.to(payload.requesterSocketId).emit('join_request_accepted', { targetRoomId: payload.targetRoomId });
-      } else {
-        io.to(payload.requesterSocketId).emit('join_request_denied');
-      }
-    });
-
     socket.on('cell_update', async (payload: { workbookId: string, sheetId: string, cellKey: string, cell: any }) => {
+      // 🛡️ SECURITY: Room & Data Affinity
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+
       const allowed = await checkRateLimit('grid', BODYGUARD_LIMITS.GRID_UPDATES, 60);
       if (!allowed) return socket.emit('error', { message: 'RATE_LIMIT: Typing too fast!' });
       if (JSON.stringify(payload.cell).length > BODYGUARD_LIMITS.PAYLOAD_MAX_SIZE) return socket.emit('error', { message: 'PAYLOAD_TOO_LARGE' });
+
       socket.to(currentRoom).emit('cell_updated', { ...payload, userId });
       try {
         const { sheetId, cellKey, cell } = payload;
-        const sheet = await prisma.sheet.findUnique({ where: { id: sheetId } });
+        // 🛡️ SECURITY: Verify sheet belongs to the workbook
+        const sheet = await prisma.sheet.findFirst({ 
+          where: { id: sheetId, workbookId: currentWorkbookId } 
+        });
         if (sheet) {
           const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
-          currentData[cellKey] = { ...currentData[cellKey], ...cell };
+          const sanitizedVal = sanitize(cell.v);
+          const sanitizedForm = sanitize(cell.f);
+          currentData[cellKey] = { ...currentData[cellKey], ...cell, v: sanitizedVal, f: sanitizedForm };
           await prisma.sheet.update({ where: { id: sheetId }, data: { data: JSON.stringify(currentData) } });
         }
       } catch (err) { console.error('Socket persistence error:', err); }
@@ -138,16 +114,41 @@ export const initSockets = (httpServer: Server) => {
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
       const allowed = await checkRateLimit('grid', BODYGUARD_LIMITS.GRID_UPDATES, 60);
       if (!allowed) return socket.emit('error', { message: 'RATE_LIMIT: Too many updates!' });
+
       socket.to(currentRoom).emit('bulk_cell_updated', { ...payload, userId });
       try {
         const { sheetId, updates } = payload;
-        const sheet = await prisma.sheet.findUnique({ where: { id: sheetId } });
+        const sheet = await prisma.sheet.findFirst({ 
+          where: { id: sheetId, workbookId: currentWorkbookId } 
+        });
         if (sheet) {
           const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
-          Object.entries(updates).forEach(([key, val]) => { currentData[key] = { ...currentData[key], ...val }; });
+          Object.entries(updates).forEach(([key, val]: [string, any]) => { 
+            const sanitizedVal = sanitize(val.v);
+            const sanitizedForm = sanitize(val.f);
+            currentData[key] = { ...currentData[key], ...val, v: sanitizedVal, f: sanitizedForm }; 
+          });
           await prisma.sheet.update({ where: { id: sheetId }, data: { data: JSON.stringify(currentData) } });
         }
       } catch (err) { console.error('Socket bulk persistence error:', err); }
+    });
+
+    socket.on('sheet_action', (payload: { workbookId: string, sheetId: string, action: string, index?: number, colIndex?: number }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      // 🛡️ SECURITY: Action Whitelist
+      if (!ALLOWED_SHEET_ACTIONS.includes(payload.action)) return;
+      
+      socket.to(currentRoom).emit('sheet_action_received', payload);
+    });
+
+    socket.on('chat_message', async (payload: { workbookId: string, message: string, userName: string }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      const cleanMsg = sanitize(payload.message);
+      const cleanUser = sanitize(payload.userName);
+      if (!cleanMsg) return;
+      const allowed = await checkRateLimit('chat', BODYGUARD_LIMITS.CHAT_MESSAGES, 60);
+      if (!allowed) return socket.emit('error', { message: 'ANTI_SPAM: Slow down!' });
+      socket.to(currentRoom).emit('chat_message_received', { userName: cleanUser, message: cleanMsg, timestamp: new Date().toISOString() });
     });
 
     socket.on('cursor_move', (payload: { workbookId: string, userName: string, sheetId: string, row: number, col: number, color: string }) => {
@@ -172,19 +173,23 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
-    socket.on('sheet_action', (payload: { workbookId: string, sheetId: string, action: string, index?: number, colIndex?: number }) => {
+    socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
-      socket.to(currentRoom).emit('sheet_action_received', payload);
+      const currentHost = await redis.get(`room:host:${payload.workbookId}`);
+      if (currentHost !== userId) return socket.emit('error', { message: 'ONLY_HOST_CAN_LOCK' });
+      await redis.set(`room:locked:${payload.workbookId}`, String(payload.locked));
+      io.to(currentRoom).emit('room_lock_status', { locked: payload.locked });
     });
 
-    socket.on('chat_message', async (payload: { workbookId: string, message: string, userName: string }) => {
-      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
-      const cleanMsg = sanitize(payload.message);
-      const cleanUser = sanitize(payload.userName);
-      if (!cleanMsg) return;
-      const allowed = await checkRateLimit('chat', BODYGUARD_LIMITS.CHAT_MESSAGES, 60);
-      if (!allowed) return socket.emit('error', { message: 'ANTI_SPAM: Slow down!' });
-      socket.to(currentRoom).emit('chat_message_received', { userName: cleanUser, message: cleanMsg, timestamp: new Date().toISOString() });
+    socket.on('respond_to_join', async (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {
+      if (!currentRoom || currentWorkbookId !== payload.targetRoomId) return;
+      const currentHost = await redis.get(`room:host:${payload.targetRoomId}`);
+      if (currentHost !== userId) return socket.emit('error', { message: 'ONLY_HOST_CAN_RESPOND_TO_JOIN' });
+      if (payload.approved) {
+        io.to(payload.requesterSocketId).emit('join_request_accepted', { targetRoomId: payload.targetRoomId });
+      } else {
+        io.to(payload.requesterSocketId).emit('join_request_denied');
+      }
     });
 
     socket.on('disconnect', async () => {
