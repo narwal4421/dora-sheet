@@ -1,60 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useSheetStore } from '../../store/useSheetStore';
 import { socketService } from '../../services/socket.service';
 import { X, Copy, Users, Zap, Shield } from 'lucide-react';
 import { toast } from '../../store/useToastStore';
 
-export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: string, workbookId: string, onClose: () => void }) => {
-  const [email, setEmail] = useState('');
-  const [members, setMembers] = useState<{userId: string, user: {name: string, email: string}, role: string}[]>([]);
+export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClose: () => void }) => {
+  const connectedUsers = useSheetStore(state => state.connectedUsers);
   const [targetJoinId, setTargetJoinId] = useState('');
   const [joinerName, setJoinerName] = useState(localStorage.getItem('userName') || '');
-
-  useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 
-          (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');
-        
-        const res = await fetch(`${apiUrl}/api/v1/workspaces/${workspaceId}/members`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        const json = await res.json();
-        if (json.success) setMembers(json.data);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    
-    fetchMembers();
-  }, [workspaceId]);
-
-  const handleInvite = async () => {
-    if (!email) return;
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 
-        (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');
-      
-      await fetch(`${apiUrl}/api/v1/workspaces/${workspaceId}/members`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify({ email, role: 'EDITOR' })
-      });
-      setEmail('');
-      
-      // Refresh members
-      const res = await fetch(`${apiUrl}/api/v1/workspaces/${workspaceId}/members`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const json = await res.json();
-      if (json.success) setMembers(json.data);
-    } catch (e) {
-      console.error(e);
-      toast('❌ Failed to invite member.', 'error');
-    }
-  };
 
   const handleJoinById = () => {
     if (targetJoinId.length !== 6) return toast('Please enter a valid 6-digit Room ID', 'warning');
@@ -158,44 +111,35 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
             </div>
           </div>
 
-          {/* Invite via Email */}
+          {/* Active Collaborators */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold text-textMuted uppercase tracking-widest">Invite Collaborator</h3>
-            <div className="flex gap-2">
-              <input 
-                type="email" 
-                placeholder="email@example.com" 
-                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-accent"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button 
-                onClick={handleInvite} 
-                className="bg-white/5 hover:bg-white/10 text-white px-5 py-3 rounded-xl text-sm font-bold border border-white/10 transition-all"
-              >
-                Invite
-              </button>
-            </div>
-          </div>
-
-          {/* Members List */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-textMuted uppercase tracking-widest">Active Members</h3>
-            <ul className="space-y-2 max-h-[120px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/5">
-              {members.map(m => (
-                <li key={m.userId} className="flex justify-between items-center text-sm p-3 bg-white/[0.02] rounded-xl border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-[10px] font-bold uppercase">
-                      {m.user.name.charAt(0)}
-                    </div>
-                    <span className="font-medium text-white/80">{m.user.name}</span>
+            <h3 className="text-xs font-bold text-textMuted uppercase tracking-widest">Active Collaborators</h3>
+            <ul className="space-y-2 max-h-[150px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/5">
+              {/* Me */}
+              <li className="flex justify-between items-center text-sm p-3 bg-accent/5 rounded-xl border border-accent/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-[10px] font-bold uppercase shadow-lg shadow-accent/20">
+                    {useSheetStore.getState().localUserName.charAt(0)}
                   </div>
-                  <span className="text-[10px] bg-accent/10 px-2 py-1 rounded-lg text-accent uppercase font-black tracking-tighter">Editor</span>
+                  <span className="font-bold text-white tracking-tight">{useSheetStore.getState().localUserName} (You)</span>
+                </div>
+                <span className="text-[8px] bg-accent/20 px-2 py-1 rounded text-accent uppercase font-bold tracking-widest">Host</span>
+              </li>
+              
+              {connectedUsers.map((u, i) => (
+                <li key={u.userId || i} className="flex justify-between items-center text-sm p-3 bg-white/[0.02] rounded-xl border border-white/5 animate-in slide-in-from-right-2 duration-300" style={{ animationDelay: `${i * 50}ms` }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold uppercase" style={{ backgroundColor: u.color }}>
+                      {u.name.charAt(0)}
+                    </div>
+                    <span className="font-medium text-white/80">{u.name}</span>
+                  </div>
+                  <span className="text-[8px] bg-white/10 px-2 py-1 rounded text-textMuted uppercase font-bold tracking-widest">Active</span>
                 </li>
               ))}
-              {members.length === 0 && (
-                <div className="text-[10px] text-textMuted italic p-4 text-center border border-dashed border-white/10 rounded-xl">
-                  Waiting for collaborators...
+              {connectedUsers.length === 0 && (
+                <div className="text-[10px] text-textMuted italic p-6 text-center border border-dashed border-white/10 rounded-xl">
+                  You are currently the only one here.
                 </div>
               )}
             </ul>

@@ -46,6 +46,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default-workbook-id' }
   const selectionRange = useSheetStore(state => state.selectionRange);
   const remoteCursors = useSheetStore(state => state.cursors);
   const connectedUsers = useSheetStore(state => state.connectedUsers);
+  const localUserName = useSheetStore(state => state.localUserName);
 
   const finalHeaderH = isDashboard ? DASH_HEADER_H : HEADER_H;
   const finalIndexW = isDashboard ? DASH_INDEX_W : INDEX_W;
@@ -233,7 +234,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default-workbook-id' }
     setActiveCell(ref);
     setSelectionRange({ start: ref, end: ref });
     const { r, c } = parseRef(ref);
-    socketService.emitCursorMove('Me', workbookId, r, c, '#000000');
+    socketService.emitCursorMove(localUserName, workbookId, r, c, '#000000');
   }, [setActiveCell, setSelectionRange, workbookId]);
 
   const handleCellMouseDown = useCallback((ref: string) => {

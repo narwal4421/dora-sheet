@@ -1,6 +1,6 @@
+import { useState, useEffect, useRef } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
 import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon } from 'lucide-react';
-import { useEffect } from 'react';
 import * as XLSX from 'xlsx';
 
 import { DropdownMenu, type MenuItem } from './DropdownMenu';
@@ -22,6 +22,9 @@ export const TopNav = ({
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const isLightMode = useSheetStore(state => state.isLightMode);
   const setIsLightMode = useSheetStore(state => state.setIsLightMode);
+  const userName = useSheetStore(state => state.localUserName);
+  const setUserName = useSheetStore(state => state.setLocalUserName);
+  const [isEditingName, setIsEditingName] = useState(false);
 
   useEffect(() => {
     if (isLightMode) {
@@ -182,6 +185,37 @@ export const TopNav = ({
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Current User Name Editor */}
+        <div className="flex items-center gap-2 bg-surfaceHover/50 px-2 py-1 rounded-full border border-border/50 hover:border-accent/30 transition-all group">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-accent to-accentHover flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm">
+            {userName.charAt(0)}
+          </div>
+          {isEditingName ? (
+            <input 
+              autoFocus
+              className="bg-transparent border-none outline-none text-xs font-semibold text-textMain w-24 animate-in fade-in duration-200"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              onBlur={() => {
+                setIsEditingName(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setIsEditingName(false);
+                }
+              }}
+            />
+          ) : (
+            <div 
+              onClick={() => setIsEditingName(true)}
+              className="text-xs font-semibold text-textMuted group-hover:text-textMain cursor-pointer transition-colors flex items-center gap-1"
+            >
+              <span>{userName}</span>
+              <span className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 text-accent px-1 rounded">Edit</span>
+            </div>
+          )}
+        </div>
+
         {/* Avatars */}
         <div className="flex items-center -space-x-2">
           {connectedUsers.map((user, i) => (

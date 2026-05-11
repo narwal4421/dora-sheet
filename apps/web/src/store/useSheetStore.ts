@@ -120,6 +120,8 @@ interface SheetState {
   updateCellLock: (event: CellLockEvent) => void;
   applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number }) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
+  localUserName: string;
+  setLocalUserName: (name: string) => void;
 }
 
 const parseRef = (ref: string) => {
@@ -137,6 +139,11 @@ export const useSheetStore = create<SheetState>((set) => ({
   cursors: {},
   lockedCells: {},
   connectedUsers: [],
+  localUserName: localStorage.getItem('userName') || 'Guest User',
+  setLocalUserName: (name: string) => {
+    localStorage.setItem('userName', name);
+    set({ localUserName: name });
+  },
 
   history: [],
   future: [],
