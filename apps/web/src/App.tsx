@@ -222,7 +222,7 @@ function App() {
               </div>
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-black text-white tracking-tight">Who's Joining?</h2>
-                <p className="text-sm text-textMuted leading-relaxed px-4">Welcome to Dora AI! Please enter your name to start collaborating.</p>
+                <p className="text-sm text-textMuted leading-relaxed px-4">Welcome to Dora AI! Please enter your name to start.</p>
               </div>
               <div className="w-full space-y-4">
                 <input 
@@ -251,7 +251,7 @@ function App() {
                   disabled={!tempName.trim()}
                   className="w-full bg-accent hover:bg-accentHover disabled:opacity-50 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-[0.98]"
                 >
-                  Start Collaborating
+                  JOIN
                 </button>
               </div>
             </div>
