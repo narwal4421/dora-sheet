@@ -6,7 +6,6 @@ class SocketService {
   public socket: Socket | null = null;
 
   connect() {
-    const token = localStorage.getItem('token') || 'dummy-token';
 
     const apiUrl = import.meta.env.VITE_API_URL || 
       (window.location.hostname.includes('vercel.app') 
