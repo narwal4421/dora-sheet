@@ -251,7 +251,7 @@ function App() {
                   disabled={!tempName.trim()}
                   className="w-full bg-accent hover:bg-accentHover disabled:opacity-50 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-[0.98]"
                 >
-                  Join Collaboration
+                  Start Collaborating
                 </button>
               </div>
             </div>
