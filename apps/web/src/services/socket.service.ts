@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { useSheetStore } from '../store/useSheetStore';
-import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent } from '../store/useSheetStore';
+import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent, CellData } from '../store/useSheetStore';
 
 class SocketService {
   public socket: Socket | null = null;
@@ -30,7 +30,7 @@ class SocketService {
       useSheetStore.getState().applyRemoteUpdate(event);
     });
     
-    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, unknown> }) => {
+    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, Partial<CellData>> }) => {
       useSheetStore.getState().applyRemoteBulkUpdate(event.updates);
     });
 
@@ -84,7 +84,7 @@ class SocketService {
     if (this.socket) this.socket.emit('cell_update', { sheetId, cellKey, cell });
   }
   
-  emitBulkCellUpdate(sheetId: string, updates: Record<string, unknown>) {
+  emitBulkCellUpdate(sheetId: string, updates: Record<string, Partial<CellData>>) {
     if (this.socket) this.socket.emit('bulk_cell_update', { sheetId, updates });
   }
 
