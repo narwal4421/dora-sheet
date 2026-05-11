@@ -126,62 +126,88 @@ export const initSockets = (httpServer: Server) => {
     });
 
     socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {
-      // 🛡️ SECURITY: Verify user is in the room and IS the host
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
-      
       const currentHost = await redis.get(`room:host:${payload.workbookId}`);
       if (currentHost !== userId) {
         socket.emit('error', { message: 'ONLY_HOST_CAN_LOCK' });
         return;
       }
-
       await redis.set(`room:locked:${payload.workbookId}`, String(payload.locked));
       io.to(currentRoom).emit('room_lock_status', { locked: payload.locked });
     });
 
     socket.on('respond_to_join', (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {
-      // 🛡️ SECURITY: Verify responder is in the room
       if (!currentRoom || currentWorkbookId !== payload.targetRoomId) return;
-
       if (payload.approved) {
-        io.to(payload.requesterSocketId).emit('join_request_accepted', { 
-          targetRoomId: payload.targetRoomId 
-        });
+        io.to(payload.requesterSocketId).emit('join_request_accepted', { targetRoomId: payload.targetRoomId });
       } else {
         io.to(payload.requesterSocketId).emit('join_request_denied');
       }
     });
 
-    socket.on('cell_update', async (payload: { sheetId: string, workbookId: string, cellKey: string, cell: any }) => {
-      // 🛡️ SECURITY: Verify room affinity
+    socket.on('cell_update', async (payload: { workbookId: string, sheetId: string, cellKey: string, cell: any }) => {
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
-      
       socket.to(currentRoom).emit('cell_updated', { ...payload, userId });
-
       try {
         const { sheetId, cellKey, cell } = payload;
         const sheet = await prisma.sheet.findUnique({ where: { id: sheetId } });
         if (sheet) {
           const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
           currentData[cellKey] = { ...currentData[cellKey], ...cell };
-          await prisma.sheet.update({
-            where: { id: sheetId },
-            data: { data: JSON.stringify(currentData) }
-          });
+          await prisma.sheet.update({ where: { id: sheetId }, data: { data: JSON.stringify(currentData) } });
         }
-      } catch (err) {
-        console.error('Socket persistence error:', err);
+      } catch (err) { console.error('Socket persistence error:', err); }
+    });
+
+    socket.on('bulk_cell_update', async (payload: { workbookId: string, sheetId: string, updates: Record<string, any> }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      socket.to(currentRoom).emit('bulk_cell_updated', { ...payload, userId });
+      try {
+        const { sheetId, updates } = payload;
+        const sheet = await prisma.sheet.findUnique({ where: { id: sheetId } });
+        if (sheet) {
+          const currentData = typeof sheet.data === 'string' ? JSON.parse(sheet.data) : sheet.data;
+          Object.entries(updates).forEach(([key, val]) => { currentData[key] = { ...currentData[key], ...val }; });
+          await prisma.sheet.update({ where: { id: sheetId }, data: { data: JSON.stringify(currentData) } });
+        }
+      } catch (err) { console.error('Socket bulk persistence error:', err); }
+    });
+
+    socket.on('cursor_move', (payload: { workbookId: string, userName: string, sheetId: string, row: number, col: number, color: string }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      socket.to(currentRoom).emit('cursor_moved', { ...payload, userId });
+    });
+
+    socket.on('cell_lock', async (payload: { workbookId: string, cellKey: string, action: 'lock'|'unlock' }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      const lockKey = `cell:lock:${payload.workbookId}:${payload.cellKey}`;
+      const userLocksKey = `user:locks:${userId}:${payload.workbookId}`;
+      if (payload.action === 'lock') {
+        const existing = await redis.get(lockKey);
+        if (existing && existing !== userId) {
+          socket.emit('cell_locked', { error: 'CELL_LOCKED', lockedBy: existing });
+          return;
+        }
+        await redis.set(lockKey, userId, 'EX', 5);
+        await redis.sadd(userLocksKey, payload.cellKey);
+        socket.to(currentRoom).emit('cell_locked', { userId, cellKey: payload.cellKey, action: 'lock' });
+      } else {
+        await redis.del(lockKey);
+        await redis.srem(userLocksKey, payload.cellKey);
+        socket.to(currentRoom).emit('cell_locked', { userId, cellKey: payload.cellKey, action: 'unlock' });
       }
     });
 
-    socket.on('chat_message', async (payload: { workbookId: string, message: string, userName: string }) => {
-      // 🛡️ SECURITY: Verify room affinity
+    socket.on('sheet_action', (payload: { workbookId: string, sheetId: string, action: string, index?: number, colIndex?: number }) => {
       if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
+      socket.to(currentRoom).emit('sheet_action_received', payload);
+    });
 
+    socket.on('chat_message', async (payload: { workbookId: string, message: string, userName: string }) => {
+      if (!currentRoom || currentWorkbookId !== payload.workbookId) return;
       const cleanMsg = sanitize(payload.message);
       const cleanUser = sanitize(payload.userName);
       if (!cleanMsg) return;
-
       const clientIp = socket.handshake.address;
       const rateKey = `shield:chat:${clientIp}`;
       const count = await redis.incr(rateKey);
@@ -190,18 +216,12 @@ export const initSockets = (httpServer: Server) => {
         socket.emit('error', { message: 'ANTI_SPAM: Slow down!' });
         return;
       }
-
-      socket.to(currentRoom).emit('chat_message_received', { 
-        userName: cleanUser, 
-        message: cleanMsg, 
-        timestamp: new Date().toISOString() 
-      });
+      socket.to(currentRoom).emit('chat_message_received', { userName: cleanUser, message: cleanMsg, timestamp: new Date().toISOString() });
     });
 
     socket.on('disconnect', async () => {
       if (currentRoom && currentWorkbookId) {
         socket.to(currentRoom).emit('user_left', { userId });
-        
         const locks = await redis.smembers(`user:locks:${userId}:${currentWorkbookId}`);
         if (locks.length > 0) {
           const keys = locks.map((l: string) => `cell:lock:${currentWorkbookId}:${l}`);
@@ -213,8 +233,6 @@ export const initSockets = (httpServer: Server) => {
         }
       }
     });
-    
-    // Add similar checks for bulk_cell_update, cursor_move, cell_lock, sheet_action...
   });
 };
 
