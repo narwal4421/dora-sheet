@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { socketService } from '../../services/socket.service';
 import { X, Copy, Users, Zap, Shield, MessageCircle } from 'lucide-react';
+import { toast } from '../../store/useToastStore';
 
 export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: string, workbookId: string, onClose: () => void }) => {
   const [email, setEmail] = useState('');
@@ -51,27 +52,27 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
       if (json.success) setMembers(json.data);
     } catch (e) {
       console.error(e);
-      alert('Failed to invite member.');
+      toast('❌ Failed to invite member.', 'error');
     }
   };
 
   const handleJoinById = () => {
-    if (targetJoinId.length !== 6) return alert('Please enter a valid 6-digit ID');
-    if (!joinerName) return alert('Please enter your name first');
+    if (targetJoinId.length !== 6) return toast('Please enter a valid 6-digit Room ID', 'warning');
+    if (!joinerName) return toast('Please enter your name first', 'warning');
     
     localStorage.setItem('userName', joinerName);
     socketService.requestToJoin(targetJoinId, { 
       name: joinerName, 
       socketId: socketService.socket?.id || '' 
     });
-    alert(`Join request sent to room ${targetJoinId}! Please wait for approval.`);
+    toast(`✅ Join request sent to room ${targetJoinId}! Waiting for approval...`, 'info');
     setTargetJoinId('');
   };
 
   const copyLink = () => {
     const url = `${window.location.origin}/workbook/${workbookId}`;
     navigator.clipboard.writeText(url);
-    alert('Link copied to clipboard!');
+    toast('🔗 Link copied to clipboard!', 'success');
   };
 
   const shareWhatsApp = () => {

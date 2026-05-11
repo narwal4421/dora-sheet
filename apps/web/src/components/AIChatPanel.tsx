@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Check, Loader2, Paperclip, FileText } from 'lucide-react';
 import { useSheetStore } from '../store/useSheetStore';
 import { socketService } from '../services/socket.service';
+import { toast } from '../store/useToastStore';
 
 interface Message {
   role: 'user' | 'ai';
@@ -49,6 +50,23 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const activeCell = useSheetStore(state => state.activeCell);
   const setCellData = useSheetStore(state => state.setCellData);
   const bulkSetCellData = useSheetStore(state => state.bulkSetCellData);
+  const sheetData = useSheetStore(state => state.data);
+
+  // Convert internal ref format (r_0_c_0) to A1 notation for AI context
+  const getSheetContext = () => {
+    const context: Record<string, string | number> = {};
+    Object.entries(sheetData).forEach(([ref, cell]) => {
+      const match = ref.match(/r_(\d+)_c_(\d+)/);
+      if (!match) return;
+      const row = parseInt(match[1]) + 1;
+      const col = parseInt(match[2]);
+      const colLetter = col < 26 ? String.fromCharCode(65 + col) : `A${String.fromCharCode(65 + col - 26)}`;
+      const a1 = `${colLetter}${row}`;
+      const val = cell.f ? cell.f : (cell.v !== undefined ? cell.v : '');
+      if (val !== '') context[a1] = val;
+    });
+    return Object.keys(context).length > 0 ? JSON.stringify(context) : '{}';
+  };
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,6 +116,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       formData.append('history', JSON.stringify(messages.slice(-10).map(m => ({ role: m.role, content: m.content }))));
       if (activeCell) formData.append('activeCell', activeCell);
       if (currentFile) formData.append('attachedFile', currentFile);
+      formData.append('sheetContext', getSheetContext());
 
       const apiUrl = import.meta.env.VITE_API_URL || 
         (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');

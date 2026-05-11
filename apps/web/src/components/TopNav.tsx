@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import * as XLSX from 'xlsx';
 
 import { DropdownMenu, type MenuItem } from './DropdownMenu';
+import { toast } from '../store/useToastStore';
 
 export const TopNav = ({ 
   onShowVersionHistory, 
@@ -109,7 +110,7 @@ export const TopNav = ({
             : { v: text, f: undefined };
           setCellData(activeCell, update);
         } catch {
-          alert("Please use keyboard Ctrl+V to paste (browser security restriction)");
+          toast("Please use keyboard Ctrl+V to paste", "warning");
         }
       } 
     },
@@ -125,7 +126,7 @@ export const TopNav = ({
   ];
 
   const viewMenu: MenuItem[] = [
-    { label: 'Fullscreen', onClick: () => document.documentElement.requestFullscreen().catch(()=>alert("Fullscreen not supported")) }
+    { label: 'Fullscreen', onClick: () => document.documentElement.requestFullscreen().catch(() => toast('Fullscreen not supported in this browser', 'warning')) }
   ];
 
   const insertMenu: MenuItem[] = [

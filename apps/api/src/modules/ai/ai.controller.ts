@@ -9,7 +9,8 @@ const chatSchema = z.object({
   sheetId: z.string(),
   prompt: z.string().min(1),
   activeCell: z.string().optional(),
-  history: z.string().optional()
+  history: z.string().optional(),
+  sheetContext: z.string().optional()
 });
 
 export class AIController {
@@ -40,7 +41,7 @@ export class AIController {
         return res.status(400).json({ success: false, message: 'Invalid request: ' + e.message });
       }
 
-      let { sheetId, prompt, history } = body;
+      let { sheetId, prompt, history, sheetContext } = body;
       let fileData: string | undefined = undefined;
       let mimeType: string | undefined = undefined;
       
@@ -96,7 +97,7 @@ export class AIController {
         }
       }
 
-      const result = await AIService.chat(userId, sheetId, prompt, fileData, mimeType, parsedHistory);
+      const result = await AIService.chat(userId, sheetId, prompt, fileData, mimeType, parsedHistory, sheetContext);
 
       return res.json({
         success: true,

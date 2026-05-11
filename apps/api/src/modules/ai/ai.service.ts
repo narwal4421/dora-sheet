@@ -13,7 +13,7 @@ const openai = new OpenAI({
 });
 
 export class AIService {
-  static async chat(userId: string, sheetId: string, prompt: string, fileData?: string, mimeType?: string, history: any[] = []) {
+  static async chat(userId: string, sheetId: string, prompt: string, fileData?: string, mimeType?: string, history: any[] = [], sheetContext?: string) {
     let sheet;
     try {
       sheet = await prisma.sheet.findUnique({
@@ -51,9 +51,13 @@ export class AIService {
       if (Object.keys(rowData).length > 0) sampleData.push({ row: r, ...rowData });
     }
 
+    const liveDataSection = sheetContext && sheetContext !== '{}'
+      ? `\n\n── LIVE SHEET DATA (A1 format) ──\n${sheetContext}\n──────────────────────────────`
+      : '';
+
     const systemPrompt = JSON.stringify({
       sheet_context: { name: sheet.name, total_rows: sheet.rowCount, columns, sample_data: sampleData }
-    });
+    }) + liveDataSection;
 
     const smartInstructions = `
 IDENTITY: You are SmartSheet AI. You have the POWER to change the spreadsheet according to user demand.

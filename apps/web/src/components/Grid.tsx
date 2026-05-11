@@ -3,6 +3,7 @@ import { useVirtualizerWrapper } from '../hooks/useVirtualizerWrapper';
 import { useSheetStore, type CellData } from '../store/useSheetStore';
 import { EngineWrapper } from '@smartsheet-ai/formula-engine';
 import { socketService } from '../services/socket.service';
+import { toast } from '../store/useToastStore';
 
 import { Cell } from './Cell';
 import { ContextMenu } from './ContextMenu';
@@ -282,11 +283,28 @@ export const Grid = () => {
     if (engine) {
       try {
         const result = await engine.setData(r, c, value);
+        
+        // Handle common formula errors with friendly messages
+        if (result && typeof result.v === 'object' && result.v !== null && 'type' in result.v) {
+          const errorType = result.v.type;
+          const errorMsg = {
+            '#DIV/0!': 'Cannot divide by zero',
+            '#VALUE!': 'Wrong value type in formula',
+            '#REF!': 'Reference not found',
+            '#NAME?': 'Unknown function name',
+            '#NUM!': 'Numeric problem in formula',
+            '#N/A': 'Value not available'
+          }[errorType as string] || 'Formula error';
+          
+          toast(`⚠️ ${errorMsg} at ${getColName(c)}${r + 1}`, 'warning');
+        }
+
         const final = { v: result.v };
         setCellData(ref, final);
         socketService.emitCellUpdate(SHEET_ID, ref, final);
       } catch (err) {
         console.error('Engine error:', err);
+        toast('❌ Formula evaluation failed', 'error');
       }
     }
   }, [setCellData, engine]);

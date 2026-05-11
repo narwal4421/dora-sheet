@@ -9,6 +9,8 @@ import { ShareModal } from './components/Modals/ShareModal';
 import { AboutPage } from './components/AboutPage';
 import { FindReplace } from './components/FindReplace';
 import { TemplatesModal } from './components/Modals/TemplatesModal';
+import { ToastContainer } from './components/ToastContainer';
+import { toast } from './store/useToastStore';
 import { Check, X as CloseIcon, Sparkles } from 'lucide-react';
 
 const getWorkbookIdFromUrl = () => {
@@ -45,11 +47,11 @@ function App() {
       socketService.socket.on('join_request_accepted', (data: { targetRoomId: string }) => {
         window.history.pushState(null, '', `/workbook/${data.targetRoomId}`);
         setWorkbookId(data.targetRoomId);
-        alert('Your join request was accepted!');
+        toast('✅ Your join request was accepted!', 'success');
       });
 
       socketService.socket.on('join_request_denied', () => {
-        alert('The host denied your request to join.');
+        toast('❌ The host denied your request to join.', 'error');
       });
 
       socketService.socket.on('user_joined', (user: { name: string }) => {
@@ -191,6 +193,7 @@ function App() {
           </div>
         )}
       </div>
+      <ToastContainer />
     </div>
   );
 }
