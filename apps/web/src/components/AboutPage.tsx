@@ -171,14 +171,14 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
             <div className="flex flex-col gap-4 stagger-in">
               <button 
                 onMouseEnter={() => sounds.current.hover.play()}
-                onClick={() => window.location.href = "mailto:doranarwal27@gmail.com"}
+                onClick={() => window.location.href = "mailto:doranarwal@gmail.com"}
                 className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all duration-700 overflow-hidden flex items-center px-8"
               >
                 <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
                 <Mail size={24} className="text-accent mr-6 group-hover/btn:scale-110 transition-transform" />
                 <div className="flex flex-col items-start">
                   <span className="text-[9px] text-textMuted font-black uppercase tracking-[0.3em] mb-1">Email Inquiry</span>
-                  <span className="text-base text-white font-medium">doranarwal27@gmail.com</span>
+                  <span className="text-base text-white font-medium">doranarwal@gmail.com</span>
                 </div>
                 <div className="ml-auto opacity-0 group-hover/btn:opacity-100 translate-x-4 group-hover/btn:translate-x-0 transition-all duration-700">
                   <Sparkles size={16} className="text-accent" />
