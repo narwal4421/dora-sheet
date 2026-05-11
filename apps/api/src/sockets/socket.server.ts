@@ -61,13 +61,27 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
-    socket.on('request_to_join', (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
+    socket.on('request_to_join', async (payload: { targetRoomId: string, userInfo: { name: string, socketId: string } }) => {
       const room = `workbook:${payload.targetRoomId}`;
+      const isLocked = await redis.get(`room:locked:${payload.targetRoomId}`);
+      
+      if (isLocked === 'true') {
+        socket.emit('join_request_denied', { reason: 'ROOM_LOCKED' });
+        return;
+      }
+
       // Broadcast to everyone in the target room (specifically the host)
       socket.to(room).emit('incoming_join_request', { 
         requesterSocketId: socket.id, 
         name: payload.userInfo.name 
       });
+    });
+
+    socket.on('toggle_room_lock', async (payload: { workbookId: string, locked: boolean }) => {
+      if (!currentRoom) return;
+      await redis.set(`room:locked:${payload.workbookId}`, String(payload.locked));
+      // Notify all users in the room about the status change
+      io.to(currentRoom).emit('room_lock_status', { locked: payload.locked });
     });
 
     socket.on('respond_to_join', (payload: { requesterSocketId: string, approved: boolean, targetRoomId: string }) => {

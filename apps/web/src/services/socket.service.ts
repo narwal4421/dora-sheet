@@ -65,6 +65,17 @@ class SocketService {
     this.socket.on('chat_message_received', (payload: { userName: string, message: string, timestamp: string }) => {
       useSheetStore.getState().addTeamMessage(payload);
     });
+
+    this.socket.on('room_lock_status', (payload: { locked: boolean }) => {
+      useSheetStore.getState().setRoomLocked(payload.locked);
+    });
+
+    this.socket.on('join_request_denied', (payload: { reason: string }) => {
+      if (payload.reason === 'ROOM_LOCKED') {
+        alert('This room is currently locked by the host.');
+        window.location.href = '/';
+      }
+    });
   }
 
   joinWorkbook(workbookId: string) {
@@ -77,11 +88,20 @@ class SocketService {
   }
 
   emitChatMessage(message: string, userName: string) {
-    if (this.socket) {
-      this.socket.emit('chat_message', { message, userName });
-      // Add local message to store immediately
-      useSheetStore.getState().addTeamMessage({ message, userName, timestamp: new Date().toISOString() });
-    }
+    const workbookId = this.getWorkbookId();
+    this.socket?.emit('chat_message', { workbookId, message, userName });
+    // Add local message to store immediately
+    useSheetStore.getState().addTeamMessage({ userName, message, timestamp: new Date().toISOString() });
+  }
+
+  emitToggleRoomLock(workbookId: string, locked: boolean) {
+    this.socket?.emit('toggle_room_lock', { workbookId, locked });
+  }
+
+  private getWorkbookId() {
+    const path = window.location.pathname;
+    const match = path.match(/\/workbook\/([^/]+)/);
+    return match ? match[1] : 'default-workbook-id';
   }
 
   requestToJoin(targetRoomId: string, userInfo: { name: string, socketId: string }) {

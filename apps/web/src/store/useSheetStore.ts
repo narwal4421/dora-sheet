@@ -122,6 +122,8 @@ interface SheetState {
   setConnectedUsers: (users: ConnectedUser[]) => void;
   localUserName: string;
   setLocalUserName: (name: string) => void;
+  isLocked: boolean;
+  setRoomLocked: (locked: boolean) => void;
   teamMessages: { userName: string, message: string, timestamp: string }[];
   addTeamMessage: (msg: { userName: string, message: string, timestamp: string }) => void;
 }
@@ -148,6 +150,8 @@ export const useSheetStore = create<SheetState>((set) => ({
   },
   teamMessages: [],
   addTeamMessage: (msg) => set(state => ({ teamMessages: [...state.teamMessages, msg] })),
+  isLocked: false,
+  setRoomLocked: (locked) => set({ isLocked: locked }),
 
   history: [],
   future: [],
