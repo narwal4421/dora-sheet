@@ -33,7 +33,7 @@ export const TopNav = ({
 
   const handleExport = () => {
     const { data: cells } = useSheetStore.getState();
-    const data: (string | number)[][] = [];
+    const data: (string | number | boolean)[][] = [];
     
     let maxR = 0;
     let maxC = 0;
