@@ -123,7 +123,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     if (currentFile) setIsAnalyzingDoc(true);
 
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('token');
       const sheetId = getWorkbookIdFromUrl();
       const formData = new FormData();
       formData.append('sheetId', sheetId);

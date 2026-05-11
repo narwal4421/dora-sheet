@@ -108,7 +108,7 @@ export class AuthService {
       role: role as 'ADMIN' | 'EDITOR' | 'VIEWER',
       workspaceId
     };
-    return jwt.sign(payload, env.JWT_SECRET, { expiresIn: '15m' });
+    return jwt.sign(payload, env.JWT_SECRET, { expiresIn: '1m' });
   }
 
   private static generateRefreshToken(userId: string) {

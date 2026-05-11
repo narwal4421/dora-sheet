@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Grid } from './components/Grid';
 import { socketService } from './services/socket.service';
 import { TopNav } from './components/TopNav';
+import { authService } from './services/auth.service';
 import { Toolbar } from './components/Toolbar';
 import { AIChatPanel } from './components/AIChatPanel';
 import { VersionHistory } from './components/VersionHistory';
@@ -67,7 +68,16 @@ function App() {
       });
     }
 
+    // 🛡️ THE BODYGUARD: Silent Refresh (every 50 seconds for 1-min JWT)
+    const refreshInterval = setInterval(async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await authService.refreshToken();
+      }
+    }, 50000);
+
     return () => {
+      clearInterval(refreshInterval);
       socketService.socket?.off('incoming_join_request');
       socketService.socket?.off('join_request_accepted');
       socketService.socket?.off('join_request_denied');
