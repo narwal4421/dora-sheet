@@ -15,7 +15,6 @@ const BODYGUARD_LIMITS = {
 
 const ALLOWED_SHEET_ACTIONS = ['add_row', 'delete_row', 'add_column', 'delete_column', 'rename_sheet'];
 
-// 🛡️ THE BODYGUARD: Deep Sanitization
 const sanitize = (text: any): any => {
   if (typeof text !== 'string') return text;
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;').slice(0, 500);
@@ -70,7 +69,10 @@ export const initSockets = (httpServer: Server) => {
         }
         if (!currentHost) await redis.set(`room:host:${workbookId}`, userId);
         
-        if (currentRoom) {
+        // Track connection per user in room
+        await redis.sadd(`room:users:${workbookId}:${userId}`, socket.id);
+        
+        if (currentRoom && currentRoom !== room) {
           socket.leave(currentRoom);
           socket.to(currentRoom).emit('user_left', { userId });
         }
@@ -92,12 +94,10 @@ export const initSockets = (httpServer: Server) => {
         const room = `workbook:${targetId}`;
         const allowed = await checkRateLimit('join', BODYGUARD_LIMITS.JOIN_REQUESTS, 600);
         if (!allowed) return socket.emit('error', { message: 'RATE_LIMIT: Too many requests.' });
-        
         const isLocked = await redis.get(`room:locked:${targetId}`);
         if (isLocked === 'true') {
           socket.to(room).emit('incoming_join_request', { requesterSocketId: socket.id, name: requesterName });
         } else {
-          // If not locked, they can just join normally via join_workbook
           socket.emit('error', { message: 'ROOM_NOT_LOCKED' });
         }
       } catch (err) { console.error('request_to_join error', err); }
@@ -203,25 +203,37 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('disconnect', async () => {
       if (currentRoom && currentWorkbookId) {
-        socket.to(currentRoom).emit('user_left', { userId });
-        const currentHost = await redis.get(`room:host:${currentWorkbookId}`);
-        if (currentHost === userId) {
-          const socketsInRoom = await io.in(currentRoom).fetchSockets();
-          if (socketsInRoom.length > 0) {
-            const nextHost = socketsInRoom[0].data.userId;
-            await redis.set(`room:host:${currentWorkbookId}`, nextHost);
-            io.to(currentRoom).emit('host_changed', { newHostId: nextHost });
-          } else {
-            await redis.del(`room:host:${currentWorkbookId}`);
-            await redis.del(`room:locked:${currentWorkbookId}`);
+        // Remove this specific connection
+        await redis.srem(`room:users:${currentWorkbookId}:${userId}`, socket.id);
+        
+        // 🛡️ SECURITY: Only proceed with cleanup if this was the LAST connection for this user
+        const remainingTabs = await redis.scard(`room:users:${currentWorkbookId}:${userId}`);
+        
+        if (remainingTabs === 0) {
+          socket.to(currentRoom).emit('user_left', { userId });
+          
+          const currentHost = await redis.get(`room:host:${currentWorkbookId}`);
+          if (currentHost === userId) {
+            const socketsInRoom = await io.in(currentRoom).fetchSockets();
+            const realRemainingUsers = socketsInRoom.filter(s => s.data.userId !== userId);
+            
+            if (realRemainingUsers.length > 0) {
+              const nextHost = realRemainingUsers[0].data.userId;
+              await redis.set(`room:host:${currentWorkbookId}`, nextHost);
+              io.to(currentRoom).emit('host_changed', { newHostId: nextHost });
+            } else {
+              await redis.del(`room:host:${currentWorkbookId}`);
+              await redis.del(`room:locked:${currentWorkbookId}`);
+            }
           }
-        }
-        const locks = await redis.smembers(`user:locks:${userId}:${currentWorkbookId}`);
-        if (locks.length > 0) {
-          const keys = locks.map((l: string) => `cell:lock:${currentWorkbookId}:${l}`);
-          await redis.del(...keys);
-          await redis.del(`user:locks:${userId}:${currentWorkbookId}`);
-          locks.forEach((cellKey: string) => { socket.to(currentRoom!).emit('cell_locked', { userId, cellKey, action: 'unlock' }); });
+
+          const locks = await redis.smembers(`user:locks:${userId}:${currentWorkbookId}`);
+          if (locks.length > 0) {
+            const keys = locks.map((l: string) => `cell:lock:${currentWorkbookId}:${l}`);
+            await redis.del(...keys);
+            await redis.del(`user:locks:${userId}:${currentWorkbookId}`);
+            locks.forEach((cellKey: string) => { socket.to(currentRoom!).emit('cell_locked', { userId, cellKey, action: 'unlock' }); });
+          }
         }
       }
     });
