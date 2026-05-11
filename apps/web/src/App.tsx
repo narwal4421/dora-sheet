@@ -8,6 +8,7 @@ import { VersionHistory } from './components/VersionHistory';
 import { ShareModal } from './components/Modals/ShareModal';
 import { AboutPage } from './components/AboutPage';
 import { FindReplace } from './components/FindReplace';
+import { TemplatesModal } from './components/Modals/TemplatesModal';
 import { Check, X as CloseIcon, Sparkles } from 'lucide-react';
 
 const getWorkbookIdFromUrl = () => {
@@ -29,6 +30,7 @@ function App() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [joinRequest, setJoinRequest] = useState<{ requesterSocketId: string, name: string } | null>(null);
   const [joinNotification, setJoinNotification] = useState<string | null>(null);
 
@@ -94,12 +96,12 @@ function App() {
         onShowVersionHistory={() => setShowVersionHistory(true)} 
         onShowShare={() => setShowShare(true)} 
         onShowAbout={() => setShowAbout(true)}
+        onShowTemplates={() => setShowTemplates(true)}
         onNewWorkbook={() => {
           const newId = generate6DigitCode();
           window.history.pushState(null, '', `/workbook/${newId}`);
           setWorkbookId(newId);
-          // Optional: clear current sheet data if needed, but usually redirect is enough
-          window.location.reload(); // Hard reload to clear store state for new workbook
+          window.location.reload();
         }}
       />
 
@@ -142,6 +144,10 @@ function App() {
         
         {showAbout && (
           <AboutPage onClose={() => setShowAbout(false)} />
+        )}
+
+        {showTemplates && (
+          <TemplatesModal onClose={() => setShowTemplates(false)} />
         )}
 
         {/* Join Request Toast */}
