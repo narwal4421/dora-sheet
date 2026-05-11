@@ -424,6 +424,12 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
             ))
           )
         )}
+        {isLoading && activeTab === 'ai' && (
+          <div className="flex items-center gap-2 text-textMuted text-xs">
+            <Loader2 size={14} className="animate-spin text-accent" />
+            <span className="animate-pulse">{isAnalyzingDoc ? "Analyzing document..." : "AI is thinking..."}</span>
+          </div>
+        )}
         <div ref={endRef} />
       </div>
 
@@ -500,10 +506,6 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
     </div>
   );
 };
-
-function resultHasFormula(result: unknown): result is { formula: string; targetCell?: string } {
-  return !!result && typeof (result as { formula: string }).formula === 'string';
-}
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
