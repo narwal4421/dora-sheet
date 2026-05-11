@@ -10,7 +10,7 @@ export type CellFormat = {
 };
 
 export type CellData = {
-  v?: string | number; // Evaluated value
+  v?: string | number | boolean | null; // Evaluated value
   f?: string;          // Formula
   fmt?: CellFormat;    // Formatting
 };

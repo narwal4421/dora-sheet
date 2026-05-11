@@ -12,6 +12,7 @@ import { TemplatesModal } from './components/Modals/TemplatesModal';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './store/useToastStore';
 import { Sparkles, Check, X as CloseIcon } from 'lucide-react';
+import { DashboardOverlay, type DashboardData } from './components/DashboardOverlay';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -38,6 +39,7 @@ function App() {
   const [isDashboard] = useState(isDashboardUrl());
   const [joinRequest, setJoinRequest] = useState<{ requesterSocketId: string, name: string } | null>(null);
   const [joinNotification, setJoinNotification] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
     socketService.connect();
@@ -69,6 +71,15 @@ function App() {
       socketService.socket?.off('join_request_denied');
       socketService.socket?.off('user_joined');
     };
+  }, []);
+
+  useEffect(() => {
+    const handleShowDashboard = (e: Event) => {
+      const customEvent = e as CustomEvent<DashboardData>;
+      setDashboardData(customEvent.detail);
+    };
+    window.addEventListener('show-dashboard', handleShowDashboard);
+    return () => window.removeEventListener('show-dashboard', handleShowDashboard);
   }, []);
 
   useEffect(() => {
@@ -195,6 +206,10 @@ function App() {
               <span className="text-sm font-bold text-white uppercase tracking-wider">{joinNotification}</span>
             </div>
           </div>
+        )}
+
+        {dashboardData && (
+          <DashboardOverlay data={dashboardData} onClose={() => setDashboardData(null)} />
         )}
       </div>
       <ToastContainer />

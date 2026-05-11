@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, X, Check, Loader2, Paperclip, FileText } from 'lucide-react';
 import { useSheetStore } from '../store/useSheetStore';
+import type { CellData } from '../store/useSheetStore';
 import { socketService } from '../services/socket.service';
 
 interface Message {
@@ -33,6 +34,16 @@ interface ToolResult {
   action?: string;
   columnIndex?: number;
   index?: number;
+  // Semantic Search
+  query?: string;
+  matches?: string[];
+  explanation?: string;
+  // Extraction
+  sourceFile?: string;
+  // Dashboard
+  kpis?: Array<{ label: string; value: string; change?: string; trend?: 'up' | 'down' | 'neutral' }>;
+  charts?: Array<{ title: string; type: 'bar' | 'line' | 'area' | 'pie'; data: Record<string, unknown>[]; dataKeys: string[] }>;
+  summary?: string;
 }
 
 export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
@@ -53,7 +64,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
 
   // Convert internal ref format (r_0_c_0) to A1 notation for AI context
   const getSheetContext = () => {
-    const context: Record<string, string | number> = {};
+    const context: Record<string, string | number | boolean | null> = {};
     Object.entries(sheetData).forEach(([ref, cell]) => {
       const match = ref.match(/r_(\d+)_c_(\d+)/);
       if (!match) return;
@@ -241,6 +252,59 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
           return [...updated, { role: 'ai', content: `Sheet structure updated!` }];
         });
+      } else if (tool === 'semantic_search' && result.matches) {
+        const { setSelectionRange, setActiveCell } = useSheetStore.getState();
+        if (result.matches.length > 0) {
+          const first = a1ToRef(result.matches[0]);
+          setActiveCell(first);
+          
+          if (result.matches.length > 1) {
+            setSelectionRange({
+              start: a1ToRef(result.matches[0]),
+              end: a1ToRef(result.matches[result.matches.length - 1])
+            });
+          }
+          
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[msgIndex] = { ...updated[msgIndex], applied: true };
+            return [...updated, { role: 'ai', content: `I've found and highlighted ${result.matches!.length} matching cells. ${result.explanation || ''}` }];
+          });
+        }
+      } else if (tool === 'extract_to_table' && result.rows) {
+        const startRow = result.startRow !== undefined ? Number(result.startRow) : 0;
+        const startCol = result.startCol !== undefined ? Number(result.startCol) : 0;
+        const updates: Record<string, Partial<CellData>> = {};
+        
+        result.rows.forEach((row: unknown, rIdx: number) => {
+          const rowArr = Array.isArray(row) ? row : [row];
+          rowArr.forEach((val: unknown, cIdx: number) => {
+            const ref = `r_${startRow + rIdx}_c_${startCol + cIdx}`;
+            updates[ref] = { v: val as string | number | boolean | null };
+          });
+        });
+
+        bulkSetCellData(updates);
+        const sheetId = getWorkbookIdFromUrl();
+        socketService.emitBulkCellUpdate(sheetId, updates);
+
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Successfully extracted ${result.rows!.length} rows from ${result.sourceFile || 'the file'} into the sheet.` }];
+        });
+      } else if (tool === 'generate_dashboard' && result.kpis) {
+        // For now, we'll store this in a "Dashboard State" and maybe open a modal
+        // Since we don't have a separate dashboard store yet, let's just show a success message
+        // and tell the user it's ready.
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Cinematic Dashboard generated! You can now view the insights in the Dashboard tab.` }];
+        });
+        
+        // Trigger a global event or state update to show the dashboard
+        window.dispatchEvent(new CustomEvent('show-dashboard', { detail: result }));
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -275,6 +339,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                    msg.tool === 'fill_data' ? 'Data Insertion' : 
                    msg.tool === 'format_cells' ? 'Style Power' :
                    msg.tool === 'organize_data' ? 'Data Power' :
+                   msg.tool === 'semantic_search' ? 'Smart Search' :
+                   msg.tool === 'extract_to_table' ? 'Intelligence Extraction' :
+                   msg.tool === 'generate_dashboard' ? 'Cinematic Dashboard' :
                    msg.tool === 'modify_structure' ? 'Structural Power' : 'AI Action'}
                 </div>
                 
@@ -322,6 +389,47 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                   {msg.tool === 'modify_structure' && (
                     <div className="text-xs text-textMuted">
                       Action: <span className="text-white font-bold">{msg.result?.action}</span> at index {msg.result?.index}
+                    </div>
+                  )}
+
+                  {msg.tool === 'semantic_search' && msg.result?.matches && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-textMuted">Matches Found:</span>
+                        <span className="text-white font-bold">{msg.result.matches.length} cells</span>
+                      </div>
+                      <div className="text-[10px] text-textMuted bg-black/20 p-2 rounded border border-white/5 italic leading-snug">
+                        "{msg.result.explanation}"
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.tool === 'extract_to_table' && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-textMuted">Extracted Rows:</span>
+                        <span className="text-white font-bold">{msg.result?.rows?.length || 0}</span>
+                      </div>
+                      <div className="text-[10px] text-textMuted uppercase font-semibold flex items-center gap-2">
+                        <FileText size={10} />
+                        <span className="truncate">{msg.result?.sourceFile}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.tool === 'generate_dashboard' && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-textMuted">KPIs Found:</span>
+                        <span className="text-white font-bold">{msg.result?.kpis?.length || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-textMuted">Charts:</span>
+                        <span className="text-white font-bold">{msg.result?.charts?.length || 0}</span>
+                      </div>
+                      <div className="px-2 py-1.5 bg-accent/10 border border-accent/20 rounded text-[10px] text-accent font-bold uppercase tracking-tighter">
+                        Cinematic Dashboard Ready
+                      </div>
                     </div>
                   )}
                 </div>

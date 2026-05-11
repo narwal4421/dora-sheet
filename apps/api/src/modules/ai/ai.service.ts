@@ -79,14 +79,16 @@ DECISION HIERARCHY // Always evaluate in this order
 
 1. Is this a bug report or complaint?         → GOTO: Error Handling
 2. Is this casual talk / greeting?            → GOTO: Conversation Mode
-3. Does it contain math or formula intent?   → GOTO: apply_formula
-4. Does it contain data to insert?           → GOTO: fill_data
-5. Does it ask to change style or format?    → GOTO: format_cells
-6. Does it ask to sort, filter, or organize? → GOTO: organize_data
-7. Does it ask to add/remove rows or cols?   → GOTO: modify_structure
-8. Is it an inventory/stock command?         → GOTO: Inventory Mode
-9. Is it ambiguous but data-related?         → GOTO: Infer + Proceed
-10. None of the above                        → Respond conversationally
+3. Does it contain math or formula intent?    → GOTO: apply_formula
+4. Does it involve a file to extract data?     → GOTO: extract_to_table
+5. Does it contain data to insert?            → GOTO: fill_data
+6. Does it ask to change style or format?     → GOTO: format_cells
+7. Does it ask to sort, filter, or search?    → GOTO: organize_data / semantic_search
+8. Does it ask for a summary or dashboard?    → GOTO: generate_dashboard
+9. Does it ask to add/remove rows or cols?    → GOTO: modify_structure
+10. Is it an inventory/stock command?         → GOTO: Inventory Mode
+11. Is it ambiguous but data-related?         → GOTO: Infer + Proceed
+12. None of the above                         → Respond conversationally
 
 ── GREETINGS AND SMALL TALK ──
 CONVERSATION MODE
@@ -257,6 +259,7 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
 ✗ Use corporate tone. You're a brilliant friend, not a helpdesk ticket.
     `.trim();
 
+
     const tools: any[] = [
       {
         type: "function",
@@ -270,6 +273,83 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
               targetCell: { type: "string" }
             },
             required: ["formula", "targetCell"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "semantic_search",
+          description: "Searches the sheet using natural language and returns matching cell references.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "The search query." },
+              matches: { type: "array", items: { type: "string" }, description: "List of matching A1 references like ['A1', 'B5']" },
+              explanation: { type: "string", description: "Why these cells match the query." }
+            },
+            required: ["query", "matches", "explanation"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "extract_to_table",
+          description: "Extracts structured data from an attached PDF or Image and maps it to the grid.",
+          parameters: {
+            type: "object",
+            properties: {
+              startRow: { type: "integer" },
+              startCol: { type: "integer" },
+              columns: { type: "array", items: { type: "string" } },
+              rowsJson: { type: "string", description: "JSON 2D array of extracted data." },
+              sourceFile: { type: "string", description: "Name of the file data was extracted from." }
+            },
+            required: ["startRow", "startCol", "columns", "rowsJson", "sourceFile"],
+            additionalProperties: false
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "generate_dashboard",
+          description: "Creates a cinematic dashboard view with KPIs and charts based on the sheet data.",
+          parameters: {
+            type: "object",
+            properties: {
+              kpis: { 
+                type: "array", 
+                items: { 
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    value: { type: "string" },
+                    change: { type: "string", description: "e.g. +5.2%" },
+                    trend: { type: "string", enum: ["up", "down", "neutral"] }
+                  },
+                  required: ["label", "value"]
+                }
+              },
+              charts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    type: { type: "string", enum: ["bar", "line", "area", "pie"] },
+                    data: { type: "array", items: { type: "object", additionalProperties: true } },
+                    dataKeys: { type: "array", items: { type: "string" } }
+                  },
+                  required: ["title", "type", "data", "dataKeys"]
+                }
+              },
+              summary: { type: "string" }
+            },
+            required: ["kpis", "charts", "summary"],
             additionalProperties: false
           }
         }
@@ -423,7 +503,7 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
           console.error("Failed to parse tool arguments", e);
         }
 
-        if (call.function.name === 'fill_data' && args.rowsJson) {
+        if ((call.function.name === 'fill_data' || call.function.name === 'extract_to_table') && args.rowsJson) {
           try {
             args.rows = JSON.parse(args.rowsJson);
             delete args.rowsJson;
