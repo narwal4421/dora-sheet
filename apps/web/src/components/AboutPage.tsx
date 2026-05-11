@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { X, Mail, MessageCircle, Sparkles, Cpu, Database, Globe, Zap, Code } from 'lucide-react';
+import { X, Mail, MessageCircle, Sparkles, Cpu, Database, Globe, Zap, Code, FileText } from 'lucide-react';
 import gsap from 'gsap';
 import { Howl } from 'howler';
 
@@ -182,6 +182,22 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
                 </div>
                 <div className="ml-auto opacity-0 group-hover/btn:opacity-100 translate-x-4 group-hover/btn:translate-x-0 transition-all duration-700">
                   <Sparkles size={16} className="text-accent" />
+                </div>
+              </button>
+
+              <button 
+                onMouseEnter={() => sounds.current.hover.play()}
+                onClick={() => window.open("/resume.pdf", "_blank")}
+                className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-blue-500/40 transition-all duration-700 overflow-hidden flex items-center px-8"
+              >
+                <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
+                <FileText size={24} className="text-blue-500 mr-6 group-hover/btn:scale-110 transition-transform" />
+                <div className="flex flex-col items-start">
+                  <span className="text-[9px] text-textMuted font-black uppercase tracking-[0.3em] mb-1">Professional Profile</span>
+                  <span className="text-base text-white font-medium">Digital Resume</span>
+                </div>
+                <div className="ml-auto opacity-0 group-hover/btn:opacity-100 translate-x-4 group-hover/btn:translate-x-0 transition-all duration-700">
+                  <Sparkles size={16} className="text-blue-500" />
                 </div>
               </button>
 
