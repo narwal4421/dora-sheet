@@ -9,7 +9,7 @@ export const apiLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 10, // Limit each IP to 10 requests per `window` (here, per 1 hour) for auth routes
+  limit: 100, // Increased to 100 to support silent refreshes (1 per min)
   standardHeaders: 'draft-7',
   legacyHeaders: false,
 });

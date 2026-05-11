@@ -13,7 +13,9 @@ class SocketService {
         ? 'https://dora-sheet-api.onrender.com' 
         : 'http://localhost:3002');
     this.socket = io(apiUrl, {
-      auth: { token },
+      auth: (cb) => {
+        cb({ token: localStorage.getItem('token') || 'dummy-token' });
+      },
       transports: ['websocket']
     });
 
