@@ -61,6 +61,10 @@ class SocketService {
       delete newCursors[payload.userId];
       useSheetStore.setState({ cursors: newCursors });
     });
+
+    this.socket.on('chat_message_received', (payload: { userName: string, message: string, timestamp: string }) => {
+      useSheetStore.getState().addTeamMessage(payload);
+    });
   }
 
   joinWorkbook(workbookId: string) {
@@ -70,6 +74,14 @@ class SocketService {
 
   leaveWorkbook(workbookId: string) {
     if (this.socket) this.socket.emit('leave_workbook', { workbookId });
+  }
+
+  emitChatMessage(message: string, userName: string) {
+    if (this.socket) {
+      this.socket.emit('chat_message', { message, userName });
+      // Add local message to store immediately
+      useSheetStore.getState().addTeamMessage({ message, userName, timestamp: new Date().toISOString() });
+    }
   }
 
   requestToJoin(targetRoomId: string, userInfo: { name: string, socketId: string }) {

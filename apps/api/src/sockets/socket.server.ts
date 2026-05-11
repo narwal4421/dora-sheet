@@ -189,9 +189,15 @@ export const initSockets = (httpServer: Server) => {
     socket.on('sheet_action', async (payload: { sheetId: string, action: string, index?: number, colIndex?: number }) => {
       if (!currentRoom) return;
       socket.to(currentRoom).emit('sheet_action_received', payload);
-      
-      // For structural changes, we might need a more complex persistence logic, 
-      // but for now, we broadcast it so other clients can apply it to their local state.
+    });
+
+    socket.on('chat_message', (payload: { message: string, userName: string }) => {
+      if (!currentRoom) return;
+      socket.to(currentRoom).emit('chat_message_received', { 
+        ...payload, 
+        userId, 
+        timestamp: new Date().toISOString() 
+      });
     });
   });
 };
