@@ -17,6 +17,11 @@ class SocketService {
       transports: ['websocket']
     });
 
+    // Cleanup stale cursors every 5 seconds
+    setInterval(() => {
+      useSheetStore.getState().cleanupStaleCursors();
+    }, 5000);
+
     this.socket.on('connect_error', (err) => {
       console.warn('Socket connection error, falling back to guest mode:', err.message);
     });
@@ -25,7 +30,7 @@ class SocketService {
       useSheetStore.getState().applyRemoteUpdate(event);
     });
     
-    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, any> }) => {
+    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, unknown> }) => {
       useSheetStore.getState().applyRemoteBulkUpdate(event.updates);
     });
 

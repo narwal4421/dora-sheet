@@ -116,6 +116,7 @@ interface SheetState {
   applyRemoteUpdate: (event: CellUpdateEvent) => void;
   applyRemoteBulkUpdate: (updates: Record<string, Partial<CellData>>) => void;
   updateRemoteCursor: (event: CursorMoveEvent) => void;
+  cleanupStaleCursors: () => void;
   updateCellLock: (event: CellLockEvent) => void;
   applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number }) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
@@ -335,6 +336,19 @@ export const useSheetStore = create<SheetState>((set) => ({
     }
   })),
   
+  cleanupStaleCursors: () => set((state) => {
+    const now = Date.now();
+    const newCursors = { ...state.cursors };
+    let changed = false;
+    Object.entries(newCursors).forEach(([userId, cursor]) => {
+      if (now - cursor.timestamp > 10000) {
+        delete newCursors[userId];
+        changed = true;
+      }
+    });
+    return changed ? { cursors: newCursors } : {};
+  }),
+
   updateRemoteCursor: (event) => set((state) => ({
     cursors: {
       ...state.cursors,

@@ -227,6 +227,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default-workbook-id' }
     };
   }, [isAutoFilling, selectionBounds, selectionRange, rowVirtualizer, visibleRowIndices, setSelectionRange, bulkSetCellData, finalHeaderH]);
 
+
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleCellSelect = useCallback((ref: string) => {
     setActiveCell(ref);
@@ -439,30 +440,30 @@ export const Grid = ({ isDashboard = false, workbookId = 'default-workbook-id' }
         })}
 
         {/* Remote Cursors Layer */}
-        {Object.entries(remoteCursors).map(([userId, cursor]) => {
-          if (Date.now() - cursor.timestamp > 10000) return null; // Hide stale cursors
-          const user = connectedUsers.find(u => u.userId === userId);
-          const color = user?.color || '#6366f1';
-          
-          // Only render if in visible range (simplified for now)
-          const top = rowVirtualizer.getVirtualItems().find(v => visibleRowIndices[v.index] === cursor.row)?.start;
-          const left = colVirtualizer.getVirtualItems().find(v => v.index === cursor.col)?.start;
-          
-          if (top === undefined || left === undefined) return null;
+        {useMemo(() => {
+          return Object.entries(remoteCursors).map(([userId, cursor]) => {
+            const user = connectedUsers.find(u => u.userId === userId);
+            const color = user?.color || '#6366f1';
+            
+            const top = rowVirtualizer.getVirtualItems().find(v => visibleRowIndices[v.index] === cursor.row)?.start;
+            const left = colVirtualizer.getVirtualItems().find(v => v.index === cursor.col)?.start;
+            
+            if (top === undefined || left === undefined) return null;
 
-          return (
-            <div 
-              key={userId}
-              className="absolute z-20 pointer-events-none transition-all duration-150 ease-out flex flex-col items-start"
-              style={{ top: top + finalHeaderH, left: left + finalIndexW }}
-            >
-              <div className="border-2 rounded-sm" style={{ borderColor: color, width: colVirtualizer.getVirtualItems().find(v => v.index === cursor.col)?.size, height: rowVirtualizer.getVirtualItems().find(v => visibleRowIndices[v.index] === cursor.row)?.size }} />
-              <div className="px-1.5 py-0.5 rounded-br-md rounded-bl-md text-[9px] font-bold text-white whitespace-nowrap shadow-sm" style={{ backgroundColor: color }}>
-                {cursor.userName}
+            return (
+              <div 
+                key={userId}
+                className="absolute z-20 pointer-events-none transition-all duration-150 ease-out flex flex-col items-start"
+                style={{ top: top + finalHeaderH, left: left + finalIndexW }}
+              >
+                <div className="border-2 rounded-sm" style={{ borderColor: color, width: colVirtualizer.getVirtualItems().find(v => v.index === cursor.col)?.size, height: rowVirtualizer.getVirtualItems().find(v => visibleRowIndices[v.index] === cursor.row)?.size }} />
+                <div className="px-1.5 py-0.5 rounded-br-md rounded-bl-md text-[9px] font-bold text-white whitespace-nowrap shadow-sm" style={{ backgroundColor: color }}>
+                  {cursor.userName}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          });
+        }, [remoteCursors, connectedUsers, rowVirtualizer, colVirtualizer, visibleRowIndices, finalHeaderH, finalIndexW])}
       </div>
     </div>
   );
