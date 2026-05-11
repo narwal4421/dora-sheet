@@ -87,7 +87,7 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
           </div>
         </div>
 
-        <div className="p-8 flex flex-col gap-8 overflow-y-auto max-h-[70vh] scrollbar-thin scrollbar-thumb-white/10">
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 p-8 flex flex-col gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold text-textMuted uppercase tracking-widest">
               <Shield size={14} className="text-accent" />
@@ -145,7 +145,7 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
           {/* Active Collaborators */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold text-textMuted uppercase tracking-widest">Active Collaborators</h3>
-            <ul className="space-y-2 max-h-[150px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/5">
+            <ul className="space-y-2 pr-2">
               {/* Me */}
               <li className="flex justify-between items-center text-sm p-3 bg-accent/5 rounded-xl border border-accent/20">
                 <div className="flex items-center gap-3">
