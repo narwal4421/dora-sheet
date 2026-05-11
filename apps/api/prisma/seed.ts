@@ -51,10 +51,10 @@ async function main() {
         workspaceId: workspace.id,
         sheets: {
           create: [
-            { name: 'Financial Manager', order: 0, rowCount: 100, colCount: 26, data: {} },
-            { name: 'Sales CRM', order: 1, rowCount: 100, colCount: 26, data: {} },
-            { name: 'Inventory Manager', order: 2, rowCount: 100, colCount: 26, data: {} },
-            { name: 'Payroll Manager', order: 3, rowCount: 100, colCount: 26, data: {} },
+            { name: 'Financial Manager', order: 0, rowCount: 100, colCount: 26, data: "{}" },
+            { name: 'Sales CRM', order: 1, rowCount: 100, colCount: 26, data: "{}" },
+            { name: 'Inventory Manager', order: 2, rowCount: 100, colCount: 26, data: "{}" },
+            { name: 'Payroll Manager', order: 3, rowCount: 100, colCount: 26, data: "{}" },
           ]
         }
       },

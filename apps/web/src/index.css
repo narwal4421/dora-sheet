@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme {
+:root {
   --color-background: var(--bg);
   --color-surface: var(--surface);
   --color-surfaceHover: var(--surface-hover);
@@ -41,6 +41,8 @@
     font-family: var(--font-sans);
     color: var(--color-textMain);
     background-color: var(--color-background);
-    @apply antialiased transition-colors duration-200;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, text-decoration-color 200ms ease, fill 200ms ease, stroke 200ms ease;
   }
 }

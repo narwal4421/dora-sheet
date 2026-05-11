@@ -235,7 +235,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default-workbook-id' }
     setSelectionRange({ start: ref, end: ref });
     const { r, c } = parseRef(ref);
     socketService.emitCursorMove(localUserName, workbookId, r, c, '#000000');
-  }, [setActiveCell, setSelectionRange, workbookId]);
+  }, [setActiveCell, setSelectionRange, workbookId, localUserName]);
 
   const handleCellMouseDown = useCallback((ref: string) => {
     setIsSelecting(true);
