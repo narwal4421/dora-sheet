@@ -39,7 +39,7 @@ export const ShareModal = ({ workbookId, onClose }: { workbookId: string, onClos
       onClick={onClose}
     >
       <div 
-        className="bg-surface border border-white/10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+        className="bg-surface border border-white/10 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         
