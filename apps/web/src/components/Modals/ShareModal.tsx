@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { socketService } from '../../services/socket.service';
-import { X, Copy, Users, Zap, Shield, MessageCircle } from 'lucide-react';
+import { X, Copy, Users, Zap, Shield } from 'lucide-react';
 import { toast } from '../../store/useToastStore';
 
 export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: string, workbookId: string, onClose: () => void }) => {
@@ -75,12 +75,6 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
     toast('🔗 Link copied to clipboard!', 'success');
   };
 
-  const shareWhatsApp = () => {
-    const url = `${window.location.origin}/workbook/${workbookId}`;
-    const message = `🚀 You are invited to collaborate on a Smart Sheet! 📊\n\nJoin the room using this link:\n${url}\n\nOr use the Room ID: ${workbookId.slice(0,3)}-${workbookId.slice(3)}`;
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank');
-  };
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200">
@@ -110,16 +104,21 @@ export const ShareModal = ({ workspaceId, workbookId, onClose }: { workspaceId: 
               <button 
                 onClick={copyLink} 
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-textMuted hover:text-white transition-all border border-white/5"
+                title="Copy Editor Link"
               >
                 <Copy size={14} />
-                <span>Copy Link</span>
+                <span>Editor Link</span>
               </button>
               <button 
-                onClick={shareWhatsApp} 
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] text-xs font-bold transition-all border border-[#25D366]/20"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/dashboard/${workbookId}`);
+                  toast('🔗 Dashboard link copied!', 'success');
+                }} 
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent text-xs font-bold transition-all border border-accent/20"
+                title="Copy Dashboard Link (Read-Only)"
               >
-                <MessageCircle size={14} />
-                <span>WhatsApp</span>
+                <Zap size={14} />
+                <span>Dashboard</span>
               </button>
             </div>
           </div>

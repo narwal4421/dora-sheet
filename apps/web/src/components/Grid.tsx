@@ -11,10 +11,13 @@ import type { MenuItem } from './ContextMenu';
 
 const ROWS = 1000;
 const COLS = 26;
-const SHEET_ID = 'default-workbook-id';
 
 const HEADER_H = 26;
 const INDEX_W = 46;
+
+// Dashboard specific sizes (0 if hidden)
+const DASH_HEADER_H = 0;
+const DASH_INDEX_W = 0;
 
 const getColName = (c: number) => {
   let name = '';
@@ -32,7 +35,7 @@ const parseRef = (ref: string) => {
   return { r: parseInt(match[1]), c: parseInt(match[2]) };
 };
 
-export const Grid = () => {
+export const Grid = ({ isDashboard = false, workbookId = 'default-workbook-id' }: { isDashboard?: boolean, workbookId?: string }) => {
   const parentRef = useRef<HTMLDivElement>(null);
 
   // 1. Store hooks
@@ -41,6 +44,9 @@ export const Grid = () => {
   const columnWidths = useSheetStore(state => state.columnWidths);
   const rowHeights = useSheetStore(state => state.rowHeights);
   const selectionRange = useSheetStore(state => state.selectionRange);
+
+  const finalHeaderH = isDashboard ? DASH_HEADER_H : HEADER_H;
+  const finalIndexW = isDashboard ? DASH_INDEX_W : INDEX_W;
 
   // 2. State hooks
   const [engine, setEngine] = useState<EngineWrapper | null>(null);
@@ -115,12 +121,12 @@ export const Grid = () => {
     }
 
     return {
-      top: top + HEADER_H,
-      left: left + INDEX_W,
+      top: top + finalHeaderH,
+      left: left + finalIndexW,
       width,
       height,
     };
-  }, [selectionBounds, rowHeights, columnWidths, visibleRowIndices]);
+  }, [selectionBounds, rowHeights, columnWidths, visibleRowIndices, finalHeaderH, finalIndexW]);
 
   // 5. Effects
   useEffect(() => {
@@ -181,7 +187,7 @@ export const Grid = () => {
         const y = e.clientY - rect.top + parentRef.current.scrollTop;
         const rows = rowVirtualizer.getVirtualItems();
         const hovered = rows.find(item =>
-          y >= item.start + HEADER_H && y < item.start + HEADER_H + item.size
+          y >= item.start + finalHeaderH && y < item.start + finalHeaderH + item.size
         );
         if (hovered) {
           const targetR = visibleRowIndices[hovered.index];
@@ -217,15 +223,15 @@ export const Grid = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [isAutoFilling, selectionBounds, selectionRange, rowVirtualizer, visibleRowIndices, setSelectionRange, bulkSetCellData]);
+  }, [isAutoFilling, selectionBounds, selectionRange, rowVirtualizer, visibleRowIndices, setSelectionRange, bulkSetCellData, finalHeaderH]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleCellSelect = useCallback((ref: string) => {
     setActiveCell(ref);
     setSelectionRange({ start: ref, end: ref });
     const { r, c } = parseRef(ref);
-    socketService.emitCursorMove('Me', SHEET_ID, r, c, '#000000');
-  }, [setActiveCell, setSelectionRange]);
+    socketService.emitCursorMove('Me', workbookId, r, c, '#000000');
+  }, [setActiveCell, setSelectionRange, workbookId]);
 
   const handleCellMouseDown = useCallback((ref: string) => {
     setIsSelecting(true);
@@ -256,6 +262,7 @@ export const Grid = () => {
 
   // ── Context Menu & Navigation ─────────────────────────────────────────────
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (isDashboard) return;
     e.preventDefault();
     const state = useSheetStore.getState();
     const active = state.activeCell;
@@ -271,14 +278,14 @@ export const Grid = () => {
       { label: 'Clear Cells', icon: '✕', danger: true, onClick: () => state.clearCell(active) },
     ];
     setContextMenu({ x: e.clientX, y: e.clientY, items });
-  }, []);
+  }, [isDashboard]);
 
   const commitCellChange = useCallback(async (r: number, c: number, value: string) => {
     const ref = `r_${r}_c_${c}`;
     const isFormula = value.startsWith('=');
     const newData = { [isFormula ? 'f' : 'v']: value, ...(!isFormula && { f: undefined }) };
     setCellData(ref, newData);
-    socketService.emitCellUpdate(SHEET_ID, ref, newData);
+    socketService.emitCellUpdate(workbookId, ref, newData);
 
     if (engine) {
       try {
@@ -301,13 +308,13 @@ export const Grid = () => {
 
         const final = { v: result.v };
         setCellData(ref, final);
-        socketService.emitCellUpdate(SHEET_ID, ref, final);
+        socketService.emitCellUpdate(workbookId, ref, final);
       } catch (err) {
         console.error('Engine error:', err);
         toast('❌ Formula evaluation failed', 'error');
       }
     }
-  }, [setCellData, engine]);
+  }, [setCellData, engine, workbookId]);
 
   const handleCellKeydown = useCallback((e: React.KeyboardEvent, r: number, c: number, ref: string) => {
     e.stopPropagation();
@@ -360,13 +367,13 @@ export const Grid = () => {
   }, [handleCellSelect, selectionRange, setSelectionRange, setActiveCell]);
 
   return (
-    <div ref={parentRef} className="flex-1 overflow-auto bg-background outline-none select-none relative scroll-smooth" tabIndex={0} onKeyDown={handleKeyDown} onContextMenu={handleContextMenu}>
+    <div ref={parentRef} className={`flex-1 overflow-auto bg-background outline-none select-none relative scroll-smooth ${isDashboard ? 'cursor-default' : ''}`} tabIndex={0} onKeyDown={handleKeyDown} onContextMenu={handleContextMenu}>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items} onClose={() => setContextMenu(null)} />}
 
-      <div style={{ height: `${rowVirtualizer.getTotalSize() + HEADER_H}px`, width: `${colVirtualizer.getTotalSize() + INDEX_W}px`, position: 'relative', willChange: 'transform' }}>
+      <div style={{ height: `${rowVirtualizer.getTotalSize() + finalHeaderH}px`, width: `${colVirtualizer.getTotalSize() + finalIndexW}px`, position: 'relative', willChange: 'transform' }}>
         
         {/* Selection Highlight Layer (THE SECRET TO ZERO LAG) */}
-        {selectionStyle && (
+        {!isDashboard && selectionStyle && (
           <div 
             className="absolute z-10 pointer-events-none border-2 border-accent bg-accent/10 shadow-[0_0_20px_rgba(99,102,241,0.2)] mix-blend-multiply transition-none"
             style={{
@@ -383,12 +390,14 @@ export const Grid = () => {
           </div>
         )}
 
-        <div className="sticky top-0 left-0 border-b border-r border-border bg-surface z-50 flex items-center justify-center font-bold text-[10px] text-textMuted" style={{ width: INDEX_W, height: HEADER_H }}>
-          <div className="w-2 h-2 rounded-full bg-accent/20" />
-        </div>
+        {!isDashboard && (
+          <div className="sticky top-0 left-0 border-b border-r border-border bg-surface z-50 flex items-center justify-center font-bold text-[10px] text-textMuted" style={{ width: finalIndexW, height: finalHeaderH }}>
+            <div className="w-2 h-2 rounded-full bg-accent/20" />
+          </div>
+        )}
 
-        {colVirtualizer.getVirtualItems().map((virtualCol) => (
-          <div key={`header-col-${virtualCol.index}`} className="sticky top-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-40" style={{ left: INDEX_W + virtualCol.start, width: virtualCol.size, height: HEADER_H, position: 'absolute', top: 0 }}>
+        {!isDashboard && colVirtualizer.getVirtualItems().map((virtualCol) => (
+          <div key={`header-col-${virtualCol.index}`} className="sticky top-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-40" style={{ left: finalIndexW + virtualCol.start, width: virtualCol.size, height: finalHeaderH, position: 'absolute', top: 0 }}>
             <div className="sticky top-0 w-full h-full flex items-center justify-center bg-inherit">{getColName(virtualCol.index)}</div>
             <div className="absolute right-0 top-0 w-1 h-full cursor-col-resize z-50 group" onMouseDown={(e) => handleColResizeStart(e, virtualCol.index, virtualCol.size)} onDoubleClick={() => handleAutoFit(virtualCol.index)}>
               <div className="absolute right-0 top-0 w-[1px] h-full bg-border group-hover:bg-accent" />
@@ -396,10 +405,10 @@ export const Grid = () => {
           </div>
         ))}
 
-        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+        {!isDashboard && rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const rowIndex = visibleRowIndices[virtualRow.index];
           return (
-            <div key={`header-row-${virtualRow.index}`} className="sticky left-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-30" style={{ top: HEADER_H + virtualRow.start, left: 0, width: INDEX_W, height: virtualRow.size, position: 'absolute' }}>
+            <div key={`header-row-${virtualRow.index}`} className="sticky left-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-30" style={{ top: finalHeaderH + virtualRow.start, left: 0, width: finalIndexW, height: virtualRow.size, position: 'absolute' }}>
               <div className="sticky left-0 w-full h-full flex items-center justify-center bg-inherit">{rowIndex + 1}</div>
               <div className="absolute left-0 bottom-0 w-full h-1 cursor-row-resize z-50 group" onMouseDown={(e) => handleRowResizeStart(e, virtualRow.index, virtualRow.size)}>
                 <div className="absolute left-0 bottom-0 w-full h-[1px] bg-border group-hover:bg-accent" />
@@ -416,9 +425,12 @@ export const Grid = () => {
             return (
               <Cell 
                 key={ref} r={r} c={c}
-                style={{ top: HEADER_H + virtualRow.start, left: INDEX_W + virtualCol.start, width: virtualCol.size, height: virtualRow.size }}
-                onCellSelect={handleCellSelect} onCommitChange={commitCellChange} onCellKeydown={handleCellKeydown}
-                onMouseDown={() => handleCellMouseDown(ref)} onMouseEnter={() => handleCellMouseEnter(ref)}
+                style={{ top: finalHeaderH + virtualRow.start, left: finalIndexW + virtualCol.start, width: virtualCol.size, height: virtualRow.size }}
+                onCellSelect={isDashboard ? () => {} : handleCellSelect} 
+                onCommitChange={isDashboard ? () => {} : commitCellChange} 
+                onCellKeydown={isDashboard ? () => {} : handleCellKeydown}
+                onMouseDown={isDashboard ? undefined : () => handleCellMouseDown(ref)} 
+                onMouseEnter={isDashboard ? undefined : () => handleCellMouseEnter(ref)}
               />
             );
           });

@@ -11,13 +11,15 @@ import { FindReplace } from './components/FindReplace';
 import { TemplatesModal } from './components/Modals/TemplatesModal';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './store/useToastStore';
-import { Check, X as CloseIcon, Sparkles } from 'lucide-react';
+import { Sparkles, Check, X as CloseIcon } from 'lucide-react';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
-  const match = path.match(/\/workbook\/([^/]+)/);
-  return match ? match[1] : null;
+  const match = path.match(/\/(workbook|dashboard)\/([^/]+)/);
+  return match ? match[2] : null;
 };
+
+const isDashboardUrl = () => window.location.pathname.startsWith('/dashboard/');
 
 const generate6DigitCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -33,6 +35,7 @@ function App() {
   const [showShare, setShowShare] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [isDashboard] = useState(isDashboardUrl());
   const [joinRequest, setJoinRequest] = useState<{ requesterSocketId: string, name: string } | null>(null);
   const [joinNotification, setJoinNotification] = useState<string | null>(null);
 
@@ -94,29 +97,30 @@ function App() {
   return (
     <div className="flex flex-col h-screen w-screen bg-background font-sans text-textMain overflow-hidden selection:bg-accent/30 selection:text-accentHover">
       {/* Top Header Navigation */}
-      <TopNav 
-        onShowVersionHistory={() => setShowVersionHistory(true)} 
-        onShowShare={() => setShowShare(true)} 
-        onShowAbout={() => setShowAbout(true)}
-        onShowTemplates={() => setShowTemplates(true)}
-        onNewWorkbook={() => {
-          const newId = generate6DigitCode();
-          window.history.pushState(null, '', `/workbook/${newId}`);
-          setWorkbookId(newId);
-          window.location.reload();
-        }}
-      />
+      {!isDashboard && (
+        <TopNav 
+          onShowVersionHistory={() => setShowVersionHistory(true)} 
+          onShowShare={() => setShowShare(true)} 
+          onShowAbout={() => setShowAbout(true)}
+          onShowTemplates={() => setShowTemplates(true)}
+          onNewWorkbook={() => {
+            const newId = generate6DigitCode();
+            window.history.pushState(null, '', `/workbook/${newId}`);
+            setWorkbookId(newId);
+            window.location.reload();
+          }}
+        />
+      )}
 
-      {/* Formatting Toolbar */}
-      <Toolbar onToggleAI={() => setShowAI(!showAI)} />
+      {!isDashboard && <Toolbar onToggleAI={() => setShowAI(!showAI)} />}
 
       <div className="flex flex-1 overflow-hidden relative">
-        <div className="flex flex-col flex-1 overflow-hidden border-r border-border shadow-inner relative">
-          <Grid />
-          <FindReplace />
+        <div className="flex flex-col flex-1 overflow-hidden relative">
+          <Grid isDashboard={isDashboard} workbookId={workbookId} />
+          {!isDashboard && <FindReplace />}
         </div>
 
-        {showAI && (
+        {!isDashboard && showAI && (
           <div className="h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-200">
             <AIChatPanel onClose={() => setShowAI(false)} />
           </div>
