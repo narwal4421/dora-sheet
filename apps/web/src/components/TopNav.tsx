@@ -8,16 +8,16 @@ import { toast } from '../store/useToastStore';
 
 export const TopNav = ({ 
   onShowVersionHistory, 
-  onShowShare,
-  onShowAbout,
-  onNewWorkbook,
-  onShowTemplates
+  onShowShare, 
+  onShowAbout, 
+  onNewWorkbook, 
+  onShowTemplates 
 }: { 
-  onShowVersionHistory: () => void, 
-  onShowShare: () => void,
-  onShowAbout: () => void,
-  onNewWorkbook: () => void,
-  onShowTemplates: () => void
+  onShowVersionHistory: () => void;
+  onShowShare: () => void;
+  onShowAbout: () => void;
+  onNewWorkbook: () => void;
+  onShowTemplates: () => void;
 }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const socketConnected = useSheetStore(state => state.socketConnected);
