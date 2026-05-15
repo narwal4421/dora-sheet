@@ -24,7 +24,8 @@ interface ToolResult {
   startCol?: number;
   analysis?: string;
   suggestions?: string[];
-  range?: string[];
+  range?: string | string[];
+  references?: string[];
   format?: {
     bold?: boolean;
     italic?: boolean;
@@ -308,6 +309,27 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         });
         
         window.dispatchEvent(new CustomEvent('show-dashboard', { detail: result }));
+      } else if (tool === 'clear_data') {
+        const { clearSheet, clearRange } = useSheetStore.getState();
+        const sheetId = getWorkbookIdFromUrl();
+        
+        if (result.range === 'all') {
+          clearSheet();
+          socketService.emitSheetAction(sheetId, 'clearSheet', { sheetId });
+        } else if (result.references) {
+          const refs: string[] = [];
+          result.references.forEach((a1: string) => {
+            expandRange(a1).forEach(ref => refs.push(ref));
+          });
+          clearRange(refs);
+          socketService.emitBulkCellUpdate(sheetId, refs.reduce((acc, ref) => ({ ...acc, [ref]: { v: null } }), {}));
+        }
+
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[msgIndex] = { ...updated[msgIndex], applied: true };
+          return [...updated, { role: 'ai', content: `Sheet cleared successfully!` }];
+        });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';

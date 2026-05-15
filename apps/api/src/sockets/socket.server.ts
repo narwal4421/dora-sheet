@@ -13,7 +13,7 @@ const BODYGUARD_LIMITS = {
   PAYLOAD_MAX_SIZE: 5000,
 };
 
-const ALLOWED_SHEET_ACTIONS = ['add_row', 'delete_row', 'add_column', 'delete_column', 'rename_sheet'];
+const ALLOWED_SHEET_ACTIONS = ['add_row', 'delete_row', 'add_column', 'delete_column', 'rename_sheet', 'clearSheet'];
 
 // Structured Logging for Security Events
 const logSecurity = (action: string, data: any) => {
@@ -215,9 +215,16 @@ export const initSockets = (httpServer: Server) => {
       });
     });
 
-    socket.on('sheet_action', (payload: any) => {
+    socket.on('sheet_action', async (payload: any) => {
       if (!activeWorkbookId) return;
       socket.to(`workbook:${activeWorkbookId}`).emit('sheet_action_received', payload);
+      
+      if (payload.action === 'clearSheet') {
+        const sheetId = payload.sheetId;
+        if (sheetId) {
+          await prisma.sheet.update({ where: { id: sheetId }, data: { data: JSON.stringify({}) } });
+        }
+      }
     });
 
     // --- SYSTEM: DISCONNECT ---

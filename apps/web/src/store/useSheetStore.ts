@@ -109,6 +109,8 @@ interface SheetState {
   setCellFormat: (ref: string, format: Partial<CellFormat>) => void;
   bulkSetCellData: (updates: Record<string, Partial<CellData>>) => void;
   clearCell: (ref: string) => void;
+  clearSheet: () => void;
+  clearRange: (refs: string[]) => void;
   undo: () => void;
   redo: () => void;
   
@@ -254,6 +256,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     else if (action === 'deleteCol') store.deleteColumn(colIndex);
     else if (action === 'sort') store.sortAZ(colIndex);
     else if (action === 'toggleFilter') store.toggleFilter(colIndex);
+    else if (action === 'clearSheet') store.clearSheet();
   },
 
   // --- ACTIONS: GRID OPERATIONS ---
@@ -292,6 +295,18 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     const history = [...state.history, state.data].slice(-50);
     const newData = { ...state.data };
     delete newData[ref];
+    return { data: newData, history, future: [] };
+  }),
+
+  clearSheet: () => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    return { data: {}, history, future: [] };
+  }),
+
+  clearRange: (refs) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data };
+    refs.forEach(ref => delete newData[ref]);
     return { data: newData, history, future: [] };
   }),
 
