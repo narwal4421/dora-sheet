@@ -267,14 +267,21 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     };
   }),
 
-  setCellFormat: (ref, format) => set(state => {
-    const history = [...state.history, state.data].slice(-50);
-    const existing = state.data[ref]?.fmt || {};
-    return {
-      data: { ...state.data, [ref]: { ...state.data[ref], fmt: { ...existing, ...format } } },
-      history, future: []
-    };
-  }),
+  setCellFormat: (ref, format) => {
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const existing = state.data[ref]?.fmt || {};
+      const newData = { ...state.data, [ref]: { ...state.data[ref], fmt: { ...existing, ...format } } };
+      return { data: newData, history, future: [] };
+    });
+    // Emit formatting update to other users
+    const format = get().data[ref]?.fmt;
+    if (format) {
+      const { socketService } = require('../services/socket.service');
+      const { getWorkbookIdFromUrl } = require('../utils/url');
+      socketService.emitCellUpdate(getWorkbookIdFromUrl(), ref, { fmt: format });
+    }
+  },
 
   bulkSetCellData: (updates) => set(state => {
     const history = [...state.history, state.data].slice(-50);

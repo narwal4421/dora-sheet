@@ -122,14 +122,4 @@ export const Cell = memo(({
       {children}
     </div>
   );
-}, (prev, next) => {
-  // Ultra-strict comparison to avoid any unnecessary re-renders
-  return (
-    prev.r === next.r &&
-    prev.c === next.c &&
-    prev.style.width === next.style.width &&
-    prev.style.height === next.style.height &&
-    prev.style.top === next.style.top &&
-    prev.style.left === next.style.left
-  );
 });
