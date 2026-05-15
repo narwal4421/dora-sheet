@@ -16,6 +16,15 @@ import { fileRouter } from './modules/file/file.router';
 import { callRouter } from './modules/call/call.router';
 
 const app = express();
+
+process.on('uncaughtException', (err) => {
+  console.error('🔥 UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('🌊 UNHANDLED REJECTION:', reason);
+});
+
 app.set('trust proxy', 1); // Trust the Render proxy for accurate rate-limiting IP detection
 
 const swaggerOptions = {
