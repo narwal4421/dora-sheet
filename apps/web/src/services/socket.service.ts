@@ -36,7 +36,7 @@ interface SocketResponse {
 class SocketService {
   private static instance: SocketService;
   public socket: Socket | null = null;
-  private eventBuffer: { event: string, payload: unknown, callback?: (res: unknown) => void }[] = [];
+  private eventBuffer: { event: string, payload: unknown, callback?: (res: any) => void }[] = [];
   private isConnecting: boolean = false;
 
   private constructor() {
