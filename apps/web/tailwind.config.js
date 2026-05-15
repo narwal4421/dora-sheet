@@ -11,12 +11,12 @@ export default {
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
-        background: '#0f1115', // Deep dark gray/blue
-        surface: '#1c1f26',   // Slightly lighter for panels
-        surfaceHover: '#2a2e38',
-        border: '#333842',
-        accent: '#6366f1',    // Indigo neon
-        accentHover: '#818cf8',
+        background: '#020617',
+        surface: '#0f172a',
+        surfaceHover: '#1e293b',
+        border: '#334155',
+        accent: '#0ea5e9',
+        accentHover: '#38bdf8',
         textMain: '#f8fafc',
         textMuted: '#94a3b8',
       }

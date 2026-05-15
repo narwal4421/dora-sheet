@@ -324,11 +324,11 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       <div className="p-4 border-b border-white/10 bg-surface/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shadow-inner">
+            <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shadow-inner glow-accent">
               <Bot size={24} />
             </div>
             <div>
-              <h2 className="text-base font-black text-white tracking-tight">Dora Intelligence</h2>
+              <h2 className="text-base font-black text-white tracking-tight text-glow">Dora Intelligence</h2>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-[10px] text-textMuted font-bold uppercase tracking-widest">Autonomous Core</span>

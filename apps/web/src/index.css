@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root {
+@theme {
   --color-background: var(--bg);
   --color-surface: var(--surface);
   --color-surfaceHover: var(--surface-hover);
@@ -44,5 +44,17 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, text-decoration-color 200ms ease, fill 200ms ease, stroke 200ms ease;
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+
+  .glow-accent-strong {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
   }
 }

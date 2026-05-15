@@ -45,10 +45,10 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
           gyroControls: false,
           minHeight: 200.00,
           minWidth: 200.00,
-          highlightColor: 0x7b5ef6,
-          midtoneColor: 0x00e5a0,
-          lowlightColor: 0x080808,
-          baseColor: 0x080808,
+          highlightColor: 0x0ea5e9,
+          midtoneColor: 0x00f2ff,
+          lowlightColor: 0x020617,
+          baseColor: 0x020617,
           amplitudeFactor: 1.5,
           scale: 1.0,
           scaleMobile: 1.0
@@ -119,12 +119,12 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
               <div className="absolute inset-0 bg-gradient-to-t from-[#080808]/60 to-transparent" />
             </div>
             {/* Floating Halo */}
-            <div className="absolute inset-[-20px] border border-accent/20 rounded-[40px] animate-pulse-slow pointer-events-none" />
+            <div className="absolute inset-[-20px] border border-accent/30 rounded-[40px] animate-pulse-slow pointer-events-none shadow-[0_0_50px_rgba(14,165,233,0.2)]" />
           </div>
 
           <div className="text-center md:text-left space-y-2 stagger-in">
             <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-none font-outfit uppercase">
-              Pranjal <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-white to-accent animate-liquid-chrome drop-shadow-[0_0_30px_rgba(123,94,246,0.3)]">Narwal</span>
+              Pranjal <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-white to-accent animate-liquid-chrome drop-shadow-[0_0_30px_rgba(14,165,233,0.4)]">Narwal</span>
             </h1>
             <div className="flex items-center gap-4 justify-center md:justify-start">
               <span className="h-[2px] w-12 bg-accent/40" />
@@ -188,16 +188,16 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
               <button 
                 onMouseEnter={() => sounds.current.hover.play()}
                 onClick={() => window.open("/resume.pdf", "_blank")}
-                className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-blue-500/40 transition-all duration-700 overflow-hidden flex items-center px-8"
+                className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all duration-700 overflow-hidden flex items-center px-8"
               >
-                <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
-                <FileText size={24} className="text-blue-500 mr-6 group-hover/btn:scale-110 transition-transform" />
+                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
+                <FileText size={24} className="text-accent mr-6 group-hover/btn:scale-110 transition-transform" />
                 <div className="flex flex-col items-start">
                   <span className="text-[9px] text-textMuted font-black uppercase tracking-[0.3em] mb-1">Professional Profile</span>
                   <span className="text-base text-white font-medium">Digital Resume</span>
                 </div>
                 <div className="ml-auto opacity-0 group-hover/btn:opacity-100 translate-x-4 group-hover/btn:translate-x-0 transition-all duration-700">
-                  <Sparkles size={16} className="text-blue-500" />
+                  <Sparkles size={16} className="text-accent" />
                 </div>
               </button>
 
