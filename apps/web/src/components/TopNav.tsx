@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
 import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
 
 import { DropdownMenu, type MenuItem } from './DropdownMenu';
 import { toast } from '../store/useToastStore';
@@ -171,7 +172,13 @@ export const TopNav = ({
         <div className="flex flex-col min-w-0">
           <input 
             type="text" 
-            defaultValue="Untitled Workbook" 
+            value={useSheetStore(state => state.workbookName)}
+            onChange={(e) => {
+              const newName = e.target.value;
+              useSheetStore.getState().renameWorkbook(newName);
+              const workbookId = getWorkbookIdFromUrl();
+              socketService.emitSheetAction(workbookId, 'rename_sheet', { name: newName });
+            }}
             className="bg-transparent font-medium text-textMain text-sm outline-none border border-transparent hover:border-border px-1 rounded transition-colors focus:border-accent focus:bg-surface truncate"
           />
           <div className="flex items-center gap-0.5 md:gap-1 px-1 mt-0.5 overflow-x-auto no-scrollbar">

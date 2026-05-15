@@ -31,6 +31,8 @@ interface SocketResponse {
   message?: string;
   reason?: string;
   color?: string;
+  userId?: string;
+  workbookName?: string;
 }
 
 class SocketService {
@@ -115,7 +117,7 @@ class SocketService {
     this.socket.on('room_lock_status', (payload: { locked: boolean }) => useSheetStore.getState().setRoomLocked(payload.locked));
     this.socket.on('host_changed', (data: { newHostId: string }) => {
       const state = useSheetStore.getState();
-      state.setIsHost(data.newHostId === state.localUserName);
+      state.setIsHost(data.newHostId === state.localUserId);
     });
 
     this.socket.on('user_joined', (user: { userId: string, name: string, color: string, isHost: boolean }) => {
@@ -187,6 +189,8 @@ class SocketService {
     if (res.success) {
       const state = useSheetStore.getState();
       state.setIsHost(!!res.isHost);
+      if (res.userId) state.setLocalUserId(res.userId);
+      if (res.workbookName) state.renameWorkbook(res.workbookName);
       if (res.members) state.setConnectedUsers(res.members);
     }
     return res;

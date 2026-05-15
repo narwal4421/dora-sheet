@@ -13,7 +13,7 @@ const BODYGUARD_LIMITS = {
   PAYLOAD_MAX_SIZE: 5000,
 };
 
-const ALLOWED_SHEET_ACTIONS = ['add_row', 'delete_row', 'add_column', 'delete_column', 'rename_sheet', 'clearSheet'];
+const ALLOWED_SHEET_ACTIONS = ['insertRow', 'deleteRow', 'insertCol', 'deleteCol', 'rename_sheet', 'clearSheet', 'toggleFilter', 'sort'];
 
 // Structured Logging for Security Events
 const logSecurity = (action: string, data: any) => {
@@ -121,7 +121,10 @@ export const initSockets = (httpServer: Server) => {
           isHost: s.data.userId === hostId
         }])).values());
 
-        callback?.({ success: true, isHost, members, color: socket.data.color });
+        const workbook = await prisma.workbook.findUnique({ where: { id: workbookId }, select: { name: true } });
+        const workbookName = workbook?.name || 'Untitled Workbook';
+
+        callback?.({ success: true, isHost, members, color: socket.data.color, userId, workbookName });
       } catch (err) {
         console.error('Join Error:', err);
         callback?.({ success: false, reason: 'SERVER_ERROR' });
@@ -223,6 +226,13 @@ export const initSockets = (httpServer: Server) => {
         const sheetId = payload.sheetId;
         if (sheetId) {
           await prisma.sheet.update({ where: { id: sheetId }, data: { data: JSON.stringify({}) } });
+        }
+      }
+
+      if (payload.action === 'rename_sheet') {
+        const name = payload.payload?.name || payload.name;
+        if (name) {
+          await prisma.workbook.update({ where: { id: activeWorkbookId }, data: { name } });
         }
       }
     });

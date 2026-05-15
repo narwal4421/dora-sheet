@@ -1,63 +1,79 @@
-import React, { useState, useRef } from 'react';
-import { toast } from '../store/useToastStore';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  Video, VideoOff, Mic, MicOff, PhoneOff, Users, 
-  Settings, Minimize2, ScreenShare, SignalHigh 
+  LiveKitRoom, 
+  VideoConference, 
+  RoomAudioRenderer
+} from '@livekit/components-react';
+import '@livekit/components-styles';
+import { 
+  Video, PhoneOff, Minimize2, SignalHigh, Loader2, Maximize2
 } from 'lucide-react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-
-interface Participant {
-  id: string;
-  name: string;
-  isAudioEnabled: boolean;
-  isVideoEnabled: boolean;
-  isLocal: boolean;
-  stream?: MediaStream;
-  color: string;
-}
+import { useCallStore } from '../store/useCallStore';
+import { useSheetStore } from '../store/useSheetStore';
+import { toast } from '../store/useToastStore';
+import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
 
 /**
  * GOD LEVEL CALL OVERLAY
- * High-performance real-time communication hub.
+ * High-performance real-time communication hub using LiveKit SFU.
  * Features cinematic GSAP transitions, adaptive grid layouts, 
  * and premium glassmorphic controls.
  */
 export const CallOverlay: React.FC = () => {
-  const [isActive, setIsActive] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const { isCallActive, callToken, startCall, endCall, setToken, setStatus } = useCallStore();
+  const { localUserName } = useSheetStore();
   const [isMinimized, setIsMinimized] = useState(false);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const workbookId = getWorkbookIdFromUrl();
+  const livekitUrl = import.meta.env.VITE_LIVEKIT_URL;
+
   useGSAP(() => {
-    if (isActive) {
+    if (isCallActive && !isMinimized) {
       gsap.fromTo('.call-container', 
         { y: 100, opacity: 0, scale: 0.9 }, 
         { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.7)' }
       );
     }
-  }, [isActive]);
+  }, [isCallActive, isMinimized]);
 
-  const toggleCall = () => {
-    if (!isActive) {
-      // Mock joining a call
-      setParticipants([
-        { id: 'local', name: 'You', isAudioEnabled: true, isVideoEnabled: true, isLocal: true, color: '#6366f1' },
-        { id: 'remote-1', name: 'Pranjal', isAudioEnabled: true, isVideoEnabled: true, isLocal: false, color: '#ec4899' },
-      ]);
-    } else {
-      setParticipants([]);
+  const fetchToken = useCallback(async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');
+      
+      const response = await fetch(`${apiUrl}/api/v1/call/token?room=${workbookId}&userName=${encodeURIComponent(localUserName)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        setToken(result.data.token);
+        setStatus('connected');
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (err) {
+      console.error('Failed to fetch call token', err);
+      toast('Failed to join call. Check your connection.', 'error');
+      endCall();
     }
-    setIsActive(!isActive);
-  };
+  }, [workbookId, localUserName, setToken, setStatus, endCall]);
 
-  if (!isActive && !isMinimized) {
+  useEffect(() => {
+    if (isCallActive && !callToken) {
+      fetchToken();
+    }
+  }, [isCallActive, callToken, fetchToken]);
+
+  if (!isCallActive && !isMinimized) {
     return (
       <button 
-        onClick={toggleCall}
+        onClick={() => startCall(true, true)}
         className="fixed bottom-6 right-6 p-4 bg-accent text-white rounded-full shadow-[0_8px_32px_rgba(99,102,241,0.4)] hover:scale-110 active:scale-95 transition-all z-50 group"
       >
         <Video size={24} className="group-hover:rotate-12 transition-transform" />
@@ -66,104 +82,87 @@ export const CallOverlay: React.FC = () => {
     );
   }
 
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-6 right-6 z-[100] animate-in zoom-in duration-300">
+        <button 
+          onClick={() => setIsMinimized(false)}
+          className="w-16 h-16 rounded-full bg-accent text-white shadow-2xl flex items-center justify-center hover:scale-105 transition-all group overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-tr from-accent to-accentHover opacity-50 group-hover:opacity-100 transition-opacity" />
+          <div className="relative flex flex-col items-center">
+            <Maximize2 size={24} />
+            <span className="text-[8px] font-black uppercase mt-1">Live</span>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div 
       ref={containerRef}
-      className={`call-container fixed bottom-6 right-6 z-50 transition-all duration-500 ease-premium ${
-        isMinimized ? 'w-16 h-16 rounded-full' : 'w-80 rounded-2xl'
-      } bg-surface/80 backdrop-blur-2xl border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] overflow-hidden`}
+      className="call-container fixed bottom-6 right-6 z-[100] w-[340px] h-[480px] bg-surface/90 backdrop-blur-2xl border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] rounded-[32px] overflow-hidden flex flex-col"
     >
-      {!isMinimized && (
-        <>
-          {/* Header */}
-          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-bold text-textMain uppercase tracking-widest">SFU Live Link</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsMinimized(true)} className="p-1.5 hover:bg-white/10 rounded-lg text-textMuted transition-all">
-                <Minimize2 size={14} />
-              </button>
-              <button onClick={toggleCall} className="p-1.5 hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">
-                <PhoneOff size={14} />
-              </button>
+      {/* Header */}
+      <div className="p-5 flex items-center justify-between border-b border-white/5 bg-white/5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shadow-inner">
+            <Video size={20} />
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-white uppercase tracking-wider">Workbook Call</h3>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[9px] font-bold text-textMuted uppercase tracking-widest">Active SFU Link</span>
             </div>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setIsMinimized(true)} className="p-2 hover:bg-white/5 rounded-xl text-textMuted hover:text-white transition-all">
+            <Minimize2 size={18} />
+          </button>
+          <button onClick={() => endCall()} className="p-2 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all shadow-lg shadow-rose-500/10">
+            <PhoneOff size={18} />
+          </button>
+        </div>
+      </div>
 
-          {/* Participant Grid */}
-          <div className="p-3 grid grid-cols-2 gap-2 min-h-[160px]">
-            {participants.map(p => (
-              <div key={p.id} className="relative aspect-video bg-black/40 rounded-xl overflow-hidden border border-white/5 group">
-                {p.isVideoEnabled ? (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-xl" style={{ backgroundColor: p.color }}>
-                      {p.name[0]}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <VideoOff size={20} className="text-white/20" />
-                  </div>
-                )}
-                
-                {/* Overlay Info */}
-                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-white px-1.5 py-0.5 bg-black/40 backdrop-blur-md rounded-md">
-                    {p.name} {p.isLocal && '(You)'}
-                  </span>
-                  <div className="flex gap-1">
-                    {!p.isAudioEnabled && <MicOff size={10} className="text-rose-500" />}
-                    <SignalHigh size={10} className="text-emerald-500" />
-                  </div>
-                </div>
-              </div>
-            ))}
+      {/* LiveKit Room */}
+      <div className="flex-1 relative overflow-hidden bg-black/20">
+        {!callToken ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-8 h-8 text-accent animate-spin" />
+            <span className="text-[10px] font-black text-textMuted uppercase tracking-[0.2em] animate-pulse">Establishing Connection...</span>
           </div>
-
-          {/* Controls */}
-          <div className="p-4 bg-white/5 flex items-center justify-around">
-            <button 
-              onClick={() => setIsMuted(!isMuted)}
-              className={`p-3 rounded-xl transition-all ${isMuted ? 'bg-rose-500/20 text-rose-500' : 'bg-white/10 text-textMain hover:bg-white/20'}`}
-            >
-              {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
-            <button 
-              onClick={() => setIsVideoOff(!isVideoOff)}
-              className={`p-3 rounded-xl transition-all ${isVideoOff ? 'bg-rose-500/20 text-rose-500' : 'bg-white/10 text-textMain hover:bg-white/20'}`}
-            >
-              {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
-            </button>
-            <button 
-              onClick={() => toast('Screen sharing is being optimized for high-bitrate streaming...', 'info')}
-              className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all"
-            >
-              <ScreenShare size={20} />
-            </button>
-            <button 
-              onClick={() => toast('Communication settings coming soon!', 'info')}
-              className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all"
-            >
-              <Settings size={20} />
-            </button>
-          </div>
-        </>
-      )}
-
-      {isMinimized && (
-        <button 
-          onClick={() => setIsMinimized(false)}
-          className="w-full h-full flex items-center justify-center bg-accent text-white"
-        >
-          <div className="relative">
-            <Users size={24} />
-            <div className="absolute -top-2 -right-2 bg-rose-500 text-[10px] font-bold px-1 rounded-full border border-white">
-              {participants.length}
+        ) : (
+          <LiveKitRoom
+            video={true}
+            audio={true}
+            token={callToken}
+            serverUrl={livekitUrl}
+            onDisconnected={() => endCall()}
+            className="h-full flex flex-col"
+            style={{ '--lk-bg': 'transparent' } as any}
+          >
+            <div className="flex-1 overflow-hidden p-4">
+               <VideoConference 
+                 className="h-full border-none" 
+                 style={{ border: 'none' }} 
+               />
             </div>
-          </div>
-        </button>
-      )}
+            <RoomAudioRenderer />
+          </LiveKitRoom>
+        )}
+      </div>
+
+      {/* Footer Info */}
+      <div className="p-4 bg-white/5 border-t border-white/5 flex items-center justify-center gap-4">
+        <div className="flex items-center gap-2">
+          <SignalHigh size={14} className="text-emerald-500" />
+          <span className="text-[9px] font-black text-textMuted uppercase tracking-widest">HD Streaming Optimized</span>
+        </div>
+      </div>
     </div>
   );
 };

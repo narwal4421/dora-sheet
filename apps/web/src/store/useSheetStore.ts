@@ -128,6 +128,10 @@ interface SheetState {
   setIsHost: (isHost: boolean) => void;
   localUserName: string;
   setLocalUserName: (name: string) => void;
+  localUserId: string | null;
+  setLocalUserId: (id: string) => void;
+  workbookName: string;
+  renameWorkbook: (name: string) => void;
   isLocked: boolean;
   setRoomLocked: (locked: boolean) => void;
   roomLockError: boolean;
@@ -169,6 +173,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   connectedUsers: [],
   isHost: false,
   localUserName: localStorage.getItem('userName') || 'Guest User',
+  localUserId: null,
+  workbookName: 'Untitled Workbook',
   isLocked: false,
   roomLockError: false,
   isWaitingForApproval: false,
@@ -202,6 +208,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     localStorage.setItem('userName', name);
     set({ localUserName: name });
   },
+  setLocalUserId: (id) => set({ localUserId: id }),
+  renameWorkbook: (name) => set({ workbookName: name }),
   setConnectedUsers: (users) => set({ connectedUsers: users }),
   addTeamMessage: (msg) => set(state => ({ teamMessages: [...state.teamMessages.slice(-100), msg] })),
   setRoomLocked: (locked) => set({ isLocked: locked }),
@@ -257,6 +265,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     else if (action === 'sort') store.sortAZ(colIndex);
     else if (action === 'toggleFilter') store.toggleFilter(colIndex);
     else if (action === 'clearSheet') store.clearSheet();
+    else if (action === 'rename_sheet') store.renameWorkbook(payload.name);
   },
 
   // --- ACTIONS: GRID OPERATIONS ---

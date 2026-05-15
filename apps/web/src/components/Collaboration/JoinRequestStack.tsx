@@ -9,8 +9,8 @@ interface JoinRequest {
 
 interface JoinRequestStackProps {
   requests: JoinRequest[];
-  onAccept: () => void;
-  onDeny: () => void;
+  onAccept: (req: JoinRequest) => void;
+  onDeny: (req: JoinRequest) => void;
 }
 
 export const JoinRequestStack: React.FC<JoinRequestStackProps> = ({ requests, onAccept, onDeny }) => {
@@ -40,13 +40,13 @@ export const JoinRequestStack: React.FC<JoinRequestStackProps> = ({ requests, on
           {idx === 0 && (
             <div className="flex gap-2">
               <button 
-                onClick={onAccept}
+                onClick={() => onAccept(req)}
                 className="flex-1 bg-accent hover:bg-accentHover text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-95"
               >
                 Approve
               </button>
               <button 
-                onClick={onDeny}
+                onClick={() => onDeny(req)}
                 className="px-4 bg-white/5 hover:bg-white/10 text-textMuted py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 active:scale-95"
               >
                 Deny

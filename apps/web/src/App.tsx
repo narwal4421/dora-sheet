@@ -154,8 +154,8 @@ function App() {
 
         <JoinRequestStack 
           requests={pendingJoinRequests} 
-          onAccept={() => handleAcceptJoin(pendingJoinRequests[0])} 
-          onDeny={() => handleDenyJoin(pendingJoinRequests[0])} 
+          onAccept={handleAcceptJoin} 
+          onDeny={handleDenyJoin} 
         />
 
         {joinNotification && (

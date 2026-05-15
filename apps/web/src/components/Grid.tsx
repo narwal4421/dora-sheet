@@ -166,8 +166,29 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
           { label: 'Copy', icon: '📋', onClick: () => {} },
           { label: 'Paste', icon: '📌', onClick: () => {} },
           { divider: true },
-          { label: 'Insert Row', icon: '⬆', onClick: () => useSheetStore.getState().insertRowAbove() },
-          { label: 'Delete Row', icon: '✕', danger: true, onClick: () => useSheetStore.getState().deleteRow() }
+          { 
+            label: 'Insert Row', 
+            icon: '⬆', 
+            onClick: () => {
+              const { activeCell } = useSheetStore.getState();
+              const index = activeCell ? parseRef(activeCell).r : 0;
+              useSheetStore.getState().insertRowAbove();
+              socketService.emitSheetAction(workbookId, 'insertRow', { index });
+            } 
+          },
+          { 
+            label: 'Delete Row', 
+            icon: '✕', 
+            danger: true, 
+            onClick: () => {
+              const { activeCell } = useSheetStore.getState();
+              const index = activeCell ? parseRef(activeCell).r : -1;
+              if (index !== -1) {
+                useSheetStore.getState().deleteRow();
+                socketService.emitSheetAction(workbookId, 'deleteRow', { index });
+              }
+            } 
+          }
         ]});
       }}
     >
