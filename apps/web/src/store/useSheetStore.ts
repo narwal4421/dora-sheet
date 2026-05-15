@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { socketService } from '../services/socket.service';
+import { getWorkbookIdFromUrl } from '../utils/url';
 
 export type CellFormat = {
   bold?: boolean;
@@ -267,19 +269,17 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     };
   }),
 
-  setCellFormat: (ref, format) => {
+  setCellFormat: (ref, formatPatch) => {
     set(state => {
       const history = [...state.history, state.data].slice(-50);
       const existing = state.data[ref]?.fmt || {};
-      const newData = { ...state.data, [ref]: { ...state.data[ref], fmt: { ...existing, ...format } } };
+      const newData = { ...state.data, [ref]: { ...state.data[ref], fmt: { ...existing, ...formatPatch } } };
       return { data: newData, history, future: [] };
     });
     // Emit formatting update to other users
-    const format = get().data[ref]?.fmt;
-    if (format) {
-      const { socketService } = require('../services/socket.service');
-      const { getWorkbookIdFromUrl } = require('../utils/url');
-      socketService.emitCellUpdate(getWorkbookIdFromUrl(), ref, { fmt: format });
+    const currentFmt = get().data[ref]?.fmt;
+    if (currentFmt) {
+      socketService.emitCellUpdate(getWorkbookIdFromUrl(), ref, { fmt: currentFmt });
     }
   },
 
