@@ -11,7 +11,8 @@ export const TopNav = ({
   onShowShare,
   onShowAbout,
   onNewWorkbook,
-  onShowTemplates
+  onShowTemplates,
+  isHost
 }: { 
   onShowVersionHistory: () => void, 
   onShowShare: () => void,
