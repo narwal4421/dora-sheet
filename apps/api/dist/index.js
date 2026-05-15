@@ -18,6 +18,7 @@ const workspace_router_1 = require("./modules/workspace/workspace.router");
 const workbook_router_1 = require("./modules/workbook/workbook.router");
 const ai_router_1 = require("./modules/ai/ai.router");
 const file_router_1 = require("./modules/file/file.router");
+const call_router_1 = require("./modules/call/call.router");
 const app = (0, express_1.default)();
 app.set('trust proxy', 1); // Trust the Render proxy for accurate rate-limiting IP detection
 const swaggerOptions = {
@@ -46,7 +47,10 @@ app.use('/api/docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.de
 // Middlewares
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: env_1.env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+        // Dynamic origin reflection for demo - allows any requester to connect
+        callback(null, origin || true);
+    },
     credentials: true
 }));
 app.use(express_1.default.json());
@@ -58,6 +62,7 @@ app.use('/api/v1/workspaces', workspace_router_1.workspaceRouter);
 app.use('/api/v1/workbooks', workbook_router_1.workbookRouter);
 app.use('/api/v1/ai', ai_router_1.aiRouter);
 app.use('/api/v1', file_router_1.fileRouter);
+app.use('/api/v1/call', call_router_1.callRouter);
 app.get('/api/v1/health', (req, res) => {
     res.json({ success: true, data: { status: 'ok', time: new Date() } });
 });
@@ -100,6 +105,41 @@ setInterval(async () => {
         logger_1.logger.error('Auto-snapshot error:', err);
     }
 }, 5 * 60 * 1000);
-server.listen(port, () => {
+server.listen(port, async () => {
     logger_1.logger.info(`SmartSheet API running on port ${port} in ${env_1.env.NODE_ENV} mode`);
+    // SEED DEFAULT DATA FOR DEMO
+    try {
+        const defaultId = 'default-workbook-id';
+        const existingSheet = await prisma_1.prisma.sheet.findUnique({ where: { id: defaultId } });
+        if (!existingSheet) {
+            logger_1.logger.info('Seeding default workbook and sheet...');
+            const workspace = await prisma_1.prisma.workspace.create({
+                data: { name: 'Public Workspace', id: 'default-workspace-id' }
+            });
+            await prisma_1.prisma.workspaceMember.create({
+                data: { workspaceId: workspace.id, userId: 'local-dev-user', role: 'ADMIN' }
+            });
+            const workbook = await prisma_1.prisma.workbook.create({
+                data: {
+                    id: defaultId,
+                    name: 'Demo Workbook',
+                    workspaceId: workspace.id
+                }
+            });
+            await prisma_1.prisma.sheet.create({
+                data: {
+                    id: defaultId,
+                    name: 'Sheet 1',
+                    workbookId: workbook.id,
+                    data: JSON.stringify({}),
+                    rowCount: 100,
+                    colCount: 26
+                }
+            });
+            logger_1.logger.info('Default data seeded successfully.');
+        }
+    }
+    catch (err) {
+        logger_1.logger.error('Startup seeding failed:', err);
+    }
 });

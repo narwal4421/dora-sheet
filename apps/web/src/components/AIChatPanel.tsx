@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, X, Check, Loader2, Paperclip, FileText, Users } from 'lucide-react';
+import { Bot, Send, X, Check, Loader2, Paperclip, FileText, Users, Phone, Video } from 'lucide-react';
 import { useSheetStore } from '../store/useSheetStore';
 import type { CellData } from '../store/useSheetStore';
 import { socketService } from '../services/socket.service';
+import { useCallStore } from '../store/useCallStore';
 
 interface Message {
   role: 'user' | 'ai';
@@ -65,6 +66,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const sheetData = useSheetStore(state => state.data);
   const teamMessages = useSheetStore(state => state.teamMessages);
   const localUserName = useSheetStore(state => state.localUserName);
+  const connectedUsers = useSheetStore(state => state.connectedUsers);
+  const isCallActive = useCallStore(state => state.isCallActive);
 
   // Convert internal ref format (r_0_c_0) to A1 notation for AI context
   const getSheetContext = () => {
@@ -483,8 +486,25 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 relative">
+          <div className="flex flex-col gap-3">
+            {connectedUsers.length > 0 && !isCallActive && (
+              <div className="flex items-center gap-2 px-1">
+                <button 
+                  onClick={() => useCallStore.getState().startCall(false, true)}
+                  className="flex-1 bg-accent/20 hover:bg-accent hover:text-white text-accent py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-accent/30"
+                >
+                  <Phone size={14} /> Voice Call
+                </button>
+                <button 
+                  onClick={() => useCallStore.getState().startCall(true, true)}
+                  className="flex-1 bg-accent/20 hover:bg-accent hover:text-white text-accent py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-accent/30"
+                >
+                  <Video size={14} /> Video Call
+                </button>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
               <input 
                 className="w-full bg-black/40 border border-white/10 rounded-2xl pl-4 pr-12 py-3 text-sm text-white outline-none focus:border-accent transition-all shadow-inner"
                 placeholder="Message your team..."
@@ -500,6 +520,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
                 <Send size={18} />
               </button>
             </div>
+          </div>
           </div>
         )}
       </div>

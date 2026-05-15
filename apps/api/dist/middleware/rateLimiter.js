@@ -13,7 +13,7 @@ exports.apiLimiter = (0, express_rate_limit_1.default)({
 });
 exports.authLimiter = (0, express_rate_limit_1.default)({
     windowMs: 60 * 60 * 1000, // 1 hour
-    limit: 10, // Limit each IP to 10 requests per `window` (here, per 1 hour) for auth routes
+    limit: 100, // Increased to 100 to support silent refreshes (1 per min)
     standardHeaders: 'draft-7',
     legacyHeaders: false,
 });

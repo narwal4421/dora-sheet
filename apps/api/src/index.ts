@@ -13,6 +13,7 @@ import { workspaceRouter } from './modules/workspace/workspace.router';
 import { workbookRouter } from './modules/workbook/workbook.router';
 import { aiRouter } from './modules/ai/ai.router';
 import { fileRouter } from './modules/file/file.router';
+import { callRouter } from './modules/call/call.router';
 
 const app = express();
 app.set('trust proxy', 1); // Trust the Render proxy for accurate rate-limiting IP detection
@@ -62,6 +63,7 @@ app.use('/api/v1/workspaces', workspaceRouter);
 app.use('/api/v1/workbooks', workbookRouter);
 app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1', fileRouter);
+app.use('/api/v1/call', callRouter);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ success: true, data: { status: 'ok', time: new Date() } });

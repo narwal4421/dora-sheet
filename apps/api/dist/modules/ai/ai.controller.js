@@ -35,63 +35,99 @@ const xlsx = __importStar(require("xlsx"));
 const chatSchema = zod_1.z.object({
     sheetId: zod_1.z.string(),
     prompt: zod_1.z.string().min(1),
-    activeCell: zod_1.z.string().optional()
+    activeCell: zod_1.z.string().optional(),
+    history: zod_1.z.string().optional(),
+    sheetContext: zod_1.z.string().optional()
 });
 class AIController {
     static async chat(req, res) {
-        const userId = req.user?.userId || 'local-dev-user';
-        // Rate Limiting
-        const today = (0, dayjs_1.default)().format('YYYY-MM-DD');
-        const limitKey = `ai:ratelimit:${userId}:${today}`;
-        const count = await redis_1.redis.incr(limitKey);
-        if (count === 1) {
-            // Set expiry to end of day
-            const eod = (0, dayjs_1.default)().endOf('day').unix();
-            const now = (0, dayjs_1.default)().unix();
-            await redis_1.redis.expire(limitKey, eod - now);
-        }
-        if (count > 50) {
-            res.status(429).json({
-                success: false,
-                error: {
-                    message: 'Rate limit exceeded',
-                    resetAt: (0, dayjs_1.default)().add(1, 'day').startOf('day').toISOString()
+        try {
+            const userId = req.user?.userId || 'local-dev-user';
+            // Rate Limiting (Safe mock)
+            const today = (0, dayjs_1.default)().format('YYYY-MM-DD');
+            const limitKey = `ai:ratelimit:${userId}:${today}`;
+            let count = 0;
+            try {
+                count = await redis_1.redis.incr(limitKey);
+            }
+            catch (e) {
+                console.warn("Redis fail, skipping rate limit");
+            }
+            if (count > 100) {
+                return res.status(429).json({ success: false, message: 'Rate limit exceeded' });
+            }
+            // Safe Parsing
+            let body;
+            try {
+                body = chatSchema.parse(req.body);
+            }
+            catch (e) {
+                return res.status(400).json({ success: false, message: 'Invalid request: ' + e.message });
+            }
+            let { sheetId, prompt, history, sheetContext } = body;
+            let fileData = undefined;
+            let mimeType = undefined;
+            // Safe History Parsing
+            let parsedHistory = [];
+            try {
+                parsedHistory = history ? JSON.parse(history) : [];
+                if (!Array.isArray(parsedHistory))
+                    parsedHistory = [];
+            }
+            catch (e) {
+                console.warn("History parse failed, using empty history");
+                parsedHistory = [];
+            }
+            if (req.file) {
+                const isExcel = req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                    req.file.mimetype === 'application/vnd.ms-excel' ||
+                    req.file.originalname.endsWith('.xlsx') ||
+                    req.file.originalname.endsWith('.xls') ||
+                    req.file.originalname.endsWith('.csv');
+                if (isExcel) {
+                    try {
+                        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+                        let attachedDataContext = "\n\n── ATTACHED DOCUMENT CONTENT ──\n";
+                        for (const sheetName of workbook.SheetNames) {
+                            const worksheet = workbook.Sheets[sheetName];
+                            const csvData = xlsx.utils.sheet_to_csv(worksheet);
+                            // Limit each sheet's context to avoid blowing up the prompt, 
+                            // but provide enough for the AI to understand the structure.
+                            const lines = csvData.split('\n');
+                            const previewLines = lines.slice(0, 100).join('\n');
+                            attachedDataContext += `\n[Sheet: ${sheetName}]\n`;
+                            attachedDataContext += `Total Rows: ${lines.length}\n`;
+                            attachedDataContext += `Data Preview:\n${previewLines}\n`;
+                            if (lines.length > 100) {
+                                attachedDataContext += `(... ${lines.length - 100} more rows)\n`;
+                            }
+                        }
+                        attachedDataContext += "───────────────────────────────\n";
+                        prompt += attachedDataContext;
+                    }
+                    catch (error) {
+                        console.error("Excel parse failed", error);
+                        prompt += `\n\n[System Note: An Excel file was attached but could not be parsed: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+                    }
                 }
+                else {
+                    fileData = req.file.buffer.toString('base64');
+                    mimeType = req.file.mimetype;
+                }
+            }
+            const result = await ai_service_1.AIService.chat(userId, sheetId, prompt, fileData, mimeType, parsedHistory, sheetContext);
+            return res.json({
+                success: true,
+                data: result
             });
-            return;
         }
-        let { sheetId, prompt } = chatSchema.parse(req.body);
-        let fileData = undefined;
-        let mimeType = undefined;
-        if (req.file) {
-            const isExcel = req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-                req.file.mimetype === 'application/vnd.ms-excel' ||
-                req.file.originalname.endsWith('.xlsx') ||
-                req.file.originalname.endsWith('.xls') ||
-                req.file.originalname.endsWith('.csv');
-            if (isExcel) {
-                // Parse Excel/CSV into text before sending to AI
-                try {
-                    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const csvData = xlsx.utils.sheet_to_csv(workbook.Sheets[firstSheetName]);
-                    prompt += `\n\n[Attached Spreadsheet Data]:\n${csvData}`;
-                }
-                catch (error) {
-                    console.error("Failed to parse Excel file:", error);
-                    throw new Error("Failed to parse the uploaded spreadsheet.");
-                }
-            }
-            else {
-                fileData = req.file.buffer.toString('base64');
-                mimeType = req.file.mimetype;
-            }
+        catch (err) {
+            console.error("[Controller Critical Error]", err);
+            return res.status(500).json({
+                success: false,
+                message: `Controller Error: ${err.message}`
+            });
         }
-        const result = await ai_service_1.AIService.chat(userId, sheetId, prompt, fileData, mimeType);
-        res.json({
-            success: true,
-            data: result
-        });
     }
 }
 exports.AIController = AIController;

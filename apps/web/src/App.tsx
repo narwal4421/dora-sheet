@@ -14,6 +14,7 @@ import { ToastContainer } from './components/ToastContainer';
 import { toast } from './store/useToastStore';
 import { Sparkles, Check, X as CloseIcon, Users } from 'lucide-react';
 import { DashboardOverlay, type DashboardData } from './components/DashboardOverlay';
+import { CallOverlay } from './components/CallOverlay';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -222,6 +223,8 @@ function App() {
         {dashboardData && (
           <DashboardOverlay data={dashboardData} onClose={() => setDashboardData(null)} />
         )}
+
+        <CallOverlay />
 
         {/* Join Identity Modal */}
         {showJoinModal && (

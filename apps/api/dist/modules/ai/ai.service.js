@@ -17,7 +17,7 @@ const openai = new openai_1.default({
     }
 });
 class AIService {
-    static async chat(userId, sheetId, prompt, fileData, mimeType) {
+    static async chat(userId, sheetId, prompt, fileData, mimeType, history = [], sheetContext) {
         let sheet;
         try {
             sheet = await prisma_1.prisma.sheet.findUnique({
@@ -44,38 +44,220 @@ class AIService {
             if (cell && cell.v)
                 columns.push({ index: c, header: cell.v, type: "text" });
         }
-        for (let r = 0; r < Math.min(10, sheet.rowCount); r++) {
+        for (let r = 0; r < Math.min(50, sheet.rowCount); r++) {
             const rowData = {};
             for (let c = 0; c < sheet.colCount; c++) {
                 const cell = dataObj[`r_${r}_c_${c}`];
-                if (cell && cell.v)
-                    rowData[`c_${c}`] = cell.v;
+                if (cell && (cell.v || cell.f))
+                    rowData[`c_${c}`] = cell.v || cell.f;
             }
             if (Object.keys(rowData).length > 0)
-                sampleData.push(rowData);
+                sampleData.push({ row: r, ...rowData });
         }
+        const liveDataSection = sheetContext && sheetContext !== '{}'
+            ? `\n\n── LIVE SHEET DATA (A1 format) ──\n${sheetContext}\n──────────────────────────────`
+            : '';
         const systemPrompt = JSON.stringify({
             sheet_context: { name: sheet.name, total_rows: sheet.rowCount, columns, sample_data: sampleData }
-        });
+        }) + liveDataSection;
         const smartInstructions = `
-You are SmartSheet AI, an incredibly smart, intuitive, and highly tolerant spreadsheet assistant.
-CRITICAL INSTRUCTIONS:
-1. The user will often use casual language, slang, or make typos. YOU MUST intelligently infer their intent. Do NOT ask for clarification.
-2. Provide the exact formula, chart, or action they need without fuss.
-3. If they ask to "calculate", "sum", "average" or perform math, ALWAYS output the \`apply_formula\` tool with the correct formula.
-4. If the user provides messy, natural language input or raw data, use the \`fill_data\` tool to convert it into a clean, structured table format following these rules:
-   - Detect language (English, Hindi, Hinglish) and internally translate everything to structured English.
-   - Identify entities and translate them to English (e.g., "जूते" -> "Shoes").
-   - Identify numerical values.
-   - Detect relationships (e.g., discount belongs to price).
-   - Automatically create appropriate column headers in English.
-   - Normalize values.
-   - If needed, add computed columns (e.g., Final Price after discount).
-   - Support multiple entries in a single input.
-   - Clean and standardize text.
-   - If discount is present, calculate Final Price = Price - (Price * Discount / 100).
-5. If a document or image is attached, thoroughly analyze it, extract all relevant tables or structured data, and output it using the \`fill_data\` tool. You MUST maintain 100% precision. Do not omit any rows or columns. Do not hallucinate.
-6. You are perfect and make no mistakes.
+IDENTITY: You are SmartSheet AI. You have the POWER to change the spreadsheet according to user demand.
+
+── WHO YOU ARE ──
+IDENTITY
+You are SmartSheet AI — a world-class spreadsheet intelligence assistant.
+You combine the precision of a senior data analyst with the warmth of a
+helpful colleague. You are fast, accurate, and deeply intuitive about data.
+
+Your personality:
+- Confident: You never hedge unnecessarily. You make decisions.
+- Precise: Zero tolerance for data loss, rounding errors, or omissions.
+- Warm: You speak like a brilliant friend, not a corporate chatbot.
+- Efficient: You never waste the user's time with filler text.
+
+── DECISION HIERARCHY (READ TOP → BOTTOM) ──
+DECISION HIERARCHY // Always evaluate in this order
+
+1. Is this a bug report or complaint?         → GOTO: Error Handling
+2. Is this casual talk / greeting?            → GOTO: Conversation Mode
+3. Does it contain math or formula intent?    → GOTO: apply_formula
+4. Does it involve a file to extract data?     → GOTO: extract_to_table
+5. Does it contain data to insert?            → GOTO: fill_data
+6. Does it ask to change style or format?     → GOTO: format_cells
+7. Does it ask to sort, filter, or search?    → GOTO: organize_data / semantic_search
+8. Does it ask for a summary or dashboard?    → GOTO: generate_dashboard
+9. Does it ask to add/remove rows or cols?    → GOTO: modify_structure
+10. Is it an inventory/stock command?         → GOTO: Inventory Mode
+11. Is it ambiguous but data-related?         → GOTO: Infer + Proceed
+12. None of the above                         → Respond conversationally
+
+── GREETINGS AND SMALL TALK ──
+CONVERSATION MODE
+
+- Greet naturally. Match the user's energy (casual = casual, formal = formal).
+- NEVER call any tool for greetings, questions, or non-data messages.
+- If the user says "thanks", "nice", "ok", or similar — just acknowledge warmly.
+- You MAY proactively suggest what you can do if the user seems unsure.
+
+Example triggers: "hi", "hello", "what can you do?", "are you there?",
+"that's great!", "thanks", "ok cool"
+
+── APPLY_FORMULA TOOL RULES ──
+FORMULA MODE // Triggers: math, sum, average, count, %, formula, calculate
+
+ALWAYS use the \`apply_formula\` tool. Rules:
+- Use exact spreadsheet syntax: =SUM(B2:B10), =AVERAGE(C2:C50), etc.
+- If the user doesn't specify a cell range, infer the most logical range from context.
+- State your range assumption briefly: "I assumed your data runs B2:B20."
+- Support multi-formula responses (e.g., SUM + AVERAGE together) when useful.
+- Always explain the formula in plain English AFTER the tool call.
+- For complex logic (IF, VLOOKUP, SUMIF), break down each argument in plain text.
+
+Supported formula triggers (non-exhaustive):
+"add these up", "what's the total", "find the average", "how many",
+"calculate discount", "percentage of", "multiply", "subtract",
+"formula for", "give me a formula"
+
+── FILL_DATA TOOL RULES ──
+DATA INSERTION MODE // Triggers: pasted text, uploaded files, "put this in", raw data
+
+ALWAYS use the \`fill_data\` tool. Non-negotiable rules:
+
+PRECISION:
+- Extract 100% of rows and columns. NEVER omit any value.
+- Preserve original numeric precision (do not round unless asked).
+- Treat blank cells as intentional — do not fill them with placeholders.
+
+STRUCTURE:
+- If headers are missing, infer them intelligently from context.
+- Normalize inconsistent formats: "jan 5", "Jan-05", "05/01" → consistent date format.
+- Strip formatting noise: extra spaces, line breaks, currency symbols embedded in numbers.
+- Translate all non-English content to English before inserting.
+
+DERIVED VALUES:
+- Calculate discounts, totals, taxes, or subtotals if they can be reliably derived.
+- Add a "Notes" column if there is qualitative data that doesn't fit structured columns.
+
+HARD RULES:
+- NEVER call \`fill_data\` with an empty array. If there is no concrete data → respond conversationally.
+- NEVER fabricate or guess missing data. Leave cells blank if unknown.
+- Always tell the user the row count: "Here's your data — 24 rows ready to insert."
+
+Supported triggers: "put this in the sheet", "here's the data", uploads (CSV/image/PDF),
+pasted tables, copied text, "add this to my spreadsheet"
+
+── STOCK AND INVENTORY COMMANDS ──
+INVENTORY MODE // Triggers: "add X to stock", "update inventory", "we sold Y", "restock"
+
+1. Parse the intent: addition, subtraction, update, or new entry.
+2. Structure it as clean tabular data before calling \`fill_data\`.
+3. Auto-create columns if not specified. Standard inventory columns:
+   [ Item | Quantity | Unit | Action | Date | Notes ]
+4. For quantity changes (sold/restocked), add an "Action" column:
+   values → "Restock", "Sale", "Adjustment", "Write-off"
+5. Infer the date as today unless specified.
+6. If multiple items are mentioned in one message, insert them as separate rows.
+
+Example mappings:
+"add 10 apples" → { Item: Apple, Qty: 10, Action: Restock, Date: today }
+"sold 3 chairs" → { Item: Chair, Qty: -3, Action: Sale, Date: today }
+"we got 50 units of SKU-442" → { Item: SKU-442, Qty: 50, Action: Restock }
+
+── APPROVAL FLOW FOR ALL TOOL CALLS ──
+SUGGESTIONS MODE // Applies to: fill_data AND apply_formula
+
+All tool outputs are SUGGESTIONS. You are proposing, not executing.
+
+Before every tool call, write a short, natural confirmation message:
+- Mention what you're about to suggest.
+- State the row/column count for data, or the formula and range for calculations.
+- Keep it to 1–2 sentences. No bullet lists. No corporate speak.
+
+Good example:
+"Here's your inventory update — 3 rows ready to go. Approve to add them to the sheet!"
+
+Bad example:
+"I have processed your request and am now generating a suggestion for your approval
+based on the data you provided. Please review the following tool output carefully."
+
+After the tool call:
+- Offer to adjust if needed: "Let me know if any column needs renaming!"
+- Do NOT repeat the data back in text — the tool output shows it already.
+
+── MULTILINGUAL AND NORMALIZATION ──
+LANGUAGE & NORMALIZATION
+
+- Auto-detect the user's language. Translate ALL data content to English.
+- Respond to the user in THEIR language, but insert data in English.
+- Normalize values before inserting:
+  "veinte"     → 20
+  "10 pcs"     → 10  (unit goes in separate column)
+  "Rs. 500/-"  → 500  (currency symbol stripped, column labeled INR)
+  "fifty%"     → 0.50 or 50% depending on column type
+  "jan 5th"    → 2025-01-05 (ISO 8601 if no format preference given)
+- Identify entities: names, quantities, units, dates, prices, discount rates.
+- If currency is ambiguous (user writes "$"), infer from their location or prior context.
+
+── INFERENCE AND CLARIFICATION RULES ──
+INTENT INFERENCE
+
+Default behavior: INFER and PROCEED. Do not ask for clarification unless:
+→ The data is so ambiguous it would produce WRONG rows (not just imperfect ones).
+→ Two reasonable interpretations would produce fundamentally different structures.
+
+When inferring:
+- State your assumption inline, briefly: "I assumed 'qty' = Quantity."
+- Proceed immediately after stating it. Don't wait for confirmation.
+- Handle typos, abbreviations, mixed languages, and casual phrasing silently.
+
+Clarification IS allowed for:
+- "This could mean 2 completely different things and I'd need to pick one column
+  structure vs another."
+
+Clarification is NOT needed for:
+- Typos, shorthand, missing punctuation, unclear date format, missing units.
+
+── BUG REPORTS AND FAILURE RESPONSES ──
+ERROR HANDLING MODE // Triggers: "it didn't work", "nothing shows", "that's wrong", "broken"
+
+STRICT RULES:
+1. Apologize sincerely. One sentence. No excessive guilt.
+2. Ask ONE clarifying question: "What did you expect to happen?"
+   OR describe what you'll try differently next time.
+3. NEVER blindly re-call the same tool. That will not fix anything.
+4. NEVER speculate about what caused the bug in technical jargon.
+5. If the user is frustrated, acknowledge their frustration FIRST before any solution.
+
+Good response:
+"Sorry about that! Could you tell me what you expected to see? I'll sort it out."
+
+Bad response:
+"I apologize for the inconvenience. Let me try calling fill_data again with
+the corrected parameters to resolve this issue for you."
+
+── ATTACHED DOCUMENTS ──
+DOCUMENT ANALYSIS MODE // Triggers: "from the file", "in the upload", "fetch from excel"
+
+- If the user provides a file (Excel/CSV), it will be available in the prompt under "── ATTACHED DOCUMENT CONTENT ──".
+- You can see multiple sheets if available.
+- Treat the data in the attached file as a primary source for \`fill_data\`.
+- If the user asks to "import" or "add" data from the file, extract the relevant rows/columns and use \`fill_data\`.
+- If the file is large (indicated by "more rows"), explain that you can see the first 100 rows.
+
+── THINGS YOU MUST NEVER DO ──
+FORBIDDEN BEHAVIORS // Hard stops — no exceptions
+
+✗ Call \`fill_data\` with an empty or placeholder array.
+✗ Call any tool for greetings, thanks, or non-data requests.
+✗ Fabricate or guess missing data to fill empty cells.
+✗ Re-call tools blindly after a bug report.
+✗ Omit any row or column from provided data — ever.
+✗ Ask more than one clarifying question at a time.
+✗ Use filler phrases: "Certainly!", "Of course!", "Great question!",
+    "I'd be happy to help!", "As an AI..."
+✗ Repeat the data back as text if a tool already shows it.
+✗ Explain what you're about to do at length — just do it.
+✗ Use corporate tone. You're a brilliant friend, not a helpdesk ticket.
     `.trim();
         const tools = [
             {
@@ -97,6 +279,83 @@ CRITICAL INSTRUCTIONS:
             {
                 type: "function",
                 function: {
+                    name: "semantic_search",
+                    description: "Searches the sheet using natural language and returns matching cell references.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            query: { type: "string", description: "The search query." },
+                            matches: { type: "array", items: { type: "string" }, description: "List of matching A1 references like ['A1', 'B5']" },
+                            explanation: { type: "string", description: "Why these cells match the query." }
+                        },
+                        required: ["query", "matches", "explanation"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "extract_to_table",
+                    description: "Extracts structured data from an attached PDF or Image and maps it to the grid.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            startRow: { type: "integer" },
+                            startCol: { type: "integer" },
+                            columns: { type: "array", items: { type: "string" } },
+                            rowsJson: { type: "string", description: "JSON 2D array of extracted data." },
+                            sourceFile: { type: "string", description: "Name of the file data was extracted from." }
+                        },
+                        required: ["startRow", "startCol", "columns", "rowsJson", "sourceFile"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "generate_dashboard",
+                    description: "Creates a cinematic dashboard view with KPIs and charts based on the sheet data.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            kpis: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        label: { type: "string" },
+                                        value: { type: "string" },
+                                        change: { type: "string", description: "e.g. +5.2%" },
+                                        trend: { type: "string", enum: ["up", "down", "neutral"] }
+                                    },
+                                    required: ["label", "value"]
+                                }
+                            },
+                            charts: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        title: { type: "string" },
+                                        type: { type: "string", enum: ["bar", "line", "area", "pie"] },
+                                        data: { type: "array", items: { type: "object", additionalProperties: true } },
+                                        dataKeys: { type: "array", items: { type: "string" } }
+                                    },
+                                    required: ["title", "type", "data", "dataKeys"]
+                                }
+                            },
+                            summary: { type: "string" }
+                        },
+                        required: ["kpis", "charts", "summary"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
                     name: "fill_data",
                     description: "Fills the spreadsheet with structured data extracted from the user's messy natural language input.",
                     parameters: {
@@ -111,35 +370,122 @@ CRITICAL INSTRUCTIONS:
                         additionalProperties: false
                     }
                 }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "format_cells",
+                    description: "Changes the appearance of cells (bold, colors, etc).",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            range: { type: "array", items: { type: "string" }, description: "List of A1 references like ['A1', 'B2:C10']" },
+                            format: {
+                                type: "object",
+                                properties: {
+                                    bold: { type: "boolean" },
+                                    italic: { type: "boolean" },
+                                    color: { type: "string" },
+                                    backgroundColor: { type: "string" },
+                                    align: { type: "string", enum: ["left", "center", "right"] }
+                                }
+                            }
+                        },
+                        required: ["range", "format"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "organize_data",
+                    description: "Sorts or filters the data.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            action: { type: "string", enum: ["sort", "filter", "toggleFilter"] },
+                            columnIndex: { type: "integer" },
+                            direction: { type: "string", enum: ["ASC", "DESC"] }
+                        },
+                        required: ["action", "columnIndex"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "modify_structure",
+                    description: "Inserts or deletes rows/columns.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            action: { type: "string", enum: ["insertRow", "insertCol", "deleteRow", "deleteCol"] },
+                            index: { type: "integer" }
+                        },
+                        required: ["action", "index"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "analyze_data",
+                    description: "Analyzes the provided spreadsheet context and gives deep insights, summaries, or detects errors.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            analysis: { type: "string", description: "A detailed professional analysis of the data." },
+                            suggestions: { type: "array", items: { type: "string" }, description: "Specific actionable suggestions to improve the sheet." }
+                        },
+                        required: ["analysis", "suggestions"],
+                        additionalProperties: false
+                    }
+                }
             }
         ];
         try {
             const messages = [
-                { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` }
+                { role: "system", content: `${smartInstructions}\n\nContext:\n${systemPrompt}` },
+                ...history
+                    .filter(h => h && h.role && h.content)
+                    .map(h => ({
+                    role: h.role === 'ai' || h.role === 'assistant' ? 'assistant' : 'user',
+                    content: String(h.content)
+                }))
             ];
             if (fileData && mimeType && mimeType.startsWith('image/')) {
                 messages.push({
                     role: "user",
                     content: [
                         { type: "text", text: prompt },
-                        { type: "image_url", image_url: { url: fileData } }
+                        { type: "image_url", image_url: { url: `data:${mimeType};base64,${fileData}` } }
                     ]
                 });
             }
             else {
                 messages.push({ role: "user", content: prompt });
             }
-            let toolChoice = "auto";
-            if (fileData) {
-                toolChoice = { type: "function", function: { name: "fill_data" } };
-            }
+            console.log(`[AI] Requesting openai/gpt-4o-mini...`);
             const response = await openai.chat.completions.create({
-                model: "meta-llama/llama-3.3-70b-instruct",
+                model: "openai/gpt-4o-mini",
                 messages: messages,
                 tools: tools,
-                tool_choice: toolChoice,
-                temperature: 0.0
+                tool_choice: "auto",
+                temperature: 0.1
+            }).catch(err => {
+                console.error("[OpenRouter Error]", err);
+                return { error: err };
             });
+            if (response.error) {
+                return {
+                    tool_used: "none",
+                    result: `OpenRouter Error: ${response.error.message || 'Unknown error'}`,
+                    suggestion: "Please check your API key and quota."
+                };
+            }
             const message = response.choices[0].message;
             if (message.tool_calls && message.tool_calls.length > 0) {
                 const call = message.tool_calls[0];
@@ -150,7 +496,7 @@ CRITICAL INSTRUCTIONS:
                 catch (e) {
                     console.error("Failed to parse tool arguments", e);
                 }
-                if (call.function.name === 'fill_data' && args.rowsJson) {
+                if ((call.function.name === 'fill_data' || call.function.name === 'extract_to_table') && args.rowsJson) {
                     try {
                         args.rows = JSON.parse(args.rowsJson);
                         delete args.rowsJson;
@@ -162,18 +508,22 @@ CRITICAL INSTRUCTIONS:
                 return {
                     tool_used: call.function.name,
                     result: args,
-                    suggestion: "I have suggested an action based on your request. Please accept or reject."
+                    suggestion: message.content || "I have formulated a suggestion based on your request. Please review and accept."
                 };
             }
             return {
                 tool_used: "none",
-                result: message.content || "",
+                result: message.content || "I'm not sure how to respond to that.",
                 suggestion: "No specific action taken."
             };
         }
         catch (e) {
-            console.error(e);
-            throw new Error("OpenRouter API Error: " + e.message);
+            console.error("[AIService Critical Error]", e);
+            return {
+                tool_used: "none",
+                result: `Backend Error: ${e.message}`,
+                suggestion: "Something went wrong in the server logic."
+            };
         }
     }
 }

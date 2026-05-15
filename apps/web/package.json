@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@livekit/components-react": "^2.9.21",
+    "@livekit/components-styles": "^1.2.0",
     "@smartsheet-ai/types": "*",
     "@tanstack/react-virtual": "^3.13.24",
     "clsx": "^2.1.1",
@@ -17,6 +19,7 @@
     "echarts-for-react": "^3.0.6",
     "gsap": "^3.15.0",
     "howler": "^2.2.4",
+    "livekit-client": "^2.19.0",
     "lucide-react": "^1.8.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

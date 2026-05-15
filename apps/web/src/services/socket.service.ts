@@ -18,11 +18,9 @@ class SocketService {
       transports: ['websocket']
     });
 
-    // Cleanup stale cursors every 5 seconds
     setInterval(() => {
       useSheetStore.getState().cleanupStaleCursors();
     }, 5000);
-
     this.socket.on('connect_error', (err) => {
       console.warn('Socket connection error, falling back to guest mode:', err.message);
     });

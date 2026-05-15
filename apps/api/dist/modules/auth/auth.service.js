@@ -94,7 +94,7 @@ class AuthService {
             role: role,
             workspaceId
         };
-        return jsonwebtoken_1.default.sign(payload, env_1.env.JWT_SECRET, { expiresIn: '15m' });
+        return jsonwebtoken_1.default.sign(payload, env_1.env.JWT_SECRET, { expiresIn: '1m' });
     }
     static generateRefreshToken(userId) {
         return jsonwebtoken_1.default.sign({ sub: userId }, env_1.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });

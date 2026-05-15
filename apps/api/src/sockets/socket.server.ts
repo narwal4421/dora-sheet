@@ -201,6 +201,8 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
+    // WebRTC signaling is now handled completely by LiveKit SFU
+
     socket.on('disconnect', async () => {
       if (currentRoom && currentWorkbookId) {
         // Remove this specific connection
