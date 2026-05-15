@@ -77,8 +77,8 @@ export const CallOverlay = () => {
   const livekitUrl = import.meta.env.VITE_LIVEKIT_URL;
 
   return (
-    <div className="fixed inset-x-4 top-20 bottom-4 z-[150] pointer-events-none flex flex-col items-center justify-end">
-      <div className="w-[1000px] max-w-[95vw] bg-background/90 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] pointer-events-auto flex flex-col h-[600px] max-h-[80vh] relative">
+    <div className="fixed inset-0 sm:inset-x-4 sm:top-20 sm:bottom-4 z-[150] pointer-events-none flex flex-col items-center justify-center sm:justify-end">
+      <div className="w-full sm:w-[1000px] max-w-full sm:max-w-[95vw] h-full sm:h-[600px] sm:max-h-[80vh] bg-background/90 backdrop-blur-2xl border-none sm:border sm:border-white/10 sm:rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] pointer-events-auto flex flex-col relative">
 
         <LiveKitRoom
           video={initialVideo}
@@ -113,8 +113,19 @@ export const CallOverlay = () => {
           }}
           onConnected={() => setStatus('connected')}
         >
-          {/* Custom Stats Toggle Button */}
-          <StatsToggleButton />
+          {/* Header Controls */}
+          <div className="absolute top-4 left-4 right-4 z-50 flex justify-between items-center pointer-events-none">
+            <div className="pointer-events-auto">
+              <StatsToggleButton />
+            </div>
+            <button 
+              onClick={endCall}
+              className="pointer-events-auto p-2 bg-black/40 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 rounded-xl text-textMuted hover:text-red-500 transition-all shadow-xl backdrop-blur-md"
+              title="Close Call"
+            >
+              <X size={20} />
+            </button>
+          </div>
 
           <MyVideoConference />
           <RoomAudioRenderer />
@@ -130,7 +141,7 @@ const StatsToggleButton = () => {
   return (
     <button 
       onClick={toggleStats}
-      className={`absolute top-4 left-4 z-50 p-2 rounded-xl border transition-all ${showStats ? 'bg-accent/20 border-accent/30 text-accent' : 'bg-black/40 border-white/10 text-textMuted hover:text-white'}`}
+      className={`p-2 rounded-xl border transition-all ${showStats ? 'bg-accent/20 border-accent/30 text-accent' : 'bg-black/40 border-white/10 text-textMuted hover:text-white'}`}
       title="Toggle Network Stats"
     >
       <Activity size={16} />
@@ -149,9 +160,9 @@ function MyVideoConference() {
 
   return (
     <>
-      <div className="flex-1 p-6 flex flex-wrap gap-4 overflow-y-auto justify-center items-center content-center bg-black/20">
+      <div className="flex-1 p-3 sm:p-6 flex flex-wrap gap-3 sm:gap-4 overflow-y-auto justify-center items-center content-center bg-black/20">
         {tracks.map((track) => (
-          <div key={track.participant.identity + track.source} className="w-[400px] max-w-full aspect-video rounded-2xl overflow-hidden border border-white/10 relative shadow-2xl group transition-all">
+          <div key={track.participant.identity + track.source} className="w-full sm:w-[400px] aspect-video rounded-2xl overflow-hidden border border-white/10 relative shadow-2xl group transition-all">
             <ParticipantTile {...track} className="w-full h-full object-cover" />
             <RTCStatsOverlay participant={track.participant} />
           </div>
