@@ -218,7 +218,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       } else if (tool === 'format_cells' && result.range && result.format) {
         const { setCellFormat } = useSheetStore.getState();
         const sheetId = getWorkbookIdFromUrl();
-        result.range.forEach((a1: string) => {
+        const ranges = Array.isArray(result.range) ? result.range : [result.range as string];
+        ranges.forEach((a1: string) => {
           const refs = expandRange(a1);
           refs.forEach(ref => {
             setCellFormat(ref, result.format!);
