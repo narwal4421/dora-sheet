@@ -18,6 +18,7 @@ import { CallOverlay } from './components/CallOverlay';
 import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
 import { RoomLockedModal } from './components/Collaboration/RoomLockedModal';
 import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal';
+import { toast } from './store/useToastStore';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -110,7 +111,7 @@ function App() {
             const newId = Math.floor(100000 + Math.random() * 900000).toString();
             window.location.href = `/workbook/${newId}`;
           }}
-          onShowTemplates={() => {}}
+          onShowTemplates={() => toast('Templates feature is coming soon!', 'info')}
         />
       )}
 

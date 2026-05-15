@@ -134,10 +134,22 @@ export const CallOverlay: React.FC = () => {
             >
               {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
             </button>
-            <button className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all">
+            <button 
+              onClick={() => {
+                const { toast } = require('../store/useToastStore');
+                toast('Screen sharing is being optimized for high-bitrate streaming...', 'info');
+              }}
+              className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all"
+            >
               <ScreenShare size={20} />
             </button>
-            <button className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all">
+            <button 
+              onClick={() => {
+                const { toast } = require('../store/useToastStore');
+                toast('Communication settings coming soon!', 'info');
+              }}
+              className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all"
+            >
               <Settings size={20} />
             </button>
           </div>
