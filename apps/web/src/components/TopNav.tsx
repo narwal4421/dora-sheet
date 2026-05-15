@@ -17,7 +17,8 @@ export const TopNav = ({
   onShowShare: () => void,
   onShowAbout: () => void,
   onNewWorkbook: () => void,
-  onShowTemplates: () => void
+  onShowTemplates: () => void,
+  isHost: boolean
 }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const isLightMode = useSheetStore(state => state.isLightMode);

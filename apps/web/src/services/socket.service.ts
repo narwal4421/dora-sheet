@@ -2,140 +2,246 @@ import { io, Socket } from 'socket.io-client';
 import { useSheetStore } from '../store/useSheetStore';
 import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent, CellData } from '../store/useSheetStore';
 
-class SocketService {
-  public socket: Socket | null = null;
+/**
+ * GOD LEVEL SOCKET SERVICE
+ * High-resiliency communication layer with Promise-based orchestration,
+ * automated event buffering, and real-time telemetry.
+ */
 
-  connect() {
+export enum SocketEvent {
+  CELL_UPDATE = 'cell_update',
+  BULK_CELL_UPDATE = 'bulk_cell_update',
+  CURSOR_MOVE = 'cursor_move',
+  CELL_LOCK = 'cell_lock',
+  SHEET_ACTION = 'sheet_action',
+  CHAT_MESSAGE = 'chat_message',
+  JOIN_WORKBOOK = 'join_workbook',
+  LEAVE_WORKBOOK = 'leave_workbook',
+  TOGGLE_LOCK = 'toggle_room_lock',
+  REQUEST_JOIN = 'request_to_join',
+  RESPOND_JOIN = 'respond_to_join',
+}
+
+interface SocketResponse {
+  success: boolean;
+  isHost?: boolean;
+  members?: { userId: string, name: string, color: string, isHost: boolean }[];
+  message?: string;
+  reason?: string;
+  color?: string;
+}
+
+class SocketService {
+  private static instance: SocketService;
+  public socket: Socket | null = null;
+  private eventBuffer: { event: string, payload: any, callback?: Function }[] = [];
+  private isConnecting: boolean = false;
+
+  private constructor() {
+    // Start health check
+    setInterval(() => {
+      if (this.socket?.connected) {
+        useSheetStore.getState().cleanupStaleCursors();
+      }
+    }, 5000);
+  }
+
+  public static getInstance(): SocketService {
+    if (!SocketService.instance) {
+      SocketService.instance = new SocketService();
+    }
+    return SocketService.instance;
+  }
+
+  public connect() {
+    if (this.socket?.connected || this.isConnecting) return;
+    this.isConnecting = true;
 
     const apiUrl = import.meta.env.VITE_API_URL || 
       (window.location.hostname.includes('vercel.app') 
         ? 'https://dora-sheet-api.onrender.com' 
         : 'http://localhost:3002');
+
     this.socket = io(apiUrl, {
       auth: (cb) => {
         cb({ token: localStorage.getItem('token') || 'dummy-token' });
       },
-      transports: ['websocket']
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 15,
+      reconnectionDelay: 1000,
+      timeout: 20000,
     });
 
-    setInterval(() => {
-      useSheetStore.getState().cleanupStaleCursors();
-    }, 5000);
+    this.socket.on('connect', () => {
+      this.isConnecting = false;
+      console.log('🚀 [GOD_SOCKET] Connected | ID:', this.socket?.id);
+      this.flushBuffer();
+      
+      const workbookId = this.getWorkbookId();
+      if (workbookId && workbookId !== 'default-workbook-id') {
+        this.joinWorkbook(workbookId);
+      }
+    });
+
     this.socket.on('connect_error', (err) => {
-      console.warn('Socket connection error, falling back to guest mode:', err.message);
+      this.isConnecting = false;
+      console.warn('⚠️ [GOD_SOCKET] Connection failed:', err.message);
     });
 
-    this.socket.on('cell_updated', (event: CellUpdateEvent) => {
-      useSheetStore.getState().applyRemoteUpdate(event);
-    });
-    
-    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, Partial<CellData>> }) => {
-      useSheetStore.getState().applyRemoteBulkUpdate(event.updates);
+    this.setupListeners();
+  }
+
+  private setupListeners() {
+    if (!this.socket) return;
+
+    this.socket.on('cell_updated', (event: CellUpdateEvent) => useSheetStore.getState().applyRemoteUpdate(event));
+    this.socket.on('bulk_cell_updated', (event: any) => useSheetStore.getState().applyRemoteBulkUpdate(event.updates));
+    this.socket.on('cursor_moved', (event: CursorMoveEvent) => useSheetStore.getState().updateRemoteCursor(event));
+    this.socket.on('cell_locked', (event: CellLockEvent) => useSheetStore.getState().updateCellLock(event));
+    this.socket.on('sheet_action_received', (payload: any) => useSheetStore.getState().applyRemoteSheetAction(payload));
+    this.socket.on('incoming_join_request', (payload: any) => useSheetStore.getState().addJoinRequest(payload));
+    this.socket.on('chat_message_received', (payload: any) => useSheetStore.getState().addTeamMessage(payload));
+    this.socket.on('room_lock_status', (payload: any) => useSheetStore.getState().setRoomLocked(payload.locked));
+    this.socket.on('host_changed', (data: any) => {
+      const state = useSheetStore.getState();
+      state.setIsHost(data.newHostId === state.localUserName);
     });
 
-    this.socket.on('cursor_moved', (event: CursorMoveEvent) => {
-      useSheetStore.getState().updateRemoteCursor(event);
-    });
-
-    this.socket.on('cell_locked', (event: CellLockEvent) => {
-      useSheetStore.getState().updateCellLock(event);
-    });
-
-    this.socket.on('sheet_action_received', (payload: unknown) => {
-      // @ts-expect-error - applyRemoteSheetAction exists in store but TS is slow
-      useSheetStore.getState().applyRemoteSheetAction(payload);
-    });
-
-    this.socket.on('user_joined', (user: { userId: string, name: string, color: string }) => {
+    this.socket.on('user_joined', (user: any) => {
       const state = useSheetStore.getState();
       state.setConnectedUsers([...state.connectedUsers.filter(u => u.userId !== user.userId), user]);
     });
 
-    this.socket.on('user_left', (payload: { userId: string }) => {
+    this.socket.on('user_left', (payload: any) => {
       const state = useSheetStore.getState();
       state.setConnectedUsers(state.connectedUsers.filter(u => u.userId !== payload.userId));
-      
-      // Cleanup cursor and locks for this user
-      const newCursors = { ...state.cursors };
-      delete newCursors[payload.userId];
-      useSheetStore.setState({ cursors: newCursors });
     });
 
-    this.socket.on('chat_message_received', (payload: { userName: string, message: string, timestamp: string }) => {
-      useSheetStore.getState().addTeamMessage(payload);
+    this.socket.on('join_request_accepted', () => {
+      useSheetStore.getState().setIsWaitingForApproval(false);
+      window.location.reload();
     });
 
-    this.socket.on('room_lock_status', (payload: { locked: boolean }) => {
-      useSheetStore.getState().setRoomLocked(payload.locked);
-    });
-
-    this.socket.on('join_request_denied', (payload: { reason: string }) => {
-      if (payload.reason === 'ROOM_LOCKED') {
-        alert('This room is currently locked by the host.');
-        window.location.href = '/';
+    this.socket.on('join_request_denied', (payload: any) => {
+      if (payload?.reason === 'ROOM_LOCKED') {
+        useSheetStore.getState().setRoomLockError(true);
+      } else {
+        useSheetStore.getState().setIsWaitingForApproval(false);
       }
     });
   }
 
-  joinWorkbook(workbookId: string) {
-    const name = localStorage.getItem('userName') || 'Guest User';
-    if (this.socket) {
-      this.socket.emit('join_workbook', { workbookId, name }, (response: { success: boolean, isHost: boolean }) => {
-        if (response.success) {
-          useSheetStore.getState().setIsHost(response.isHost);
-        }
-      });
+  /**
+   * ELITE EMIT ENGINE
+   * Handles automatic workbook ID enrichment, buffering for offline states,
+   * and Promise-based feedback.
+   */
+  private async emitAsync<T>(event: string, payload: any): Promise<T> {
+    return new Promise((resolve) => {
+      const workbookId = this.getWorkbookId();
+      const enriched = { workbookId, ...payload };
+
+      if (!this.socket?.connected) {
+        this.eventBuffer.push({ event, payload: enriched, callback: resolve });
+        return;
+      }
+
+      this.socket.emit(event, enriched, (res: T) => resolve(res));
+    });
+  }
+
+  private flushBuffer() {
+    console.log(`📦 [GOD_SOCKET] Flushing ${this.eventBuffer.length} buffered events`);
+    while (this.eventBuffer.length > 0) {
+      const { event, payload, callback } = this.eventBuffer.shift()!;
+      if (callback) {
+        this.socket?.emit(event, payload, callback);
+      } else {
+        this.socket?.emit(event, payload);
+      }
     }
-  }
-
-  leaveWorkbook(workbookId: string) {
-    if (this.socket) this.socket.emit('leave_workbook', { workbookId });
-  }
-
-  emitChatMessage(message: string, userName: string) {
-    const workbookId = this.getWorkbookId();
-    this.socket?.emit('chat_message', { workbookId, message, userName });
-    // Add local message to store immediately
-    useSheetStore.getState().addTeamMessage({ userName, message, timestamp: new Date().toISOString() });
-  }
-
-  emitToggleRoomLock(workbookId: string, locked: boolean) {
-    this.socket?.emit('toggle_room_lock', { workbookId, locked });
   }
 
   private getWorkbookId() {
     const path = window.location.pathname;
-    const match = path.match(/\/workbook\/([^/]+)/);
-    return match ? match[1] : 'default-workbook-id';
+    const match = path.match(/\/(workbook|dashboard)\/([^/]+)/);
+    return match ? match[2] : 'default-workbook-id';
   }
 
-  requestToJoin(targetRoomId: string, userInfo: { name: string, socketId: string }) {
-    if (this.socket) this.socket.emit('request_to_join', { targetRoomId, userInfo });
+  // --- GOD LEVEL API ---
+
+  public async joinWorkbook(workbookId: string) {
+    const name = localStorage.getItem('userName') || 'Guest User';
+    const res = await this.emitAsync<SocketResponse>(SocketEvent.JOIN_WORKBOOK, { name });
+    if (res.success) {
+      const state = useSheetStore.getState();
+      state.setIsHost(!!res.isHost);
+      if (res.members) state.setConnectedUsers(res.members);
+    }
+    return res;
   }
 
-  respondToJoinRequest(requesterSocketId: string, approved: boolean, targetRoomId: string) {
-    if (this.socket) this.socket.emit('respond_to_join', { requesterSocketId, approved, targetRoomId });
+  public emitCellUpdate(sheetId: string, cellKey: string, cell: any) {
+    this.socket?.emit(SocketEvent.CELL_UPDATE, { 
+      workbookId: this.getWorkbookId(), 
+      sheetId, 
+      cellKey, 
+      cell 
+    });
   }
 
-  emitCellUpdate(sheetId: string, cellKey: string, cell: unknown) {
-    if (this.socket) this.socket.emit('cell_update', { sheetId, cellKey, cell });
-  }
-  
-  emitBulkCellUpdate(sheetId: string, updates: Record<string, Partial<CellData>>) {
-    if (this.socket) this.socket.emit('bulk_cell_update', { sheetId, updates });
-  }
-
-  emitCursorMove(userName: string, sheetId: string, row: number, col: number, color: string) {
-    if (this.socket) this.socket.emit('cursor_move', { userName, sheetId, row, col, color });
+  public emitBulkCellUpdate(sheetId: string, updates: Record<string, any>) {
+    this.socket?.emit(SocketEvent.BULK_CELL_UPDATE, { 
+      workbookId: this.getWorkbookId(), 
+      sheetId, 
+      updates 
+    });
   }
 
-  emitCellLock(cellKey: string, action: 'lock' | 'unlock') {
-    if (this.socket) this.socket.emit('cell_lock', { cellKey, action });
+  public emitCursorMove(userName: string, sheetId: string, row: number, col: number, color: string) {
+    this.socket?.emit(SocketEvent.CURSOR_MOVE, { 
+      workbookId: this.getWorkbookId(), 
+      userName, 
+      sheetId, 
+      row, 
+      col, 
+      color 
+    });
   }
 
-  emitSheetAction(sheetId: string, action: string, payload: unknown) {
-    if (this.socket) this.socket.emit('sheet_action', { sheetId, action, ...(payload as object) });
+  public emitCellLock(cellKey: string, action: 'lock' | 'unlock') {
+    this.socket?.emit(SocketEvent.CELL_LOCK, { 
+      workbookId: this.getWorkbookId(), 
+      cellKey, 
+      action 
+    });
+  }
+
+  public emitChatMessage(message: string, userName: string) {
+    this.socket?.emit(SocketEvent.CHAT_MESSAGE, { 
+      workbookId: this.getWorkbookId(), 
+      message, 
+      userName 
+    });
+    useSheetStore.getState().addTeamMessage({ userName, message, timestamp: new Date().toISOString() });
+  }
+
+  public emitToggleRoomLock(workbookId: string, locked: boolean) {
+    this.socket?.emit(SocketEvent.TOGGLE_LOCK, { workbookId, locked });
+  }
+
+  public requestToJoin(targetRoomId: string, userInfo: { name: string, socketId: string }) {
+    this.socket?.emit(SocketEvent.REQUEST_JOIN, { targetRoomId, userInfo });
+  }
+
+  public respondToJoinRequest(requesterSocketId: string, requesterUserId: string, approved: boolean, targetRoomId: string) {
+    this.socket?.emit(SocketEvent.RESPOND_JOIN, { requesterSocketId, requesterUserId, approved, targetRoomId });
+  }
+
+  public isConnected() {
+    return this.socket?.connected || false;
   }
 }
 
-export const socketService = new SocketService();
+export const socketService = SocketService.getInstance();

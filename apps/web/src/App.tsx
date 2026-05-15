@@ -1,154 +1,148 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 import { Grid } from './components/Grid';
 import { socketService } from './services/socket.service';
 import { TopNav } from './components/TopNav';
-import { authService } from './services/auth.service';
 import { Toolbar } from './components/Toolbar';
 import { AIChatPanel } from './components/AIChatPanel';
 import { VersionHistory } from './components/VersionHistory';
 import { ShareModal } from './components/Modals/ShareModal';
 import { AboutPage } from './components/AboutPage';
 import { FindReplace } from './components/FindReplace';
-import { TemplatesModal } from './components/Modals/TemplatesModal';
 import { ToastContainer } from './components/ToastContainer';
-import { toast } from './store/useToastStore';
-import { Sparkles, Check, X as CloseIcon, Users } from 'lucide-react';
+import { Sparkles, X as CloseIcon } from 'lucide-react';
+import { useSheetStore } from './store/useSheetStore';
 import { DashboardOverlay, type DashboardData } from './components/DashboardOverlay';
 import { CallOverlay } from './components/CallOverlay';
+import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
+import { RoomLockedModal } from './components/Collaboration/RoomLockedModal';
+import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
   const match = path.match(/\/(workbook|dashboard)\/([^/]+)/);
-  return match ? match[2] : null;
+  return match ? match[2] : 'default';
 };
 
-const isDashboardUrl = () => window.location.pathname.startsWith('/dashboard/');
-
-const generate6DigitCode = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-const INITIAL_WORKBOOK_ID = getWorkbookIdFromUrl() || generate6DigitCode();
-if (!getWorkbookIdFromUrl()) {
-  window.history.replaceState(null, '', `/workbook/${INITIAL_WORKBOOK_ID}`);
-}
-
+/**
+ * GOD LEVEL APPLICATION ORCHESTRATOR
+ * Orchestrates real-time state, high-performance UI layers, 
+ * and ultra-fluid GSAP animations.
+ */
 function App() {
-  const [workbookId, setWorkbookId] = useState<string>(INITIAL_WORKBOOK_ID);
-  const [showAI, setShowAI] = useState(false);
-  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const workbookId = useMemo(() => getWorkbookIdFromUrl(), []);
+  const isDashboard = workbookId === 'dashboard';
+
+  // --- STATE EXTRACTION (SELECTOR PATTERN FOR PERFORMANCE) ---
+  const localUserName = useSheetStore(state => state.localUserName);
+  const pendingJoinRequests = useSheetStore(state => state.pendingJoinRequests);
+  const roomLockError = useSheetStore(state => state.roomLockError);
+  const isWaitingForApproval = useSheetStore(state => state.isWaitingForApproval);
+  const isHost = useSheetStore(state => state.isHost);
+  const setRoomLockError = useSheetStore(state => state.setRoomLockError);
+  const setIsWaitingForApproval = useSheetStore(state => state.setIsWaitingForApproval);
+  const removeJoinRequest = useSheetStore(state => state.removeJoinRequest);
+
+  // --- UI TOGGLES ---
   const [showShare, setShowShare] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [isDashboard] = useState(isDashboardUrl());
-  const [joinRequest, setJoinRequest] = useState<{ requesterSocketId: string, name: string } | null>(null);
-  const [joinNotification, setJoinNotification] = useState<string | null>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(!localStorage.getItem('userName'));
-  const [tempName, setTempName] = useState('');
+  const [joinNotification, setJoinNotification] = useState<string | null>(null);
+  const [showAI, setShowAI] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
+  // --- LIFECYCLE: SOCKET HANDSHAKE ---
   useEffect(() => {
-    socketService.connect();
-    
-    if (socketService.socket) {
-      socketService.socket.on('incoming_join_request', (data: { requesterSocketId: string, name: string }) => {
-        setJoinRequest(data);
-      });
+    if (isDashboard) return;
 
-      socketService.socket.on('join_request_accepted', (data: { targetRoomId: string }) => {
-        window.history.pushState(null, '', `/workbook/${data.targetRoomId}`);
-        setWorkbookId(data.targetRoomId);
-        toast('✅ Your join request was accepted!', 'success');
-      });
-
-      socketService.socket.on('join_request_denied', () => {
-        toast('❌ The host denied your request to join.', 'error');
-      });
-
-      socketService.socket.on('user_joined', (user: { name: string }) => {
-        setJoinNotification(`${user.name} joined the room`);
-        setTimeout(() => setJoinNotification(null), 5000);
-      });
+    if (!localUserName || localUserName === 'Guest User') {
+      const timer = setTimeout(() => setShowJoinModal(true), 100);
+      return () => clearTimeout(timer);
     }
 
-    // 🛡️ THE BODYGUARD: Silent Refresh (every 50 seconds for 1-min JWT)
-    const refreshInterval = setInterval(async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await authService.refreshToken();
+    const init = async () => {
+      socketService.connect();
+      const res = await socketService.joinWorkbook(workbookId);
+      
+      if (!res.success && res.reason === 'LOCKED') {
+        setRoomLockError(true);
       }
-    }, 50000);
-
-    return () => {
-      clearInterval(refreshInterval);
-      socketService.socket?.off('incoming_join_request');
-      socketService.socket?.off('join_request_accepted');
-      socketService.socket?.off('join_request_denied');
-      socketService.socket?.off('user_joined');
     };
-  }, []);
 
-  useEffect(() => {
-    const handleShowDashboard = (e: Event) => {
-      const customEvent = e as CustomEvent<DashboardData>;
-      setDashboardData(customEvent.detail);
-    };
-    window.addEventListener('show-dashboard', handleShowDashboard);
-    return () => window.removeEventListener('show-dashboard', handleShowDashboard);
-  }, []);
+    init();
+    return () => { socketService.socket?.disconnect(); };
+  }, [workbookId, isDashboard, localUserName, setRoomLockError]);
 
-  useEffect(() => {
-    if (!workbookId || showJoinModal) return;
-    socketService.joinWorkbook(workbookId);
-
-    return () => {
-      socketService.leaveWorkbook(workbookId);
-    };
-  }, [workbookId, showJoinModal]);
-
-  const handleAcceptJoin = () => {
-    if (joinRequest) {
-      socketService.respondToJoinRequest(joinRequest.requesterSocketId, true, workbookId);
-      setJoinRequest(null);
+  // --- ANIMATIONS: GSAP PREMIUM ---
+  useGSAP(() => {
+    if (joinNotification) {
+      gsap.fromTo('.join-toast', 
+        { y: -100, opacity: 0, scale: 0.9 }, 
+        { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.7)' }
+      );
+      const timer = setTimeout(() => setJoinNotification(null), 5000);
+      return () => clearTimeout(timer);
     }
+  }, [joinNotification]);
+
+  // --- HANDLERS ---
+  const handleAcceptJoin = (req: { requesterSocketId: string, requesterUserId: string }) => {
+    socketService.respondToJoinRequest(req.requesterSocketId, req.requesterUserId, true, workbookId);
+    removeJoinRequest(req.requesterSocketId);
   };
 
-  const handleDenyJoin = () => {
-    if (joinRequest) {
-      socketService.respondToJoinRequest(joinRequest.requesterSocketId, false, workbookId);
-      setJoinRequest(null);
-    }
+  const handleDenyJoin = (req: { requesterSocketId: string, requesterUserId: string }) => {
+    socketService.respondToJoinRequest(req.requesterSocketId, req.requesterUserId, false, workbookId);
+    removeJoinRequest(req.requesterSocketId);
+  };
+
+  const handleRequestAccess = () => {
+    socketService.requestToJoin(workbookId, { name: localUserName, socketId: socketService.socket?.id || '' });
+    setIsWaitingForApproval(true);
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-background font-sans text-textMain overflow-hidden selection:bg-accent/30 selection:text-accentHover">
-      {/* Top Header Navigation */}
+    <div ref={containerRef} className="flex flex-col h-screen w-screen bg-background font-sans text-textMain overflow-hidden selection:bg-accent/30 selection:text-accentHover">
       {!isDashboard && (
         <TopNav 
-          onShowVersionHistory={() => setShowVersionHistory(true)} 
           onShowShare={() => setShowShare(true)} 
-          onShowAbout={() => setShowAbout(true)}
-          onShowTemplates={() => setShowTemplates(true)}
+          onShowAbout={() => setShowAbout(true)} 
+          isHost={isHost}
+          onShowVersionHistory={() => setShowVersionHistory(true)}
           onNewWorkbook={() => {
-            const newId = generate6DigitCode();
-            window.history.pushState(null, '', `/workbook/${newId}`);
-            setWorkbookId(newId);
-            window.location.reload();
+            const newId = Math.floor(100000 + Math.random() * 900000).toString();
+            window.location.href = `/workbook/${newId}`;
           }}
+          onShowTemplates={() => {}}
         />
       )}
 
       {!isDashboard && <Toolbar onToggleAI={() => setShowAI(!showAI)} />}
 
-      <div className="flex flex-1 overflow-hidden relative">
-        <div className="flex flex-col flex-1 overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative">
+        <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden">
           <Grid isDashboard={isDashboard} workbookId={workbookId} />
           {!isDashboard && <FindReplace />}
-        </div>
+        </main>
 
         {!isDashboard && showAI && (
           <div className="h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-200">
             <AIChatPanel onClose={() => setShowAI(false)} />
           </div>
         )}
+
+        {/* --- PREMIUM OVERLAYS --- */}
+        
+        {showShare && <ShareModal workbookId={workbookId} onClose={() => setShowShare(false)} />}
+        {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
+        {showJoinModal && <JoinIdentityModal onJoin={(name) => {
+          useSheetStore.getState().setLocalUserName(name);
+          setShowJoinModal(false);
+          window.location.reload();
+        }} />}
 
         {showVersionHistory && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-8">
@@ -164,55 +158,14 @@ function App() {
           </div>
         )}
 
-        {showShare && (
-          <ShareModal 
-            workbookId={workbookId} 
-            onClose={() => setShowShare(false)} 
-          />
-        )}
-        
-        {showAbout && (
-          <AboutPage onClose={() => setShowAbout(false)} />
-        )}
+        <JoinRequestStack 
+          requests={pendingJoinRequests} 
+          onAccept={() => handleAcceptJoin(pendingJoinRequests[0])} 
+          onDeny={() => handleDenyJoin(pendingJoinRequests[0])} 
+        />
 
-        {showTemplates && (
-          <TemplatesModal onClose={() => setShowTemplates(false)} />
-        )}
-
-        {/* Join Request Toast */}
-        {joinRequest && (
-          <div className="fixed bottom-8 left-8 z-[100] animate-in slide-in-from-left-8 duration-500">
-            <div className="bg-surface border border-accent/30 shadow-2xl rounded-2xl p-4 flex flex-col gap-4 min-w-[300px] backdrop-blur-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Join Request</h4>
-                  <p className="text-xs text-textMuted">{joinRequest.name} wants to collaborate.</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleAcceptJoin}
-                  className="flex-1 bg-accent hover:bg-accentHover text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all"
-                >
-                  <Check size={14} /> Approve
-                </button>
-                <button 
-                  onClick={handleDenyJoin}
-                  className="flex-1 bg-white/5 hover:bg-white/10 text-textMuted py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all border border-white/10"
-                >
-                  <CloseIcon size={14} /> Deny
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Join Notification Toast */}
         {joinNotification && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-8 duration-500">
+          <div className="join-toast fixed top-24 left-1/2 -translate-x-1/2 z-[100]">
             <div className="bg-accent/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-full px-6 py-2 flex items-center gap-3">
               <Sparkles size={16} className="text-white animate-pulse" />
               <span className="text-sm font-bold text-white uppercase tracking-wider">{joinNotification}</span>
@@ -224,52 +177,14 @@ function App() {
           <DashboardOverlay data={dashboardData} onClose={() => setDashboardData(null)} />
         )}
 
-        <CallOverlay />
-
-        {/* Join Identity Modal */}
-        {showJoinModal && (
-          <div className="fixed inset-0 bg-background/90 backdrop-blur-md z-[200] flex items-center justify-center p-6">
-            <div className="bg-surface border border-white/10 rounded-[32px] shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-8 animate-in zoom-in-95 duration-300">
-              <div className="w-20 h-20 rounded-3xl bg-accent/10 flex items-center justify-center text-accent">
-                <Users size={40} />
-              </div>
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl font-black text-white tracking-tight">Who's Joining?</h2>
-                <p className="text-sm text-textMuted leading-relaxed px-4">Welcome to Dora AI! Please enter your name to start.</p>
-              </div>
-              <div className="w-full space-y-4">
-                <input 
-                  autoFocus
-                  type="text" 
-                  placeholder="Enter your name" 
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-accent transition-all text-center font-bold tracking-wide"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && tempName.trim()) {
-                      localStorage.setItem('userName', tempName.trim());
-                      setShowJoinModal(false);
-                      window.location.reload(); // Refresh to sync everything with the new name
-                    }
-                  }}
-                />
-                <button 
-                  onClick={() => {
-                    if (tempName.trim()) {
-                      localStorage.setItem('userName', tempName.trim());
-                      setShowJoinModal(false);
-                      window.location.reload();
-                    }
-                  }}
-                  disabled={!tempName.trim()}
-                  className="w-full bg-accent hover:bg-accentHover disabled:opacity-50 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-[0.98]"
-                >
-                  JOIN
-                </button>
-              </div>
-            </div>
-          </div>
+        {roomLockError && (
+          <RoomLockedModal 
+            isWaiting={isWaitingForApproval} 
+            onRequestAccess={handleRequestAccess} 
+          />
         )}
+
+        <CallOverlay />
       </div>
       <ToastContainer />
     </div>

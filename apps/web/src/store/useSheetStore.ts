@@ -126,6 +126,13 @@ interface SheetState {
   setLocalUserName: (name: string) => void;
   isLocked: boolean;
   setRoomLocked: (locked: boolean) => void;
+  roomLockError: boolean;
+  setRoomLockError: (val: boolean) => void;
+  isWaitingForApproval: boolean;
+  setIsWaitingForApproval: (val: boolean) => void;
+  pendingJoinRequests: { requesterSocketId: string, requesterUserId: string, name: string }[];
+  addJoinRequest: (req: { requesterSocketId: string, requesterUserId: string, name: string }) => void;
+  removeJoinRequest: (socketId: string) => void;
   teamMessages: { userName: string, message: string, timestamp: string }[];
   addTeamMessage: (msg: { userName: string, message: string, timestamp: string }) => void;
 }
@@ -136,41 +143,37 @@ const parseRef = (ref: string) => {
   return { r: parseInt(match[1]), c: parseInt(match[2]) };
 };
 
-export const useSheetStore = create<SheetState>((set) => ({
+/**
+ * GOD LEVEL SHEET STORE
+ * High-performance state machine for complex spreadsheet orchestration.
+ * Features optimized domain splitting, intelligent history snapshots, 
+ * and ultra-low-latency collaboration handlers.
+ */
+
+export const useSheetStore = create<SheetState>((set, get) => ({
+  // --- CORE DATA & STATE ---
   data: {},
   activeCell: 'r_0_c_0',
   editingCell: null,
   selectionRange: null,
   
+  // --- COLLABORATION DOMAIN ---
   cursors: {},
   lockedCells: {},
   connectedUsers: [],
   isHost: false,
-  setIsHost: (val: boolean) => set({ isHost: val }),
   localUserName: localStorage.getItem('userName') || 'Guest User',
-  setLocalUserName: (name: string) => {
-    localStorage.setItem('userName', name);
-    set({ localUserName: name });
-  },
-  teamMessages: [],
-  addTeamMessage: (msg) => set(state => ({ teamMessages: [...state.teamMessages, msg] })),
   isLocked: false,
-  setRoomLocked: (locked) => set({ isLocked: locked }),
+  roomLockError: false,
+  isWaitingForApproval: false,
+  pendingJoinRequests: [],
+  teamMessages: [],
 
-  history: [],
-  future: [],
-  snapshots: [
-    {
-      id: 'initial',
-      label: 'Initial Empty State',
-      createdAt: new Date().toISOString(),
-      data: {}
-    }
-  ],
-  
+  // --- UI & LAYOUT DOMAIN ---
   isLightMode: false,
-  setIsLightMode: (val) => set({ isLightMode: val }),
-
+  hiddenRows: new Set(),
+  columnWidths: {},
+  rowHeights: {},
   findReplace: {
     isOpen: false,
     findText: '',
@@ -179,390 +182,258 @@ export const useSheetStore = create<SheetState>((set) => ({
     currentIndex: 0
   },
 
-  setFindReplace: (partial) => set((state) => {
-    const newState = { ...state.findReplace, ...partial };
-    return { findReplace: newState };
+  // --- HISTORY DOMAIN ---
+  history: [],
+  future: [],
+  snapshots: [
+    { id: 'initial', label: 'Session Start', createdAt: new Date().toISOString(), data: {} }
+  ],
+
+  // --- ACTIONS: COLLABORATION ---
+  setIsHost: (val) => set({ isHost: val }),
+  setLocalUserName: (name) => {
+    localStorage.setItem('userName', name);
+    set({ localUserName: name });
+  },
+  setConnectedUsers: (users) => set({ connectedUsers: users }),
+  addTeamMessage: (msg) => set(state => ({ teamMessages: [...state.teamMessages.slice(-100), msg] })),
+  setRoomLocked: (locked) => set({ isLocked: locked }),
+  setRoomLockError: (val) => set({ roomLockError: val }),
+  setIsWaitingForApproval: (val) => set({ isWaitingForApproval: val }),
+  addJoinRequest: (req) => set(state => ({ 
+    pendingJoinRequests: [...state.pendingJoinRequests.filter(r => r.requesterUserId !== req.requesterUserId), req] 
+  })),
+  removeJoinRequest: (socketId) => set(state => ({ 
+    pendingJoinRequests: state.pendingJoinRequests.filter(r => r.requesterSocketId !== socketId) 
+  })),
+
+  // --- ACTIONS: REMOTE UPDATES (HIGH FREQUENCY) ---
+  applyRemoteUpdate: (event) => set(state => ({
+    data: { ...state.data, [event.cellKey]: { ...state.data[event.cellKey], ...event.cell } }
+  })),
+
+  applyRemoteBulkUpdate: (updates) => set(state => {
+    const newData = { ...state.data };
+    Object.assign(newData, updates);
+    return { data: newData };
   }),
 
-  executeFind: () => set((state) => {
+  updateRemoteCursor: (event) => set(state => ({
+    cursors: { ...state.cursors, [event.userId]: { ...event, timestamp: Date.now() } }
+  })),
+
+  cleanupStaleCursors: () => set(state => {
+    const now = Date.now();
+    const newCursors = { ...state.cursors };
+    let changed = false;
+    Object.entries(newCursors).forEach(([id, c]) => {
+      if (now - c.timestamp > 8000) { delete newCursors[id]; changed = true; }
+    });
+    return changed ? { cursors: newCursors } : {};
+  }),
+
+  updateCellLock: (event) => set(state => {
+    const newLocks = { ...state.lockedCells };
+    if (event.action === 'lock') newLocks[event.cellKey] = event.userId;
+    else delete newLocks[event.cellKey];
+    return { lockedCells: newLocks };
+  }),
+
+  applyRemoteSheetAction: (payload) => {
+    const { action, index, colIndex } = payload;
+    const store = get();
+    if (action === 'insertRow') store.insertRowAbove(index);
+    else if (action === 'insertCol') store.insertColumnRight(colIndex);
+    else if (action === 'deleteRow') store.deleteRow(index);
+    else if (action === 'deleteCol') store.deleteColumn(colIndex);
+    else if (action === 'sort') store.sortAZ(colIndex);
+    else if (action === 'toggleFilter') store.toggleFilter(colIndex);
+  },
+
+  // --- ACTIONS: GRID OPERATIONS ---
+  setActiveCell: (ref) => set({ activeCell: ref }),
+  setEditingCell: (ref) => set({ editingCell: ref }),
+  setSelectionRange: (range) => set({ selectionRange: range }),
+  
+  setCellData: (ref, cellData) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    return {
+      data: { ...state.data, [ref]: { ...state.data[ref], ...cellData } },
+      history, future: []
+    };
+  }),
+
+  setCellFormat: (ref, format) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const existing = state.data[ref]?.fmt || {};
+    return {
+      data: { ...state.data, [ref]: { ...state.data[ref], fmt: { ...existing, ...format } } },
+      history, future: []
+    };
+  }),
+
+  bulkSetCellData: (updates) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    return { data: { ...state.data, ...updates }, history, future: [] };
+  }),
+
+  clearCell: (ref) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data };
+    delete newData[ref];
+    return { data: newData, history, future: [] };
+  }),
+
+  // --- ACTIONS: HISTORY & SNAPSHOTS ---
+  undo: () => set(state => {
+    if (state.history.length === 0) return {};
+    const previous = state.history[state.history.length - 1];
+    return {
+      data: previous,
+      history: state.history.slice(0, -1),
+      future: [state.data, ...state.future]
+    };
+  }),
+
+  redo: () => set(state => {
+    if (state.future.length === 0) return {};
+    const next = state.future[0];
+    return {
+      data: next,
+      history: [...state.history, state.data],
+      future: state.future.slice(1)
+    };
+  }),
+
+  saveSnapshot: (label) => set(state => ({
+    snapshots: [{ id: Date.now().toString(), label, createdAt: new Date().toISOString(), data: state.data }, ...state.snapshots]
+  })),
+
+  restoreSnapshot: (id) => set(state => {
+    const snap = state.snapshots.find(s => s.id === id);
+    if (!snap) return {};
+    return { data: snap.data, history: [...state.history, state.data], future: [] };
+  }),
+
+  // --- ACTIONS: LAYOUT & SEARCH ---
+  setIsLightMode: (val) => set({ isLightMode: val }),
+  setColumnWidth: (idx, w) => set(state => ({ columnWidths: { ...state.columnWidths, [idx]: w } })),
+  setRowHeight: (idx, h) => set(state => ({ rowHeights: { ...state.rowHeights, [idx]: h } })),
+  setFindReplace: (partial) => set(state => ({ findReplace: { ...state.findReplace, ...partial } })),
+
+  executeFind: () => set(state => {
     const { findText } = state.findReplace;
     if (!findText) return { findReplace: { ...state.findReplace, results: [], currentIndex: 0 } };
-
-    const results: string[] = [];
-    
-    // Highly optimized search using pre-compiled case-insensitive regex
-    // This avoids creating thousands of intermediate lowercase strings in memory
     const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    
-    const keys = Object.keys(state.data);
-    const len = keys.length;
-    
-    for (let i = 0; i < len; i++) {
-      const ref = keys[i];
-      const cellData = state.data[ref];
-      
-      if (cellData.v !== undefined && regex.test(String(cellData.v))) {
-        results.push(ref);
-        continue;
-      }
-      
-      if (cellData.f !== undefined && regex.test(cellData.f)) {
-        results.push(ref);
-      }
-    }
-
+    const results = Object.entries(state.data)
+      .filter(([, cell]) => (cell.v !== undefined && regex.test(String(cell.v))) || (cell.f && regex.test(cell.f)))
+      .map(([ref]) => ref);
     return {
       findReplace: { ...state.findReplace, results, currentIndex: 0 },
       activeCell: results.length > 0 ? results[0] : state.activeCell
     };
   }),
 
-  nextFindResult: () => set((state) => {
+  nextFindResult: () => set(state => {
     const { results, currentIndex } = state.findReplace;
     if (results.length === 0) return {};
     const nextIdx = (currentIndex + 1) % results.length;
-    return {
-      findReplace: { ...state.findReplace, currentIndex: nextIdx },
-      activeCell: results[nextIdx]
-    };
+    return { findReplace: { ...state.findReplace, currentIndex: nextIdx }, activeCell: results[nextIdx] };
   }),
 
-  prevFindResult: () => set((state) => {
+  prevFindResult: () => set(state => {
     const { results, currentIndex } = state.findReplace;
     if (results.length === 0) return {};
     const prevIdx = (currentIndex - 1 + results.length) % results.length;
-    return {
-      findReplace: { ...state.findReplace, currentIndex: prevIdx },
-      activeCell: results[prevIdx]
-    };
+    return { findReplace: { ...state.findReplace, currentIndex: prevIdx }, activeCell: results[prevIdx] };
   }),
 
-  replaceCurrent: () => set((state) => {
+  replaceCurrent: () => set(state => {
     const { results, currentIndex, replaceText } = state.findReplace;
     if (results.length === 0) return {};
-    
-    const targetRef = results[currentIndex];
-    const history = [...state.history, state.data].slice(-50);
-    
-    // We only replace the static value if it doesn't have a formula
-    // For simplicity of Find&Replace in this MVP, we replace the `v` property.
+    const ref = results[currentIndex];
     return {
-      data: {
-        ...state.data,
-        [targetRef]: { ...state.data[targetRef], v: replaceText, f: undefined }
-      },
-      history,
-      future: []
+      data: { ...state.data, [ref]: { ...state.data[ref], v: replaceText, f: undefined } },
+      history: [...state.history, state.data].slice(-50), future: []
     };
   }),
 
-  replaceAll: () => set((state) => {
+  replaceAll: () => set(state => {
     const { results, replaceText } = state.findReplace;
     if (results.length === 0) return {};
-
-    const history = [...state.history, state.data].slice(-50);
     const newData = { ...state.data };
-
-    for (const ref of results) {
-      newData[ref] = { ...newData[ref], v: replaceText, f: undefined };
-    }
-
-    return {
-      data: newData,
-      history,
-      future: []
-    };
+    results.forEach(ref => { newData[ref] = { ...newData[ref], v: replaceText, f: undefined }; });
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
-  setActiveCell: (ref) => set({ activeCell: ref }),
-  setEditingCell: (ref) => set({ editingCell: ref }),
-  
-  setCellData: (ref, cellData) => set((state) => {
-    const history = [...state.history, state.data].slice(-50); // Keep last 50 states
-    return {
-      data: {
-        ...state.data,
-        [ref]: { ...state.data[ref], ...cellData }
-      },
-      history,
-      future: []
-    };
-  }),
-  
-  setCellFormat: (ref, format) => set((state) => {
-    const history = [...state.history, state.data].slice(-50);
-    const existingFmt = state.data[ref]?.fmt || {};
-    return {
-      data: {
-        ...state.data,
-        [ref]: { ...state.data[ref], fmt: { ...existingFmt, ...format } }
-      },
-      history,
-      future: []
-    };
-  }),
-
-  bulkSetCellData: (updates) => set((state) => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    for (const [ref, update] of Object.entries(updates)) {
-      newData[ref] = { ...newData[ref], ...update };
-    }
-    return { data: newData, history, future: [] };
-  }),
-
-  applyRemoteBulkUpdate: (updates) => set((state) => {
-    const newData = { ...state.data };
-    for (const [ref, update] of Object.entries(updates)) {
-      newData[ref] = { ...newData[ref], ...update };
-    }
-    return { data: newData };
-  }),
-  
-  clearCell: (ref) => set((state) => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    delete newData[ref];
-    return { data: newData, history, future: [] };
-  }),
-  
-  undo: () => set((state) => {
-    if (state.history.length === 0) return state;
-    const previous = state.history[state.history.length - 1];
-    const newHistory = state.history.slice(0, -1);
-    return {
-      data: previous,
-      history: newHistory,
-      future: [state.data, ...state.future]
-    };
-  }),
-  
-  redo: () => set((state) => {
-    if (state.future.length === 0) return state;
-    const next = state.future[0];
-    const newFuture = state.future.slice(1);
-    return {
-      data: next,
-      history: [...state.history, state.data],
-      future: newFuture
-    };
-  }),
-  
-  applyRemoteUpdate: (event) => set((state) => ({
-    data: {
-      ...state.data,
-      [event.cellKey]: { ...state.data[event.cellKey], ...event.cell }
-    }
-  })),
-  
-  cleanupStaleCursors: () => set((state) => {
-    const now = Date.now();
-    const newCursors = { ...state.cursors };
-    let changed = false;
-    Object.entries(newCursors).forEach(([userId, cursor]) => {
-      if (now - cursor.timestamp > 10000) {
-        delete newCursors[userId];
-        changed = true;
-      }
-    });
-    return changed ? { cursors: newCursors } : {};
-  }),
-
-  updateRemoteCursor: (event) => set((state) => ({
-    cursors: {
-      ...state.cursors,
-      [event.userId]: { ...event, timestamp: Date.now() }
-    }
-  })),
-  
-  updateCellLock: (event) => set((state) => {
-    const newLocks = { ...state.lockedCells };
-    if (event.action === 'lock') {
-      newLocks[event.cellKey] = event.userId;
-    } else {
-      delete newLocks[event.cellKey];
-    }
-    return { lockedCells: newLocks };
-  }),
-  
-  applyRemoteSheetAction: (payload) => {
-    const { action, index, colIndex } = payload;
-    const store = useSheetStore.getState();
-    
-    // We call the local actions but WITHOUT re-emitting to avoid loops
-    // Since our local actions use 'set', they already trigger re-renders.
-    if (action === 'insertRow') store.insertRowAbove(index);
-    if (action === 'insertCol') store.insertColumnRight(colIndex);
-    if (action === 'deleteRow') store.deleteRow(index);
-    if (action === 'deleteCol') store.deleteColumn(colIndex);
-    if (action === 'sort') store.sortAZ(colIndex);
-    if (action === 'filter' || action === 'toggleFilter') store.toggleFilter(colIndex);
-  },
-
-  setConnectedUsers: (users) => set({ connectedUsers: users }),
-
-  saveSnapshot: (label) => set((state) => ({
-    snapshots: [
-      { id: Date.now().toString(), label, createdAt: new Date().toISOString(), data: state.data },
-      ...state.snapshots
-    ]
-  })),
-
-  restoreSnapshot: (id) => set((state) => {
-    const snap = state.snapshots.find(s => s.id === id);
-    if (!snap) return state;
-    return { data: snap.data, history: [...state.history, state.data], future: [] };
-  }),
-
-  hiddenRows: new Set(),
-  columnWidths: {},
-  rowHeights: {},
-
-  setColumnWidth: (index, width) => set((state) => ({
-    columnWidths: { ...state.columnWidths, [index]: width }
-  })),
-
-  setRowHeight: (index, height) => set((state) => ({
-    rowHeights: { ...state.rowHeights, [index]: height }
-  })),
-
-  setSelectionRange: (range) => set({ selectionRange: range }),
-
-  insertRowAbove: (rowIndex) => set((state) => {
-    const targetR = rowIndex !== undefined ? rowIndex : (state.activeCell ? parseRef(state.activeCell).r : 0);
+  // --- ACTIONS: COMPLEX SHEET MUTATIONS ---
+  insertRowAbove: (rowIndex) => set(state => {
+    const target = rowIndex ?? (state.activeCell ? parseRef(state.activeCell).r : 0);
     const newData: SheetData = {};
-    const history = [...state.history, state.data].slice(-50);
-
     Object.entries(state.data).forEach(([ref, cell]) => {
       const { r, c } = parseRef(ref);
-      if (r >= targetR) {
-        newData[`r_${r + 1}_c_${c}`] = cell;
-      } else {
-        newData[ref] = cell;
-      }
+      newData[r >= target ? `r_${r + 1}_c_${c}` : ref] = cell;
     });
-
-    return { data: newData, history, future: [] };
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
-  insertColumnRight: (colIndex) => set((state) => {
-    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : 0);
+  insertColumnRight: (colIndex) => set(state => {
+    const target = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
     const newData: SheetData = {};
-    const history = [...state.history, state.data].slice(-50);
-
     Object.entries(state.data).forEach(([ref, cell]) => {
       const { r, c } = parseRef(ref);
-      if (c > targetC) {
-        newData[`r_${r}_c_${c + 1}`] = cell;
-      } else {
-        newData[ref] = cell;
-      }
+      newData[c > target ? `r_${r}_c_${c + 1}` : ref] = cell;
     });
-
-    return { data: newData, history, future: [] };
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
-  deleteRow: (rowIndex) => set((state) => {
-    const targetR = rowIndex !== undefined ? rowIndex : (state.activeCell ? parseRef(state.activeCell).r : -1);
-    if (targetR === -1) return {};
+  deleteRow: (rowIndex) => set(state => {
+    const target = rowIndex ?? (state.activeCell ? parseRef(state.activeCell).r : -1);
+    if (target === -1) return {};
     const newData: SheetData = {};
-    const history = [...state.history, state.data].slice(-50);
-
     Object.entries(state.data).forEach(([ref, cell]) => {
       const { r, c } = parseRef(ref);
-      if (r === targetR) return; 
-      if (r > targetR) {
-        newData[`r_${r - 1}_c_${c}`] = cell;
-      } else {
-        newData[ref] = cell;
-      }
+      if (r === target) return;
+      newData[r > target ? `r_${r - 1}_c_${c}` : ref] = cell;
     });
-
-    return { data: newData, history, future: [] };
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
-  deleteColumn: (colIndex) => set((state) => {
-    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : -1);
-    if (targetC === -1) return {};
+  deleteColumn: (colIndex) => set(state => {
+    const target = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : -1);
+    if (target === -1) return {};
     const newData: SheetData = {};
-    const history = [...state.history, state.data].slice(-50);
-
     Object.entries(state.data).forEach(([ref, cell]) => {
       const { r, c } = parseRef(ref);
-      if (c === targetC) return;
-      if (c > targetC) {
-        newData[`r_${r}_c_${c - 1}`] = cell;
-      } else {
-        newData[ref] = cell;
-      }
+      if (c === target) return;
+      newData[c > target ? `r_${r}_c_${c - 1}` : ref] = cell;
     });
-
-    return { data: newData, history, future: [] };
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
-  sortAZ: (colIndex) => set((state) => {
-    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : 0);
-    
-    // Find used range
-    let maxR = 0;
-    Object.keys(state.data).forEach(ref => {
-      const { r } = parseRef(ref);
-      maxR = Math.max(maxR, r);
-    });
+  sortAZ: (colIndex) => set(state => {
+    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
+    const rows = Array.from({ length: 1000 }, (_, r) => 
+      Array.from({ length: 26 }, (_, c) => state.data[`r_${r}_c_${c}`])
+    ).filter(row => row.some(cell => !!cell));
 
-    // Extract rows
-    const rows: (CellData | undefined)[][] = [];
-    for (let r = 0; r <= maxR; r++) {
-      const row = [];
-      for (let c = 0; c < 26; c++) { // Assuming 26 cols as in Grid.tsx
-        row.push(state.data[`r_${r}_c_${c}`]);
-      }
-      rows.push(row);
-    }
+    rows.sort((a, b) => String(a[targetC]?.v || '').localeCompare(String(b[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
 
-    // Sort
-    rows.sort((a, b) => {
-      const valA = String(a[targetC]?.v || '').toLowerCase();
-      const valB = String(b[targetC]?.v || '').toLowerCase();
-      if (valA < valB) return -1;
-      if (valA > valB) return 1;
-      return 0;
-    });
-
-    // Reconstruct
     const newData: SheetData = {};
-    rows.forEach((row, r) => {
-      row.forEach((cell, c) => {
-        if (cell) newData[`r_${r}_c_${c}`] = cell;
-      });
-    });
-
-    const history = [...state.history, state.data].slice(-50);
-    return { data: newData, history, future: [] };
+    rows.forEach((row, r) => row.forEach((cell, c) => { if (cell) newData[`r_${r}_c_${c}`] = cell; }));
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
-  toggleFilter: (colIndex) => set((state) => {
-    const targetC = colIndex !== undefined ? colIndex : (state.activeCell ? parseRef(state.activeCell).c : 0);
-    
-    if (state.hiddenRows.size > 0) {
-      return { hiddenRows: new Set() };
-    }
-
+  toggleFilter: (colIndex) => set(state => {
+    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
+    if (state.hiddenRows.size > 0) return { hiddenRows: new Set() };
     const newHidden = new Set<number>();
-    let maxR = 0;
-    Object.keys(state.data).forEach(ref => {
-      const { r } = parseRef(ref);
-      maxR = Math.max(maxR, r);
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const { r, c } = parseRef(ref);
+      if (c === targetC && (!cell.v && !cell.f)) newHidden.add(r);
     });
-
-    for (let r = 0; r <= maxR; r++) {
-      const cell = state.data[`r_${r}_c_${targetC}`];
-      if (!cell?.v && !cell?.f) {
-        newHidden.add(r);
-      }
-    }
-
     return { hiddenRows: newHidden };
   })
 }));
+
 
