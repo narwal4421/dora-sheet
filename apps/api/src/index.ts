@@ -106,7 +106,7 @@ setInterval(async () => {
           workbookId: wb.id,
           userId: wb.workspace.members[0].userId, // Attribution to first member for auto-saves
           label: `Auto-save ${new Date().toISOString()}`,
-          data: snapshotData as any
+          data: JSON.stringify(snapshotData)
         }
       });
     }

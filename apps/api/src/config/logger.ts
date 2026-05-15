@@ -17,10 +17,14 @@ export const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'smartsheet-api' },
   transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
+    // Console is enough for Render logs
   ],
 });
+
+if (env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.File({ filename: 'error.log', level: 'error' }));
+  logger.add(new winston.transports.File({ filename: 'combined.log' }));
+}
 
 logger.add(
   new winston.transports.Console({
