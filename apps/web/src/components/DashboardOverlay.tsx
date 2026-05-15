@@ -82,46 +82,51 @@ export const DashboardOverlay = ({ data, onClose }: { data: DashboardData; onClo
       <div className="w-full max-w-6xl h-full max-h-[90vh] bg-surface/95 border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] rounded-3xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-surface/50">
+        <div className="flex flex-col md:flex-row md:items-center justify-between px-4 md:px-8 py-4 md:py-6 border-b border-white/5 bg-surface/50 gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+            <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-[0_0_15px_rgba(99,102,241,0.3)] shrink-0">
               <LayoutDashboard size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">AI Cinematic Dashboard</h2>
-              <p className="text-xs text-textMuted font-medium uppercase tracking-widest mt-0.5">Automated Insights & Analytics</p>
+              <h2 className="text-lg md:text-xl font-bold text-white tracking-tight">AI Cinematic Dashboard</h2>
+              <p className="text-[10px] md:text-xs text-textMuted font-medium uppercase tracking-widest mt-0.5">Automated Insights & Analytics</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-sm text-textMain transition-all">
-              <Share2 size={16} />
-              <span>Share</span>
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accentHover rounded-xl text-sm text-white font-medium transition-all shadow-lg shadow-accent/20">
-              <Download size={16} />
-              <span>Export PDF</span>
-            </button>
-            <div className="w-px h-6 bg-white/10 mx-2" />
-            <button 
-              onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-white transition-all"
-            >
-              <X size={24} />
-            </button>
+          <div className="flex items-center gap-2 md:gap-3 justify-between md:justify-end">
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-xs md:text-sm text-textMain transition-all" title="Share">
+                <Share2 size={16} />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+              <button className="flex items-center gap-2 px-3 md:px-4 py-2 bg-accent hover:bg-accentHover rounded-xl text-xs md:text-sm text-white font-medium transition-all shadow-lg shadow-accent/20" title="Export PDF">
+                <Download size={16} />
+                <span className="hidden sm:inline">Export PDF</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="hidden md:block w-px h-6 bg-white/10 mx-2" />
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-white transition-all"
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-b from-transparent to-black/20">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gradient-to-b from-transparent to-black/20">
           
           {/* Summary Alert */}
-          <div className="mb-8 p-6 bg-accent/5 border border-accent/20 rounded-2xl relative overflow-hidden group">
+          <div className="mb-6 md:mb-8 p-4 md:p-6 bg-accent/5 border border-accent/20 rounded-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 blur-[100px] -mr-32 -mt-32 transition-all group-hover:bg-accent/20" />
-            <h3 className="text-sm font-bold text-accent uppercase tracking-widest mb-2 flex items-center gap-2">
+            <h3 className="text-xs font-bold text-accent uppercase tracking-widest mb-2 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
               Executive Summary
             </h3>
-            <p className="text-textMain leading-relaxed relative z-10 text-lg font-medium italic opacity-90">
+            <p className="text-textMain leading-relaxed relative z-10 text-base md:text-lg font-medium italic opacity-90">
               "{data.summary}"
             </p>
           </div>

@@ -83,7 +83,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 z-[100] bg-[#080808] opacity-0 overflow-y-auto overflow-x-hidden font-inter py-20 px-4 md:px-8"
+      className="fixed inset-0 z-[100] bg-[#080808] opacity-0 overflow-y-auto overflow-x-hidden font-inter py-10 md:py-20 px-4 md:px-8"
     >
       {/* Soft Noise Texture Overlay */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-10" />
@@ -94,14 +94,14 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
 
       <button 
         onClick={onClose}
-        className="fixed top-10 right-10 w-14 h-14 rounded-full border border-white/5 bg-white/[0.03] backdrop-blur-xl text-white flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all duration-700 z-[150] group"
+        className="fixed top-4 right-4 md:top-10 md:right-10 w-12 h-12 md:w-14 md:h-14 rounded-full border border-white/5 bg-white/[0.03] backdrop-blur-xl text-white flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all duration-700 z-[150] group"
       >
         <X size={20} className="group-hover:rotate-90 transition-transform duration-700" />
       </button>
 
       <div 
         ref={cardRef}
-        className="relative w-full max-w-6xl mx-auto bg-white/[0.01] backdrop-blur-[120px] border border-white/[0.08] rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row z-20"
+        className="relative w-full max-w-6xl mx-auto bg-white/[0.01] backdrop-blur-[120px] border border-white/[0.08] rounded-[32px] md:rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row z-20"
       >
         {/* Physical Glass Reflection Effect */}
         <div className="absolute inset-0 bg-gradient-to-tr from-white/[0.02] via-transparent to-white/[0.05] pointer-events-none" />
@@ -123,7 +123,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
           </div>
 
           <div className="text-center md:text-left space-y-2 stagger-in">
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-none font-outfit uppercase">
+            <h1 className="text-4xl md:text-7xl font-black tracking-tight text-white leading-none font-outfit uppercase">
               Pranjal <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-white to-accent animate-liquid-chrome drop-shadow-[0_0_30px_rgba(14,165,233,0.4)]">Narwal</span>
             </h1>
             <div className="flex items-center gap-4 justify-center md:justify-start">
@@ -159,7 +159,7 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
                 <Globe size={20} className="animate-spin-slow" />
                 <h2 className="text-xs font-black uppercase tracking-[0.4em]">The Core Vision</h2>
               </div>
-              <p className="text-3xl md:text-5xl font-medium text-white/95 leading-[1.1] tracking-tight font-syne italic">
+              <p className="text-2xl md:text-5xl font-medium text-white/95 leading-[1.1] tracking-tight font-syne italic">
                 "The speed of <span className="text-accent">thought</span>, <br />
                 applied to the scale of data."
               </p>
@@ -172,10 +172,10 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
               <button 
                 onMouseEnter={() => sounds.current.hover.play()}
                 onClick={() => window.location.href = "mailto:doranarwal@gmail.com"}
-                className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all duration-700 overflow-hidden flex items-center px-8"
+                className="group/btn relative h-16 md:h-20 rounded-2xl md:rounded-3xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all duration-700 overflow-hidden flex items-center px-6 md:px-8"
               >
                 <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
-                <Mail size={24} className="text-accent mr-6 group-hover/btn:scale-110 transition-transform" />
+                <Mail size={20} className="md:size-[24px] text-accent mr-4 md:mr-6 group-hover/btn:scale-110 transition-transform" />
                 <div className="flex flex-col items-start">
                   <span className="text-[9px] text-textMuted font-black uppercase tracking-[0.3em] mb-1">Email Inquiry</span>
                   <span className="text-base text-white font-medium">doranarwal@gmail.com</span>
@@ -188,10 +188,10 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
               <button 
                 onMouseEnter={() => sounds.current.hover.play()}
                 onClick={() => window.open("/resume.pdf", "_blank")}
-                className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all duration-700 overflow-hidden flex items-center px-8"
+                className="group/btn relative h-16 md:h-20 rounded-2xl md:rounded-3xl bg-white/[0.03] border border-white/5 hover:border-accent/40 transition-all duration-700 overflow-hidden flex items-center px-6 md:px-8"
               >
                 <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
-                <FileText size={24} className="text-accent mr-6 group-hover/btn:scale-110 transition-transform" />
+                <FileText size={20} className="md:size-[24px] text-accent mr-4 md:mr-6 group-hover/btn:scale-110 transition-transform" />
                 <div className="flex flex-col items-start">
                   <span className="text-[9px] text-textMuted font-black uppercase tracking-[0.3em] mb-1">Professional Profile</span>
                   <span className="text-base text-white font-medium">Digital Resume</span>
@@ -204,10 +204,10 @@ export const AboutPage = ({ onClose }: { onClose: () => void }) => {
               <button 
                 onMouseEnter={() => sounds.current.hover.play()}
                 onClick={() => window.open("https://wa.me/919997780055", "_blank")}
-                className="group/btn relative h-20 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-[#25D366]/40 transition-all duration-700 overflow-hidden flex items-center px-8"
+                className="group/btn relative h-16 md:h-20 rounded-2xl md:rounded-3xl bg-white/[0.03] border border-white/5 hover:border-[#25D366]/40 transition-all duration-700 overflow-hidden flex items-center px-6 md:px-8"
               >
                 <div className="absolute inset-0 bg-[#25D366]/5 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-700" />
-                <MessageCircle size={24} className="text-[#25D366] mr-6 group-hover/btn:scale-110 transition-transform" />
+                <MessageCircle size={20} className="md:size-[24px] text-[#25D366] mr-4 md:mr-6 group-hover/btn:scale-110 transition-transform" />
                 <div className="flex flex-col items-start">
                   <span className="text-[9px] text-textMuted font-black uppercase tracking-[0.3em] mb-1">WhatsApp Hub</span>
                   <span className="text-base text-white font-medium">+91 99977-80055</span>

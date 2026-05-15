@@ -17,7 +17,7 @@ export const JoinRequestStack: React.FC<JoinRequestStackProps> = ({ requests, on
   if (requests.length === 0) return null;
 
   return (
-    <div className="fixed bottom-10 left-10 z-[250] flex flex-col gap-4 animate-in slide-in-from-left duration-500">
+    <div className="fixed bottom-4 left-4 md:bottom-10 md:left-10 z-[250] flex flex-col gap-4 animate-in slide-in-from-left duration-500">
       {requests.map((req, idx) => (
         <div 
           key={req.requesterSocketId} 

@@ -16,7 +16,7 @@ export const JoinIdentityModal: React.FC<JoinIdentityModalProps> = ({ onJoin }) 
 
   return (
     <div className="fixed inset-0 bg-background/90 backdrop-blur-md z-[200] flex items-center justify-center p-6">
-      <div className="bg-surface border border-white/10 rounded-[32px] shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-8 animate-in zoom-in-95 duration-300">
+      <div className="bg-surface border border-white/10 rounded-[24px] md:rounded-[32px] shadow-2xl w-full max-w-sm p-6 md:p-8 flex flex-col items-center gap-6 md:gap-8 animate-in zoom-in-95 duration-300">
         <div className="w-20 h-20 rounded-3xl bg-accent/10 flex items-center justify-center text-accent">
           <Users size={40} />
         </div>

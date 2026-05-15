@@ -248,9 +248,9 @@ export const initSockets = (httpServer: Server) => {
         // Auto-unlock cells
         const locks = await redis.smembers(`user:locks:${userId}:${activeWorkbookId}`);
         if (locks.length > 0) {
-          await redis.del(...locks.map(l => `cell:lock:${activeWorkbookId}:${l}`));
+          await redis.del(...locks.map((l: string) => `cell:lock:${activeWorkbookId}:${l}`));
           await redis.del(`user:locks:${userId}:${activeWorkbookId}`);
-          locks.forEach(l => io.to(room).emit('cell_locked', { userId, cellKey: l, action: 'unlock' }));
+          locks.forEach((l: string) => io.to(room).emit('cell_locked', { userId, cellKey: l, action: 'unlock' }));
         }
       }
     });

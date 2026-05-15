@@ -130,6 +130,8 @@ interface SheetState {
   setRoomLockError: (val: boolean) => void;
   isWaitingForApproval: boolean;
   setIsWaitingForApproval: (val: boolean) => void;
+  socketConnected: boolean;
+  setSocketConnected: (val: boolean) => void;
   pendingJoinRequests: { requesterSocketId: string, requesterUserId: string, name: string }[];
   addJoinRequest: (req: { requesterSocketId: string, requesterUserId: string, name: string }) => void;
   removeJoinRequest: (socketId: string) => void;
@@ -166,6 +168,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   isLocked: false,
   roomLockError: false,
   isWaitingForApproval: false,
+  socketConnected: false,
   pendingJoinRequests: [],
   teamMessages: [],
 
@@ -200,6 +203,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   setRoomLocked: (locked) => set({ isLocked: locked }),
   setRoomLockError: (val) => set({ roomLockError: val }),
   setIsWaitingForApproval: (val) => set({ isWaitingForApproval: val }),
+  setSocketConnected: (val) => set({ socketConnected: val }),
   addJoinRequest: (req) => set(state => ({ 
     pendingJoinRequests: [...state.pendingJoinRequests.filter(r => r.requesterUserId !== req.requesterUserId), req] 
   })),

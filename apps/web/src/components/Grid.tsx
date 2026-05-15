@@ -101,7 +101,9 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
   const handleCellMouseEnter = useCallback((ref: string) => {
     if (!isSelecting || isDashboard) return;
     const start = useSheetStore.getState().activeCell;
-    useSheetStore.getState().setSelectionRange({ start, end: ref });
+    if (start) {
+      useSheetStore.getState().setSelectionRange({ start, end: ref });
+    }
   }, [isSelecting, isDashboard]);
 
   const handleGlobalMouseUp = useCallback(() => {

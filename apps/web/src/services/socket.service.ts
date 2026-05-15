@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { useSheetStore } from '../store/useSheetStore';
-import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent, CellData } from '../store/useSheetStore';
+import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent } from '../store/useSheetStore';
 
 /**
  * GOD LEVEL SOCKET SERVICE
@@ -8,19 +8,21 @@ import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent, CellData } from '
  * automated event buffering, and real-time telemetry.
  */
 
-export enum SocketEvent {
-  CELL_UPDATE = 'cell_update',
-  BULK_CELL_UPDATE = 'bulk_cell_update',
-  CURSOR_MOVE = 'cursor_move',
-  CELL_LOCK = 'cell_lock',
-  SHEET_ACTION = 'sheet_action',
-  CHAT_MESSAGE = 'chat_message',
-  JOIN_WORKBOOK = 'join_workbook',
-  LEAVE_WORKBOOK = 'leave_workbook',
-  TOGGLE_LOCK = 'toggle_room_lock',
-  REQUEST_JOIN = 'request_to_join',
-  RESPOND_JOIN = 'respond_to_join',
-}
+export const SocketEvent = {
+  CELL_UPDATE: 'cell_update',
+  BULK_CELL_UPDATE: 'bulk_cell_update',
+  CURSOR_MOVE: 'cursor_move',
+  CELL_LOCK: 'cell_lock',
+  SHEET_ACTION: 'sheet_action',
+  CHAT_MESSAGE: 'chat_message',
+  JOIN_WORKBOOK: 'join_workbook',
+  LEAVE_WORKBOOK: 'leave_workbook',
+  TOGGLE_LOCK: 'toggle_room_lock',
+  REQUEST_JOIN: 'request_to_join',
+  RESPOND_JOIN: 'respond_to_join',
+} as const;
+
+type SocketEventType = typeof SocketEvent[keyof typeof SocketEvent];
 
 interface SocketResponse {
   success: boolean;
@@ -34,7 +36,7 @@ interface SocketResponse {
 class SocketService {
   private static instance: SocketService;
   public socket: Socket | null = null;
-  private eventBuffer: { event: string, payload: any, callback?: Function }[] = [];
+  private eventBuffer: { event: string, payload: unknown, callback?: (res: unknown) => void }[] = [];
   private isConnecting: boolean = false;
 
   private constructor() {
@@ -76,12 +78,19 @@ class SocketService {
     this.socket.on('connect', () => {
       this.isConnecting = false;
       console.log('🚀 [GOD_SOCKET] Connected | ID:', this.socket?.id);
+      useSheetStore.getState().setSocketConnected(true);
       this.flushBuffer();
       
       const workbookId = this.getWorkbookId();
+      console.log('📦 [GOD_SOCKET] Auto-joining room:', workbookId);
       if (workbookId && workbookId !== 'default-workbook-id') {
-        this.joinWorkbook(workbookId);
+        this.joinWorkbook();
       }
+    });
+
+    this.socket.on('disconnect', () => {
+      console.warn('🔌 [GOD_SOCKET] Disconnected');
+      useSheetStore.getState().setSocketConnected(false);
     });
 
     this.socket.on('connect_error', (err) => {
@@ -96,34 +105,34 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on('cell_updated', (event: CellUpdateEvent) => useSheetStore.getState().applyRemoteUpdate(event));
-    this.socket.on('bulk_cell_updated', (event: any) => useSheetStore.getState().applyRemoteBulkUpdate(event.updates));
+    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, Partial<import('../store/useSheetStore').CellData>> }) => useSheetStore.getState().applyRemoteBulkUpdate(event.updates));
     this.socket.on('cursor_moved', (event: CursorMoveEvent) => useSheetStore.getState().updateRemoteCursor(event));
     this.socket.on('cell_locked', (event: CellLockEvent) => useSheetStore.getState().updateCellLock(event));
-    this.socket.on('sheet_action_received', (payload: any) => useSheetStore.getState().applyRemoteSheetAction(payload));
-    this.socket.on('incoming_join_request', (payload: any) => useSheetStore.getState().addJoinRequest(payload));
-    this.socket.on('chat_message_received', (payload: any) => useSheetStore.getState().addTeamMessage(payload));
-    this.socket.on('room_lock_status', (payload: any) => useSheetStore.getState().setRoomLocked(payload.locked));
-    this.socket.on('host_changed', (data: any) => {
+    this.socket.on('sheet_action_received', (payload: { action: string, index?: number, colIndex?: number }) => useSheetStore.getState().applyRemoteSheetAction(payload));
+    this.socket.on('incoming_join_request', (payload: { requesterSocketId: string, requesterUserId: string, name: string }) => useSheetStore.getState().addJoinRequest(payload));
+    this.socket.on('chat_message_received', (payload: { userName: string, message: string, timestamp: string }) => useSheetStore.getState().addTeamMessage(payload));
+    this.socket.on('room_lock_status', (payload: { locked: boolean }) => useSheetStore.getState().setRoomLocked(payload.locked));
+    this.socket.on('host_changed', (data: { newHostId: string }) => {
       const state = useSheetStore.getState();
       state.setIsHost(data.newHostId === state.localUserName);
     });
 
-    this.socket.on('user_joined', (user: any) => {
+    this.socket.on('user_joined', (user: { userId: string, name: string, color: string, isHost: boolean }) => {
       const state = useSheetStore.getState();
       state.setConnectedUsers([...state.connectedUsers.filter(u => u.userId !== user.userId), user]);
     });
 
-    this.socket.on('user_left', (payload: any) => {
+    this.socket.on('user_left', (payload: { userId: string }) => {
       const state = useSheetStore.getState();
       state.setConnectedUsers(state.connectedUsers.filter(u => u.userId !== payload.userId));
     });
 
     this.socket.on('join_request_accepted', () => {
       useSheetStore.getState().setIsWaitingForApproval(false);
-      window.location.reload();
+      this.joinWorkbook();
     });
 
-    this.socket.on('join_request_denied', (payload: any) => {
+    this.socket.on('join_request_denied', (payload: { reason?: string }) => {
       if (payload?.reason === 'ROOM_LOCKED') {
         useSheetStore.getState().setRoomLockError(true);
       } else {
@@ -137,10 +146,10 @@ class SocketService {
    * Handles automatic workbook ID enrichment, buffering for offline states,
    * and Promise-based feedback.
    */
-  private async emitAsync<T>(event: string, payload: any): Promise<T> {
+  private async emitAsync<T>(event: SocketEventType, payload: unknown): Promise<T> {
     return new Promise((resolve) => {
       const workbookId = this.getWorkbookId();
-      const enriched = { workbookId, ...payload };
+      const enriched = { workbookId, ...(payload as object) };
 
       if (!this.socket?.connected) {
         this.eventBuffer.push({ event, payload: enriched, callback: resolve });
@@ -171,7 +180,7 @@ class SocketService {
 
   // --- GOD LEVEL API ---
 
-  public async joinWorkbook(workbookId: string) {
+  public async joinWorkbook() {
     const name = localStorage.getItem('userName') || 'Guest User';
     const res = await this.emitAsync<SocketResponse>(SocketEvent.JOIN_WORKBOOK, { name });
     if (res.success) {
@@ -182,7 +191,7 @@ class SocketService {
     return res;
   }
 
-  public emitCellUpdate(sheetId: string, cellKey: string, cell: any) {
+  public emitCellUpdate(sheetId: string, cellKey: string, cell: unknown) {
     this.socket?.emit(SocketEvent.CELL_UPDATE, { 
       workbookId: this.getWorkbookId(), 
       sheetId, 
@@ -191,7 +200,7 @@ class SocketService {
     });
   }
 
-  public emitBulkCellUpdate(sheetId: string, updates: Record<string, any>) {
+  public emitBulkCellUpdate(sheetId: string, updates: Record<string, unknown>) {
     this.socket?.emit(SocketEvent.BULK_CELL_UPDATE, { 
       workbookId: this.getWorkbookId(), 
       sheetId, 
@@ -237,6 +246,15 @@ class SocketService {
 
   public respondToJoinRequest(requesterSocketId: string, requesterUserId: string, approved: boolean, targetRoomId: string) {
     this.socket?.emit(SocketEvent.RESPOND_JOIN, { requesterSocketId, requesterUserId, approved, targetRoomId });
+  }
+
+  public emitSheetAction(sheetId: string, action: string, payload: unknown) {
+    this.socket?.emit(SocketEvent.SHEET_ACTION, { 
+      workbookId: this.getWorkbookId(), 
+      sheetId, 
+      action, 
+      payload 
+    });
   }
 
   public isConnected() {

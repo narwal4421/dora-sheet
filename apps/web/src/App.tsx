@@ -48,7 +48,7 @@ function App() {
   // --- UI TOGGLES ---
   const [showShare, setShowShare] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(!localStorage.getItem('userName'));
+  const [showJoinModal, setShowJoinModal] = useState(!localStorage.getItem('userName') || localStorage.getItem('userName') === 'Guest User');
   const [joinNotification, setJoinNotification] = useState<string | null>(null);
   const [showAI, setShowAI] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -58,14 +58,9 @@ function App() {
   useEffect(() => {
     if (isDashboard) return;
 
-    if (!localUserName || localUserName === 'Guest User') {
-      const timer = setTimeout(() => setShowJoinModal(true), 100);
-      return () => clearTimeout(timer);
-    }
-
     const init = async () => {
       socketService.connect();
-      const res = await socketService.joinWorkbook(workbookId);
+      const res = await socketService.joinWorkbook();
       
       if (!res.success && res.reason === 'LOCKED') {
         setRoomLockError(true);
@@ -73,8 +68,9 @@ function App() {
     };
 
     init();
+
     return () => { socketService.socket?.disconnect(); };
-  }, [workbookId, isDashboard, localUserName, setRoomLockError]);
+  }, [workbookId, isDashboard, localUserName, setRoomLockError, isWaitingForApproval]);
 
   // --- ANIMATIONS: GSAP PREMIUM ---
   useGSAP(() => {
@@ -129,7 +125,7 @@ function App() {
         </main>
 
         {!isDashboard && showAI && (
-          <div className="h-full flex-shrink-0 animate-in slide-in-from-right-8 duration-200">
+          <div className="fixed inset-0 md:relative md:h-full flex-shrink-0 z-[60] md:z-auto animate-in slide-in-from-right-8 duration-200">
             <AIChatPanel onClose={() => setShowAI(false)} />
           </div>
         )}
@@ -141,7 +137,6 @@ function App() {
         {showJoinModal && <JoinIdentityModal onJoin={(name) => {
           useSheetStore.getState().setLocalUserName(name);
           setShowJoinModal(false);
-          window.location.reload();
         }} />}
 
         {showVersionHistory && (

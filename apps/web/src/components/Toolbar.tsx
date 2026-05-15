@@ -129,13 +129,13 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
 
       {/* AI Bot Button */}
       <div className="flex-1 flex justify-end shrink-0">
-        <button
-          onClick={onToggleAI}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-accent to-indigo-600 text-white hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all active:scale-95 font-semibold text-sm"
-        >
-          <Bot size={16} className="animate-pulse" />
-          <span>Dora AI</span>
-        </button>
+          <button
+            onClick={onToggleAI}
+            className="flex items-center gap-2 px-3 md:px-4 py-1.5 rounded-full bg-gradient-to-r from-accent to-indigo-600 text-white hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all active:scale-95 font-semibold text-sm"
+          >
+            <Bot size={16} className="animate-pulse" />
+            <span className="hidden md:inline">Dora AI</span>
+          </button>
       </div>
     </div>
   );

@@ -46,9 +46,9 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Middlewares
 app.use(helmet());
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     // Dynamic origin reflection for demo - allows any requester to connect
-    callback(null, origin || true);
+    callback(null, true);
   },
   credentials: true
 }));
@@ -65,7 +65,7 @@ app.use('/api/v1/ai', aiRouter);
 app.use('/api/v1', fileRouter);
 app.use('/api/v1/call', callRouter);
 
-app.get('/api/v1/health', (req, res) => {
+app.get('/api/v1/health', (req: express.Request, res: express.Response) => {
   res.json({ success: true, data: { status: 'ok', time: new Date() } });
 });
 

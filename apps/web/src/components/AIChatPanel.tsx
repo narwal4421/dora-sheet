@@ -322,7 +322,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[400px] bg-background/80 backdrop-blur-2xl border-l border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-[100] animate-in slide-in-from-right duration-500 overflow-hidden">
+    <div className="fixed inset-y-0 right-0 w-full md:w-[400px] bg-background/80 backdrop-blur-2xl border-l border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-[100] animate-in slide-in-from-right duration-500 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-white/10 bg-surface/50">
         <div className="flex items-center justify-between mb-4">

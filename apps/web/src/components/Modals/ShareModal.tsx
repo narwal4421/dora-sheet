@@ -58,15 +58,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) =
         {/* Header Gradient */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-indigo-400 to-accent" />
         
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-accent/10 rounded-xl">
+              <div className="p-2 md:p-2.5 bg-accent/10 rounded-xl">
                 <Globe className="text-accent" size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-textMain tracking-tight">Collaborative Sharing</h2>
-                <p className="text-sm text-textMuted font-medium">Manage access and invite your team</p>
+                <h2 className="text-lg md:text-xl font-bold text-textMain tracking-tight">Collaborative Sharing</h2>
+                <p className="text-[11px] md:text-sm text-textMuted font-medium">Manage access and invite your team</p>
               </div>
             </div>
             <button 
@@ -97,7 +97,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) =
           </div>
 
           {/* Security Controls */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-8">
             <div 
               className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
                 isLocked 

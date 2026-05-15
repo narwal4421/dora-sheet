@@ -21,6 +21,7 @@ export const TopNav = ({
   isHost: boolean
 }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
+  const socketConnected = useSheetStore(state => state.socketConnected);
   const isLightMode = useSheetStore(state => state.isLightMode);
   const setIsLightMode = useSheetStore(state => state.setIsLightMode);
   const userName = useSheetStore(state => state.localUserName);
@@ -163,38 +164,69 @@ export const TopNav = ({
   ];
 
   return (
-    <div className="dark flex items-center justify-between px-4 py-2 border-b border-border bg-background z-20">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center justify-center w-8 h-8 rounded bg-accent/20 text-accent">
+    <div className="dark flex items-center justify-between px-2 md:px-4 py-2 border-b border-border bg-background z-20">
+      <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+        <div className="flex items-center justify-center w-8 h-8 rounded bg-accent/20 text-accent flex-shrink-0">
           <FileSpreadsheet size={20} />
         </div>
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <input 
             type="text" 
             defaultValue="Untitled Workbook" 
-            className="bg-transparent font-medium text-textMain text-sm outline-none border border-transparent hover:border-border px-1 rounded transition-colors focus:border-accent focus:bg-surface"
+            className="bg-transparent font-medium text-textMain text-sm outline-none border border-transparent hover:border-border px-1 rounded transition-colors focus:border-accent focus:bg-surface truncate"
           />
-          <div className="flex items-center gap-1 px-1 mt-0.5">
-            <DropdownMenu label="File" items={fileMenu} />
-            <DropdownMenu label="Edit" items={editMenu} />
-            <DropdownMenu label="View" items={viewMenu} />
-            <DropdownMenu label="Insert" items={insertMenu} />
-            <DropdownMenu label="Format" items={formatMenu} />
-            <DropdownMenu label="Data" items={dataMenu} />
+          <div className="flex items-center gap-0.5 md:gap-1 px-1 mt-0.5 overflow-x-auto no-scrollbar">
+            {/* Desktop Menus */}
+            <div className="hidden md:flex items-center gap-1">
+              <DropdownMenu label="File" items={fileMenu} />
+              <DropdownMenu label="Edit" items={editMenu} />
+              <DropdownMenu label="View" items={viewMenu} />
+              <DropdownMenu label="Insert" items={insertMenu} />
+              <DropdownMenu label="Format" items={formatMenu} />
+              <DropdownMenu label="Data" items={dataMenu} />
+            </div>
+            
+            {/* Mobile Menu */}
+            <div className="flex md:hidden">
+              <DropdownMenu 
+                label="Menu" 
+                items={[
+                  ...fileMenu,
+                  { divider: true, label: '', onClick: () => {} },
+                  ...editMenu,
+                  { divider: true, label: '', onClick: () => {} },
+                  ...viewMenu,
+                  { divider: true, label: '', onClick: () => {} },
+                  ...insertMenu,
+                  { divider: true, label: '', onClick: () => {} },
+                  ...formatMenu,
+                  { divider: true, label: '', onClick: () => {} },
+                  ...dataMenu,
+                ]} 
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Current User Name Editor */}
+      <div className="flex items-center gap-1.5 md:gap-4 ml-2">
+        {/* Connection Status */}
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surfaceHover/30 border border-border/30" title={socketConnected ? 'Connected to Dora Cloud' : 'Connecting to Dora Cloud...'}>
+          <div className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 animate-pulse'}`} />
+          <span className="text-[10px] font-bold text-textMuted uppercase tracking-wider hidden sm:inline">
+            {socketConnected ? (connectedUsers.length > 1 ? 'Live' : 'Solo') : 'Offline'}
+          </span>
+        </div>
+
+        {/* Current User Name Editor - Compact on mobile */}
         <div className="flex items-center gap-2 bg-surfaceHover/50 px-2 py-1 rounded-full border border-border/50 hover:border-accent/30 transition-all group">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-accent to-accentHover flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-accent to-accentHover flex items-center justify-center text-[10px] font-bold text-white uppercase shadow-sm flex-shrink-0">
             {userName.charAt(0)}
           </div>
           {isEditingName ? (
             <input 
               autoFocus
-              className="bg-transparent border-none outline-none text-xs font-semibold text-textMain w-24 animate-in fade-in duration-200"
+              className="bg-transparent border-none outline-none text-xs font-semibold text-textMain w-16 md:w-24 animate-in fade-in duration-200"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               onBlur={() => {
@@ -209,16 +241,16 @@ export const TopNav = ({
           ) : (
             <div 
               onClick={() => setIsEditingName(true)}
-              className="text-xs font-semibold text-textMuted group-hover:text-textMain cursor-pointer transition-colors flex items-center gap-1"
+              className="text-xs font-semibold text-textMuted group-hover:text-textMain cursor-pointer transition-colors flex items-center gap-1 overflow-hidden"
             >
-              <span>{userName}</span>
-              <span className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 text-accent px-1 rounded">Edit</span>
+              <span className="truncate max-w-[50px] md:max-w-none">{userName}</span>
+              <span className="text-[9px] opacity-0 md:group-hover:opacity-100 transition-opacity bg-accent/10 text-accent px-1 rounded hidden md:inline">Edit</span>
             </div>
           )}
         </div>
 
-        {/* Avatars */}
-        <div className="flex items-center -space-x-2">
+        {/* Avatars - Visible on all screens, scrollable if too many */}
+        <div className="flex items-center -space-x-2 overflow-x-auto no-scrollbar max-w-[100px] md:max-w-none">
           {connectedUsers.map((user, i) => (
             <div 
               key={user.userId || i} 
@@ -243,36 +275,39 @@ export const TopNav = ({
         <div className="relative flex items-center">
           <button 
             onClick={() => setIsLightMode(!isLightMode)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
+            className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
             title={isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {isLightMode ? <Moon size={16} /> : <Sun size={16} />}
-            <span>Theme</span>
+            <span className="hidden md:inline">Theme</span>
           </button>
         </div>
 
         <button 
           onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
+          className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
+          title="Export"
         >
           <Download size={16} />
-          <span>Export</span>
+          <span className="hidden md:inline">Export</span>
         </button>
 
         <button 
           onClick={onShowVersionHistory}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
+          className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
+          title="History"
         >
           <Clock size={16} />
-          <span>History</span>
+          <span className="hidden md:inline">History</span>
         </button>
 
         <button 
           onClick={onShowShare}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded bg-accent text-white hover:bg-accentHover transition-colors text-sm font-medium shadow-md shadow-accent/20"
+          className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 rounded bg-accent text-white hover:bg-accentHover transition-colors text-sm font-medium shadow-md shadow-accent/20"
+          title="Share"
         >
           <Share2 size={16} />
-          <span>Share</span>
+          <span className="hidden md:inline">Share</span>
         </button>
       </div>
     </div>

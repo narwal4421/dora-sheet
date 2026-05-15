@@ -9,7 +9,7 @@ interface RoomLockedModalProps {
 export const RoomLockedModal: React.FC<RoomLockedModalProps> = ({ isWaiting, onRequestAccess }) => {
   return (
     <div className="fixed inset-0 bg-background/95 backdrop-blur-xl z-[300] flex items-center justify-center p-6">
-      <div className="bg-surface border border-red-500/20 rounded-[40px] shadow-2xl w-full max-w-md p-10 flex flex-col items-center gap-8 animate-in zoom-in-95 duration-500">
+      <div className="bg-surface border border-red-500/20 rounded-[32px] md:rounded-[40px] shadow-2xl w-full max-w-md p-6 md:p-10 flex flex-col items-center gap-6 md:gap-8 animate-in zoom-in-95 duration-500">
         <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 animate-pulse">
           <Shield size={48} />
         </div>
