@@ -143,7 +143,7 @@ export const CallOverlay: React.FC = () => {
             serverUrl={livekitUrl}
             onDisconnected={() => endCall()}
             className="h-full flex flex-col"
-            style={{ '--lk-bg': 'transparent' } as any}
+            style={{ '--lk-bg': 'transparent' } as React.CSSProperties}
           >
             <div className="flex-1 overflow-hidden p-4">
                <VideoConference 

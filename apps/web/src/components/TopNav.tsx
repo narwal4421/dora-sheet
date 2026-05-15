@@ -6,6 +6,7 @@ import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
 
 import { DropdownMenu, type MenuItem } from './DropdownMenu';
 import { toast } from '../store/useToastStore';
+import { socketService } from '../services/socket.service';
 
 export const TopNav = ({ 
   onShowVersionHistory, 
