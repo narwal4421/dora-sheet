@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { toast } from '../store/useToastStore';
 import { 
   Video, VideoOff, Mic, MicOff, PhoneOff, Users, 
   Settings, Minimize2, ScreenShare, SignalHigh 
@@ -135,19 +136,13 @@ export const CallOverlay: React.FC = () => {
               {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
             </button>
             <button 
-              onClick={() => {
-                const { toast } = require('../store/useToastStore');
-                toast('Screen sharing is being optimized for high-bitrate streaming...', 'info');
-              }}
+              onClick={() => toast('Screen sharing is being optimized for high-bitrate streaming...', 'info')}
               className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all"
             >
               <ScreenShare size={20} />
             </button>
             <button 
-              onClick={() => {
-                const { toast } = require('../store/useToastStore');
-                toast('Communication settings coming soon!', 'info');
-              }}
+              onClick={() => toast('Communication settings coming soon!', 'info')}
               className="p-3 bg-white/10 text-textMain hover:bg-white/20 rounded-xl transition-all"
             >
               <Settings size={20} />
