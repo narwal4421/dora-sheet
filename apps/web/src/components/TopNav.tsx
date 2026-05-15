@@ -11,15 +11,13 @@ export const TopNav = ({
   onShowShare,
   onShowAbout,
   onNewWorkbook,
-  onShowTemplates,
-  isHost
+  onShowTemplates
 }: { 
   onShowVersionHistory: () => void, 
   onShowShare: () => void,
   onShowAbout: () => void,
   onNewWorkbook: () => void,
-  onShowTemplates: () => void,
-  isHost: boolean
+  onShowTemplates: () => void
 }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const socketConnected = useSheetStore(state => state.socketConnected);

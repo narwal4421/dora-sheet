@@ -106,7 +106,6 @@ function App() {
         <TopNav 
           onShowShare={() => setShowShare(true)} 
           onShowAbout={() => setShowAbout(true)} 
-          isHost={isHost}
           onShowVersionHistory={() => setShowVersionHistory(true)}
           onNewWorkbook={() => {
             const newId = Math.floor(100000 + Math.random() * 900000).toString();
