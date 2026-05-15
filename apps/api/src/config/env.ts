@@ -18,7 +18,14 @@ const envSchema = z.object({
 const _env = envSchema.safeParse(process.env);
 
 if (!_env.success) {
-  console.error('Invalid environment variables', _env.error.format());
+  console.error('FATAL: Invalid environment variables configuration:');
+  const errors = _env.error.format();
+  Object.entries(errors).forEach(([key, value]) => {
+    if (key !== '_errors') {
+      console.error(`  - ${key}: ${(value as any)._errors.join(', ')}`);
+    }
+  });
+  console.error('\nPlease check your Render/Environment variables settings.');
   process.exit(1);
 }
 

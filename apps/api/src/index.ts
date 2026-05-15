@@ -116,15 +116,24 @@ setInterval(async () => {
 }, 5 * 60 * 1000);
 
 server.listen(port, async () => {
-  logger.info(`SmartSheet API running on port ${port} in ${env.NODE_ENV} mode`);
+  logger.info(`🚀 SmartSheet API running on port ${port} [${env.NODE_ENV}]`);
   
+  // DB CONNECTIVITY CHECK
+  try {
+    await prisma.$connect();
+    logger.info('✅ Database connection established');
+  } catch (dbErr) {
+    logger.error('❌ CRITICAL: Database connection failed. DB features will be unavailable.', dbErr);
+    // We don't exit here to allow the server to at least start and serve static/ready checks
+  }
+
   // SEED DEFAULT DATA FOR DEMO
   try {
     const defaultId = 'default-workbook-id';
     const existingSheet = await prisma.sheet.findUnique({ where: { id: defaultId } });
     
     if (!existingSheet) {
-      logger.info('Seeding default workbook and sheet...');
+      logger.info('🌱 Seeding default demo data...');
       
       const workspace = await prisma.workspace.create({
         data: { name: 'Public Workspace', id: 'default-workspace-id' }
@@ -152,9 +161,9 @@ server.listen(port, async () => {
           colCount: 26
         }
       });
-      logger.info('Default data seeded successfully.');
+      logger.info('✅ Default data seeded successfully');
     }
   } catch (err) {
-    logger.error('Startup seeding failed:', err);
+    logger.error('⚠️ Startup seeding skipped or failed (likely DB issue):', err);
   }
 });

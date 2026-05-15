@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { socketService } from '../services/socket.service';
-import { getWorkbookIdFromUrl } from '../utils/url';
+import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
 
 export type CellFormat = {
   bold?: boolean;
