@@ -265,7 +265,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     else if (action === 'sort') store.sortAZ(colIndex);
     else if (action === 'toggleFilter') store.toggleFilter(colIndex);
     else if (action === 'clearSheet') store.clearSheet();
-    else if (action === 'rename_sheet') store.renameWorkbook(payload.name);
+    else if (action === 'rename_sheet') store.renameWorkbook(payload.name || 'Untitled Workbook');
   },
 
   // --- ACTIONS: GRID OPERATIONS ---
