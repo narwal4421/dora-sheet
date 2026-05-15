@@ -40,7 +40,6 @@ function App() {
   const pendingJoinRequests = useSheetStore(state => state.pendingJoinRequests);
   const roomLockError = useSheetStore(state => state.roomLockError);
   const isWaitingForApproval = useSheetStore(state => state.isWaitingForApproval);
-  const isHost = useSheetStore(state => state.isHost);
   const setRoomLockError = useSheetStore(state => state.setRoomLockError);
   const setIsWaitingForApproval = useSheetStore(state => state.setIsWaitingForApproval);
   const removeJoinRequest = useSheetStore(state => state.removeJoinRequest);
