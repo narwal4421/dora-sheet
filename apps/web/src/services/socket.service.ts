@@ -36,6 +36,7 @@ interface SocketResponse {
 class SocketService {
   private static instance: SocketService;
   public socket: Socket | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private eventBuffer: { event: string, payload: unknown, callback?: (res: any) => void }[] = [];
   private isConnecting: boolean = false;
 
