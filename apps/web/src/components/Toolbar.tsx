@@ -3,7 +3,17 @@ import { useSheetStore } from '../store/useSheetStore';
 import { useRef, useCallback, useMemo } from 'react';
 
 export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
-  const { data, activeCell, selectionRange, setCellFormat, undo, redo, history, future, findReplace, setFindReplace } = useSheetStore();
+  const data = useSheetStore(state => state.data);
+  const activeCell = useSheetStore(state => state.activeCell);
+  const selectionRange = useSheetStore(state => state.selectionRange);
+  const setCellFormat = useSheetStore(state => state.setCellFormat);
+  const undo = useSheetStore(state => state.undo);
+  const redo = useSheetStore(state => state.redo);
+  const history = useSheetStore(state => state.history);
+  const future = useSheetStore(state => state.future);
+  const findReplace = useSheetStore(state => state.findReplace);
+  const setFindReplace = useSheetStore(state => state.setFindReplace);
+
   const textColorRef = useRef<HTMLInputElement>(null);
   const bgColorRef = useRef<HTMLInputElement>(null);
 
@@ -27,9 +37,15 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
 
   const applyToSelection = useCallback((fn: (ref: string) => void) => {
     if (!selectionBounds) {
-      if (activeCell) fn(activeCell);
+      if (activeCell) {
+        console.log(`[TOOLBAR] Applying to activeCell: ${activeCell}`);
+        fn(activeCell);
+      } else {
+        console.warn('[TOOLBAR] No active cell or selection to apply format');
+      }
       return;
     }
+    console.log(`[TOOLBAR] Applying to selection bounds:`, selectionBounds);
     for (let r = selectionBounds.minR; r <= selectionBounds.maxR; r++) {
       for (let c = selectionBounds.minC; c <= selectionBounds.maxC; c++) {
         fn(`r_${r}_c_${c}`);
@@ -38,6 +54,7 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
   }, [selectionBounds, activeCell]);
 
   const toggleFormat = (key: string, value: string | boolean | number = true) => {
+    console.log(`[TOOLBAR] Toggle format: ${key} = ${value}`);
     const isCurrentlySet = currentFmt[key] === value;
     applyToSelection((ref) => {
       setCellFormat(ref, { [key]: isCurrentlySet ? undefined : value });
