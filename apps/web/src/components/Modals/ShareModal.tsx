@@ -4,6 +4,7 @@ import { useSheetStore } from '../../store/useSheetStore';
 import { socketService } from '../../services/socket.service';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import { toast } from '../../store/useToastStore';
 
 interface ShareModalProps {
   workbookId: string;
@@ -49,7 +50,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) =
 
   const toggleLock = () => {
     if (!isHost) return;
-    socketService.emitToggleRoomLock(workbookId, !isLocked);
+    const newLocked = !isLocked;
+    socketService.emitToggleRoomLock(workbookId, newLocked);
+    toast(newLocked ? '🔒 Room locked — only approved users can join' : '🔓 Room unlocked — anyone with the link can join', 'success');
   };
 
   const handleJoinByCode = () => {

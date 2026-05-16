@@ -257,7 +257,14 @@ class SocketService {
   }
 
   public emitToggleRoomLock(workbookId: string, locked: boolean) {
-    this.socket?.emit(SocketEvent.TOGGLE_LOCK, { workbookId, locked });
+    // Always update local state immediately (optimistic)
+    useSheetStore.getState().setRoomLocked(locked);
+    // Try to sync with server if connected
+    if (this.socket?.connected) {
+      this.socket.emit(SocketEvent.TOGGLE_LOCK, { workbookId, locked });
+    } else {
+      console.warn('[GOD_SOCKET] Lock toggled offline — will sync when reconnected');
+    }
   }
 
   public requestToJoin(targetRoomId: string, userInfo: { name: string, socketId: string }) {
