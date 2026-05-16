@@ -175,13 +175,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) =
           {/* Security Controls */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-6">
             <div 
-              className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
+              className={`p-4 rounded-xl border transition-all select-none ${
                 isLocked 
                   ? 'bg-rose-500/10 border-rose-500/30' 
                   : 'bg-emerald-500/10 border-emerald-500/30'
-              } ${!isHost ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+              } ${isHost ? 'cursor-pointer hover:opacity-90' : 'opacity-50 cursor-not-allowed'}`}
               onClick={toggleLock}
-              title={!isHost ? 'Only the host can change room lock' : ''}
+              title={isHost 
+                ? (isLocked ? 'Click to unlock the room' : 'Click to lock the room') 
+                : 'Only the host can lock or unlock this room'
+              }
             >
               <div className="flex items-center justify-between mb-2">
                 {isLocked ? <Lock size={20} className="text-rose-500" /> : <Unlock size={20} className="text-emerald-500" />}
