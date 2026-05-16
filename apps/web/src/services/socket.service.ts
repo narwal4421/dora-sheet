@@ -69,6 +69,11 @@ class SocketService {
 
     console.log(`[GOD_SOCKET] Connecting to API: ${apiUrl}`);
 
+    // Immediately ping the health endpoint to wake Render from sleep
+    if (!isLocalhost) {
+      fetch(apiUrl + '/api/v1/health').catch(() => {});
+    }
+
     // Generate a stable guest ID that persists across page refreshes/reconnections
     if (!localStorage.getItem('guestId')) {
       localStorage.setItem('guestId', `guest-${crypto.randomUUID().slice(0, 8)}`);
@@ -81,11 +86,13 @@ class SocketService {
           guestId: localStorage.getItem('guestId')
         });
       },
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'], // polling first for max Render compatibility
+      upgrade: true,
       reconnection: true,
-      reconnectionAttempts: 15,
-      reconnectionDelay: 1000,
-      timeout: 20000,
+      reconnectionAttempts: 20,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      timeout: 30000,
     });
 
     this.socket.on('connect', () => {
@@ -112,6 +119,13 @@ class SocketService {
       this.isConnecting = false;
       console.warn('⚠️ [GOD_SOCKET] Connection failed:', err.message);
     });
+
+    // Keep Render backend alive — ping every 8 minutes
+    setInterval(() => {
+      if (!this.socket?.connected) {
+        fetch(apiUrl + '/api/v1/health').catch(() => {});
+      }
+    }, 8 * 60 * 1000);
 
     this.setupListeners();
   }
