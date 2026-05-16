@@ -54,7 +54,8 @@ class RedisManager {
     const storage = new Map<string, any>();
     return {
       get: async (key: string) => storage.get(key) || null,
-      set: async (key: string, val: any, mode?: string, duration?: number) => {
+      set: async (key: string, val: any, ...args: any[]) => {
+        if (args.includes('NX') && storage.has(key)) return null;
         storage.set(key, val);
         return 'OK';
       },

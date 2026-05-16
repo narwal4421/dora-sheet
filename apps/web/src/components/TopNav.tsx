@@ -166,11 +166,11 @@ export const TopNav = ({
 
   return (
     <div className="dark flex items-center justify-between px-2 md:px-4 py-2 border-b border-border bg-background z-20">
-      <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+      <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
         <div className="flex items-center justify-center w-8 h-8 rounded bg-accent/20 text-accent flex-shrink-0">
           <FileSpreadsheet size={20} />
         </div>
-        <div className="flex flex-col min-w-0">
+        <div className="flex flex-col min-w-0 relative">
           <input 
             type="text" 
             value={useSheetStore(state => state.workbookName)}
@@ -182,7 +182,7 @@ export const TopNav = ({
             }}
             className="bg-transparent font-medium text-textMain text-sm outline-none border border-transparent hover:border-border px-1 rounded transition-colors focus:border-accent focus:bg-surface truncate"
           />
-          <div className="flex items-center gap-0.5 md:gap-1 px-1 mt-0.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-0.5 md:gap-1 px-1 mt-0.5 flex-wrap relative">
             {/* Desktop Menus */}
             <div className="hidden md:flex items-center gap-1">
               <DropdownMenu label="File" items={fileMenu} />
@@ -237,10 +237,12 @@ export const TopNav = ({
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
               onBlur={() => {
+                socketService.updateName(userName);
                 setIsEditingName(false);
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
+                  socketService.updateName(userName);
                   setIsEditingName(false);
                 }
               }}

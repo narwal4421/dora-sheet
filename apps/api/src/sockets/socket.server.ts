@@ -160,6 +160,20 @@ export const initSockets = (httpServer: Server) => {
       }
     });
 
+    socket.on('update_user_name', async (payload: any) => {
+      if (!activeWorkbookId) return;
+      const { name } = payload;
+      socket.data.name = sanitize(name);
+      // We broadcast a new user_joined-like event or a specific name update event
+      // However, we can simply emit 'user_joined' to force the client to update their member list
+      io.to(`workbook:${activeWorkbookId}`).emit('user_joined', { 
+        userId, 
+        name: socket.data.name, 
+        color: socket.data.color, 
+        isHost: socket.data.isHost 
+      });
+    });
+
     socket.on('toggle_room_lock', async (payload: any) => {
       const { workbookId, locked } = payload;
       const hostId = await redis.get(`room:host:${workbookId}`);

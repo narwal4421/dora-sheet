@@ -8,7 +8,11 @@ export const generateToken = async (req: Request, res: Response) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userName = (req as any).user?.name || req.query.userName as string || 'Anonymous';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (req as any).user?.userId || Math.random().toString(36).substring(7);
+    const baseUserId = (req as any).user?.userId;
+    const isPublicUser = baseUserId === 'public-user-id';
+    const userId = isPublicUser || !baseUserId 
+      ? `guest-${Math.random().toString(36).substring(7)}` 
+      : baseUserId;
 
     if (!room) {
       return res.status(400).json({ success: false, message: 'Room name is required' });

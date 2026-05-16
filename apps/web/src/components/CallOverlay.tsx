@@ -23,7 +23,7 @@ import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
  */
 export const CallOverlay: React.FC = () => {
   const { isCallActive, callToken, startCall, endCall, setToken, setStatus } = useCallStore();
-  const { localUserName } = useSheetStore();
+  const { localUserName, connectedUsers } = useSheetStore();
   const [isMinimized, setIsMinimized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +71,7 @@ export const CallOverlay: React.FC = () => {
   }, [isCallActive, callToken, fetchToken]);
 
   if (!isCallActive && !isMinimized) {
+    if (connectedUsers.length <= 1) return null;
     return (
       <button 
         onClick={() => startCall(true, true)}

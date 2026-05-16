@@ -23,7 +23,11 @@ import { toast } from './store/useToastStore';
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
   const match = path.match(/\/(workbook|dashboard)\/([^/]+)/);
-  return match ? match[2] : 'default';
+  if (match) return match[2];
+  
+  const newId = crypto.randomUUID();
+  window.history.replaceState(null, '', `/workbook/${newId}`);
+  return newId;
 };
 
 /**
@@ -41,7 +45,6 @@ function App() {
   const pendingJoinRequests = useSheetStore(state => state.pendingJoinRequests);
   const roomLockError = useSheetStore(state => state.roomLockError);
   const isWaitingForApproval = useSheetStore(state => state.isWaitingForApproval);
-  const setRoomLockError = useSheetStore(state => state.setRoomLockError);
   const setIsWaitingForApproval = useSheetStore(state => state.setIsWaitingForApproval);
   const removeJoinRequest = useSheetStore(state => state.removeJoinRequest);
 
@@ -61,16 +64,17 @@ function App() {
     const init = async () => {
       socketService.connect();
       const res = await socketService.joinWorkbook();
-      
       if (!res.success && res.reason === 'LOCKED') {
-        setRoomLockError(true);
+        useSheetStore.getState().setRoomLockError(true);
+      } else if (res.success) {
+        useSheetStore.getState().setRoomLockError(false);
       }
     };
 
     init();
 
     return () => { socketService.socket?.disconnect(); };
-  }, [workbookId, isDashboard, localUserName, setRoomLockError, isWaitingForApproval]);
+  }, [workbookId, isDashboard]);
 
   // --- ANIMATIONS: GSAP PREMIUM ---
   useGSAP(() => {
@@ -108,7 +112,7 @@ function App() {
           onShowAbout={() => setShowAbout(true)} 
           onShowVersionHistory={() => setShowVersionHistory(true)}
           onNewWorkbook={() => {
-            const newId = Math.floor(100000 + Math.random() * 900000).toString();
+            const newId = crypto.randomUUID();
             window.location.href = `/workbook/${newId}`;
           }}
           onShowTemplates={() => toast('Templates feature is coming soon!', 'info')}
@@ -135,6 +139,7 @@ function App() {
         {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
         {showJoinModal && <JoinIdentityModal onJoin={(name) => {
           useSheetStore.getState().setLocalUserName(name);
+          socketService.updateName(name);
           setShowJoinModal(false);
         }} />}
 

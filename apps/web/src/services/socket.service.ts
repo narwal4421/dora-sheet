@@ -20,6 +20,7 @@ export const SocketEvent = {
   TOGGLE_LOCK: 'toggle_room_lock',
   REQUEST_JOIN: 'request_to_join',
   RESPOND_JOIN: 'respond_to_join',
+  UPDATE_NAME: 'update_user_name',
 } as const;
 
 type SocketEventType = typeof SocketEvent[keyof typeof SocketEvent];
@@ -82,11 +83,13 @@ class SocketService {
       this.isConnecting = false;
       console.log('🚀 [GOD_SOCKET] Connected | ID:', this.socket?.id);
       useSheetStore.getState().setSocketConnected(true);
+      
+      const hasBufferedJoin = this.eventBuffer.some(e => e.event === SocketEvent.JOIN_WORKBOOK);
       this.flushBuffer();
       
       const workbookId = this.getWorkbookId();
       console.log('📦 [GOD_SOCKET] Auto-joining room:', workbookId);
-      if (workbookId && workbookId !== 'default-workbook-id') {
+      if (!hasBufferedJoin && workbookId && workbookId !== 'default-workbook-id') {
         this.joinWorkbook();
       }
     });
@@ -259,6 +262,13 @@ class SocketService {
       sheetId, 
       action, 
       payload 
+    });
+  }
+
+  public updateName(name: string) {
+    this.socket?.emit(SocketEvent.UPDATE_NAME, {
+      workbookId: this.getWorkbookId(),
+      name
     });
   }
 

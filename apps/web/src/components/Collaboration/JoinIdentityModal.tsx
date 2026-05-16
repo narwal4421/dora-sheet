@@ -11,6 +11,8 @@ export const JoinIdentityModal: React.FC<JoinIdentityModalProps> = ({ onJoin }) 
   const handleSubmit = () => {
     if (tempName.trim()) {
       onJoin(tempName.trim());
+      // The socket update is handled in App.tsx or we can just do it here if we import it.
+      // But we will do it in App.tsx where onJoin is called.
     }
   };
 
