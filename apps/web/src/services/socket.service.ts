@@ -211,7 +211,8 @@ class SocketService {
 
   public async joinWorkbook() {
     const name = localStorage.getItem('userName') || 'Guest User';
-    const res = await this.emitAsync<SocketResponse>(SocketEvent.JOIN_WORKBOOK, { name });
+    const workbookId = this.getWorkbookId();
+    const res = await this.emitAsync<SocketResponse>(SocketEvent.JOIN_WORKBOOK, { name, workbookId });
     if (res.success) {
       const state = useSheetStore.getState();
       // Use server-confirmed host status; fallback to true if alone in room
