@@ -171,7 +171,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   cursors: {},
   lockedCells: {},
   connectedUsers: [],
-  isHost: false,
+  isHost: true,
   localUserName: localStorage.getItem('userName') || 'Guest User',
   localUserId: null,
   workbookName: 'Untitled Workbook',
