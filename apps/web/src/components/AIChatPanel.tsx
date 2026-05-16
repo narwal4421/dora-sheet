@@ -635,11 +635,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const getWorkbookIdFromUrl = () => {
-  const path = window.location.pathname;
-  const match = path.match(/\/workbook\/([^/]+)/);
-  return match ? match[1] : 'default-workbook-id';
-};
+
 
 function expandRange(rangeStr: string): string[] {
   if (!rangeStr.includes(':')) return [a1ToRef(rangeStr)];
