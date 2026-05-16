@@ -181,10 +181,23 @@ export const initSockets = (httpServer: Server) => {
     socket.on('toggle_room_lock', async (payload: any) => {
       const { workbookId, locked } = payload;
       const hostId = await redis.get(`room:host:${workbookId}`);
-      if (hostId !== userId) return;
+      
+      // If no host registered (e.g., Redis was cleared), let socket.data.isHost be the fallback
+      const isAuthorized = hostId === userId || (!hostId && socket.data.isHost);
+      
+      if (!isAuthorized) {
+        logSecurity('LOCK_REJECTED', { userId, hostId, workbookId });
+        return;
+      }
+
+      // If Redis was cleared but client is still marked as host, re-register
+      if (!hostId && socket.data.isHost) {
+        await redis.set(`room:host:${workbookId}`, userId, 'NX');
+      }
       
       await redis.set(`room:locked:${workbookId}`, locked ? 'true' : 'false');
       io.to(`workbook:${workbookId}`).emit('room_lock_status', { locked });
+      logSecurity('LOCK_TOGGLED', { userId, workbookId, locked });
     });
 
     // --- DOMAIN: GRID ENGINE ---

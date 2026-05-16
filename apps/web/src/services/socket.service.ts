@@ -199,10 +199,14 @@ class SocketService {
     const res = await this.emitAsync<SocketResponse>(SocketEvent.JOIN_WORKBOOK, { name });
     if (res.success) {
       const state = useSheetStore.getState();
-      state.setIsHost(!!res.isHost);
+      // Use server-confirmed host status; fallback to true if alone in room
+      const members = res.members || [];
+      const isHost = !!res.isHost || members.length <= 1;
+      state.setIsHost(isHost);
       if (res.userId) state.setLocalUserId(res.userId);
       if (res.workbookName) state.renameWorkbook(res.workbookName);
       if (res.members) state.setConnectedUsers(res.members);
+      console.log(`[GOD_SOCKET] Host status: ${isHost} | Members: ${members.length} | UserId: ${res.userId}`);
     }
     return res;
   }

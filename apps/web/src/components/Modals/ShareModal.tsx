@@ -98,7 +98,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) =
             </button>
           </div>
 
-          {/* === ROOM CODE (BIG & PROMINENT) === */}
+          {/* Host / Guest Status Badge */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-6 w-fit ${
+            isHost 
+              ? 'bg-accent/10 border border-accent/30 text-accent' 
+              : 'bg-surfaceHover border border-border text-textMuted'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${isHost ? 'bg-accent animate-pulse' : 'bg-textMuted'}`} />
+            {isHost ? '👑 You are the Host' : 'You are a Collaborator'}
+          </div>
+
           <div className="mb-6 p-5 rounded-2xl bg-accent/5 border border-accent/20 flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-xs font-bold text-textMuted uppercase tracking-widest">
               <Hash size={14} className="text-accent" />
