@@ -68,9 +68,17 @@ class SocketService {
         ? 'https://dora-sheet-api.onrender.com' 
         : 'http://localhost:3002');
 
+    // Generate a stable guest ID that persists across page refreshes/reconnections
+    if (!localStorage.getItem('guestId')) {
+      localStorage.setItem('guestId', `guest-${crypto.randomUUID().slice(0, 8)}`);
+    }
+
     this.socket = io(apiUrl, {
       auth: (cb) => {
-        cb({ token: localStorage.getItem('token') || 'dummy-token' });
+        cb({ 
+          token: localStorage.getItem('token') || 'dummy-token',
+          guestId: localStorage.getItem('guestId')
+        });
       },
       transports: ['websocket'],
       reconnection: true,

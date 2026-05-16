@@ -58,7 +58,11 @@ export const initSockets = (httpServer: Server) => {
     if (attempts > 50) return next(new Error('THROTTLED'));
 
     if (!token || token === 'dummy-token') {
-      socket.data.userId = `guest-${uuidv4().slice(0, 8)}`;
+      // Use client-provided stable guestId to maintain identity across reconnections
+      const guestId = socket.handshake.auth.guestId;
+      socket.data.userId = (guestId && typeof guestId === 'string') 
+        ? guestId 
+        : `guest-${uuidv4().slice(0, 8)}`;
       return next();
     }
 
