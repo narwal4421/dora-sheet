@@ -79,7 +79,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const fetchToken = useCallback(async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL ||
-        (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3002' : 'https://dora-sheet-api.onrender.com');
       const response = await fetch(`${apiUrl}/api/v1/call/token?room=${workbookId}&userName=${encodeURIComponent(localUserName)}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -170,7 +170,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       formData.append('sheetContext', getSheetContext());
 
       const apiUrl = import.meta.env.VITE_API_URL || 
-        (window.location.hostname.includes('vercel.app') ? 'https://dora-sheet-api.onrender.com' : 'http://localhost:3002');
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3002' : 'https://dora-sheet-api.onrender.com');
       
       const response = await fetch(`${apiUrl}/api/v1/ai/chat`, {
         method: 'POST',

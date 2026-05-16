@@ -63,10 +63,11 @@ class SocketService {
     if (this.socket?.connected || this.isConnecting) return;
     this.isConnecting = true;
 
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const apiUrl = import.meta.env.VITE_API_URL || 
-      (window.location.hostname.includes('vercel.app') 
-        ? 'https://dora-sheet-api.onrender.com' 
-        : 'http://localhost:3002');
+      (isLocalhost ? 'http://localhost:3002' : 'https://dora-sheet-api.onrender.com');
+
+    console.log(`[GOD_SOCKET] Connecting to API: ${apiUrl}`);
 
     // Generate a stable guest ID that persists across page refreshes/reconnections
     if (!localStorage.getItem('guestId')) {
