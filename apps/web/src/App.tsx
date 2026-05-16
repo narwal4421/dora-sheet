@@ -14,7 +14,6 @@ import { ToastContainer } from './components/ToastContainer';
 import { Sparkles, X as CloseIcon } from 'lucide-react';
 import { useSheetStore } from './store/useSheetStore';
 import { DashboardOverlay, type DashboardData } from './components/DashboardOverlay';
-import { CallOverlay } from './components/CallOverlay';
 import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
 import { RoomLockedModal } from './components/Collaboration/RoomLockedModal';
 import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal';
@@ -127,8 +126,8 @@ function App() {
           {!isDashboard && <FindReplace />}
         </main>
 
-        {!isDashboard && showAI && (
-          <div className="fixed inset-0 md:relative md:h-full flex-shrink-0 z-[60] md:z-auto animate-in slide-in-from-right-8 duration-200">
+        {!isDashboard && (
+          <div className={`fixed inset-0 md:relative md:h-full flex-shrink-0 z-[60] md:z-auto transition-all duration-300 ${showAI ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none absolute'}`}>
             <AIChatPanel onClose={() => setShowAI(false)} />
           </div>
         )}
@@ -182,8 +181,6 @@ function App() {
             onRequestAccess={handleRequestAccess} 
           />
         )}
-
-        <CallOverlay />
       </div>
       <ToastContainer />
     </div>
