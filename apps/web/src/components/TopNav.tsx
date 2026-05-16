@@ -22,7 +22,6 @@ export const TopNav = ({
   onShowTemplates: () => void;
 }) => {
   const connectedUsers = useSheetStore(state => state.connectedUsers);
-  const socketConnected = useSheetStore(state => state.socketConnected);
   const isLightMode = useSheetStore(state => state.isLightMode);
   const setIsLightMode = useSheetStore(state => state.setIsLightMode);
   const userName = useSheetStore(state => state.localUserName);
@@ -217,13 +216,6 @@ export const TopNav = ({
       </div>
 
       <div className="flex items-center gap-1.5 md:gap-4 ml-2">
-        {/* Connection Status */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surfaceHover/30 border border-border/30" title={socketConnected ? 'Connected to Dora Cloud' : 'Connecting to Dora Cloud...'}>
-          <div className={`w-1.5 h-1.5 rounded-full ${socketConnected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 animate-pulse'}`} />
-          <span className="text-[10px] font-bold text-textMuted uppercase tracking-wider hidden sm:inline">
-            {socketConnected ? (connectedUsers.length > 1 ? 'Live' : 'Solo') : 'Offline'}
-          </span>
-        </div>
 
         {/* Current User Name Editor - Compact on mobile */}
         <div className="flex items-center gap-2 bg-surfaceHover/50 px-2 py-1 rounded-full border border-border/50 hover:border-accent/30 transition-all group">
