@@ -24,7 +24,7 @@ const getWorkbookIdFromUrl = () => {
   const match = path.match(/\/(workbook|dashboard)\/([^/]+)/);
   if (match) return match[2];
   
-  const newId = crypto.randomUUID();
+  const newId = Math.floor(100000 + Math.random() * 900000).toString();
   window.history.replaceState(null, '', `/workbook/${newId}`);
   return newId;
 };
@@ -111,7 +111,7 @@ function App() {
           onShowAbout={() => setShowAbout(true)} 
           onShowVersionHistory={() => setShowVersionHistory(true)}
           onNewWorkbook={() => {
-            const newId = crypto.randomUUID();
+            const newId = Math.floor(100000 + Math.random() * 900000).toString();
             window.location.href = `/workbook/${newId}`;
           }}
           onShowTemplates={() => toast('Templates feature is coming soon!', 'info')}
