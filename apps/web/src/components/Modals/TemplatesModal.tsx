@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { X, Sparkles, Receipt, ListTodo, Wallet, Check } from 'lucide-react';
+import { X, Sparkles, Receipt, ListTodo, Wallet, Check, TrendingUp, Target, Activity } from 'lucide-react';
 import gsap from 'gsap';
 import { useSheetStore, type CellData } from '../../store/useSheetStore';
 import { socketService } from '../../services/socket.service';
@@ -10,7 +10,7 @@ interface Template {
   id: string;
   name: string;
   description: string;
-  icon: typeof Wallet | typeof ListTodo | typeof Receipt;
+  icon: typeof Wallet | typeof ListTodo | typeof Receipt | typeof TrendingUp | typeof Target | typeof Activity;
   color: string;
   bgColor: string;
   borderColor: string;
@@ -137,6 +137,103 @@ export const TemplatesModal = ({ onClose }: { onClose: () => void }) => {
         'r_5_c_3': { f: '=B6*C6', v: 1080 },
         'r_7_c_0': { v: 'Grand Total', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
         'r_7_c_3': { f: '=SUM(D4:D6)', v: 6180, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f59e0b' } }
+      }
+    },
+    {
+      id: 'pipeline',
+      name: 'Sales Deal Pipeline',
+      description: 'Model customer sales prospects, target deals, closing probability percentages, and active weighted pipelines.',
+      icon: TrendingUp,
+      color: '#8b5cf6',
+      bgColor: 'rgba(139, 92, 246, 0.05)',
+      borderColor: 'rgba(139, 92, 246, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Sales Pipeline Cockpit', fmt: { bold: true, fontSize: 16, color: '#8b5cf6' } },
+        'r_2_c_0': { v: 'Company Lead', fmt: { bold: true, backgroundColor: '#311042', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Deal Value ($)', fmt: { bold: true, backgroundColor: '#311042', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Probability (%)', fmt: { bold: true, backgroundColor: '#311042', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Weighted Pipeline ($)', fmt: { bold: true, backgroundColor: '#311042', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Acme Corporate Solutions' },
+        'r_3_c_1': { v: 50000 },
+        'r_3_c_2': { v: 0.8 },
+        'r_3_c_3': { f: '=B4*C4', v: 40000 },
+        'r_4_c_0': { v: 'Globex Retail Group' },
+        'r_4_c_1': { v: 120000 },
+        'r_4_c_2': { v: 0.5 },
+        'r_4_c_3': { f: '=B5*C5', v: 60000 },
+        'r_5_c_0': { v: 'Initech Enterprise Software' },
+        'r_5_c_1': { v: 35000 },
+        'r_5_c_2': { v: 0.9 },
+        'r_5_c_3': { f: '=B6*C6', v: 31500 },
+        'r_6_c_0': { v: 'Umbrella Security Systems' },
+        'r_6_c_1': { v: 80000 },
+        'r_6_c_2': { v: 0.2 },
+        'r_6_c_3': { f: '=B7*C7', v: 16000 },
+        'r_8_c_0': { v: 'Total Forecast Pipeline', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_8_c_3': { f: '=SUM(D4:D7)', v: 147500, fmt: { bold: true, backgroundColor: '#0f172a', color: '#8b5cf6' } }
+      }
+    },
+    {
+      id: 'marketing',
+      name: 'Marketing Campaign ROI',
+      description: 'Audit marketing expenses across digital channels and measure customer acquisition efficiency.',
+      icon: Target,
+      color: '#ec4899',
+      bgColor: 'rgba(236, 72, 153, 0.05)',
+      borderColor: 'rgba(236, 72, 153, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Marketing ROI Analytics', fmt: { bold: true, fontSize: 16, color: '#ec4899' } },
+        'r_2_c_0': { v: 'Acquisition Channel', fmt: { bold: true, backgroundColor: '#500724', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Campaign Budget ($)', fmt: { bold: true, backgroundColor: '#500724', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Acquired Users', fmt: { bold: true, backgroundColor: '#500724', color: '#ffffff' } },
+        'r_2_c_3': { v: 'CAC ($/User)', fmt: { bold: true, backgroundColor: '#500724', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Google Search Ads' },
+        'r_3_c_1': { v: 2400 },
+        'r_3_c_2': { v: 120 },
+        'r_3_c_3': { f: '=B4/C4', v: 20 },
+        'r_4_c_0': { v: 'Facebook Social Ads' },
+        'r_4_c_1': { v: 1800 },
+        'r_4_c_2': { v: 60 },
+        'r_4_c_3': { f: '=B5/C5', v: 30 },
+        'r_5_c_0': { v: 'Weekly Newsletters' },
+        'r_5_c_1': { v: 300 },
+        'r_5_c_2': { v: 50 },
+        'r_5_c_3': { f: '=B6/C6', v: 6 },
+        'r_6_c_0': { v: 'SEO & Content Hub' },
+        'r_6_c_1': { v: 1200 },
+        'r_6_c_2': { v: 150 },
+        'r_6_c_3': { f: '=B7/C7', v: 8 },
+        'r_8_c_0': { v: 'Aggregated Metrics', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_8_c_1': { f: '=SUM(B4:B7)', v: 5700, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_8_c_2': { f: '=SUM(C4:C7)', v: 380, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } }
+      }
+    },
+    {
+      id: 'saas',
+      name: 'SaaS Metric Cockpit',
+      description: 'Model Monthly Recurring Revenue (MRR), subscription expansions, ARPU, and user churn growth ratios.',
+      icon: Activity,
+      color: '#06b6d4',
+      bgColor: 'rgba(6, 182, 212, 0.05)',
+      borderColor: 'rgba(6, 182, 212, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'SaaS Performance Board', fmt: { bold: true, fontSize: 16, color: '#06b6d4' } },
+        'r_2_c_0': { v: 'Executive KPI', fmt: { bold: true, backgroundColor: '#155e75', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Q1 Active ($)', fmt: { bold: true, backgroundColor: '#155e75', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Q2 Active ($)', fmt: { bold: true, backgroundColor: '#155e75', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Quarterly Growth', fmt: { bold: true, backgroundColor: '#155e75', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Recurring Revenue (MRR)' },
+        'r_3_c_1': { v: 45000 },
+        'r_3_c_2': { v: 54000 },
+        'r_3_c_3': { f: '=(C4-B4)/B4', v: 0.2 },
+        'r_4_c_0': { v: 'Active Subscriptions' },
+        'r_4_c_1': { v: 1200 },
+        'r_4_c_2': { v: 1380 },
+        'r_4_c_3': { f: '=(C5-B5)/B5', v: 0.15 },
+        'r_5_c_0': { v: 'User Churn Rate (%)' },
+        'r_5_c_1': { v: 0.024 },
+        'r_5_c_2': { v: 0.019 },
+        'r_5_c_3': { f: '=(C6-B6)/B6', v: -0.208 }
       }
     }
   ];

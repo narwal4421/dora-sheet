@@ -123,7 +123,7 @@ interface SheetState {
   updateRemoteCursor: (event: CursorMoveEvent) => void;
   cleanupStaleCursors: () => void;
   updateCellLock: (event: CellLockEvent) => void;
-  applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number, name?: string, data?: any, sender?: string }) => void;
+  applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number, name?: string, data?: unknown, sender?: string }) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
   isHost: boolean;
   setIsHost: (isHost: boolean) => void;
