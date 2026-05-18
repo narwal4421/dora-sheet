@@ -261,7 +261,8 @@ export const initSockets = (httpServer: Server) => {
     socket.on('chat_message', (payload: any) => {
       if (!activeWorkbookId) return;
       socket.to(`workbook:${activeWorkbookId}`).emit('chat_message_received', {
-        userName: socket.data.name,
+        id: payload.id,
+        userName: socket.data.name || payload.userName,
         message: sanitize(payload.message),
         timestamp: new Date().toISOString()
       });

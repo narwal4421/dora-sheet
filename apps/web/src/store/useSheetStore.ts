@@ -143,8 +143,8 @@ interface SheetState {
   pendingJoinRequests: { requesterSocketId: string, requesterUserId: string, name: string }[];
   addJoinRequest: (req: { requesterSocketId: string, requesterUserId: string, name: string }) => void;
   removeJoinRequest: (socketId: string) => void;
-  teamMessages: { userName: string, message: string, timestamp: string }[];
-  addTeamMessage: (msg: { userName: string, message: string, timestamp: string }) => void;
+  teamMessages: { id?: string, userName: string, message: string, timestamp: string }[];
+  addTeamMessage: (msg: { id?: string, userName: string, message: string, timestamp: string }) => void;
 }
 
 const parseRef = (ref: string) => {
@@ -211,7 +211,15 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   setLocalUserId: (id) => set({ localUserId: id }),
   renameWorkbook: (name) => set({ workbookName: name }),
   setConnectedUsers: (users) => set({ connectedUsers: users }),
-  addTeamMessage: (msg) => set(state => ({ teamMessages: [...state.teamMessages.slice(-100), msg] })),
+  addTeamMessage: (msg) => set(state => {
+    const exists = state.teamMessages.some(m => {
+      if (msg.id && m.id && msg.id === m.id) return true;
+      const timeDiff = Math.abs(new Date(m.timestamp).getTime() - new Date(msg.timestamp).getTime());
+      return m.userName === msg.userName && m.message === msg.message && timeDiff < 3000;
+    });
+    if (exists) return state;
+    return { teamMessages: [...state.teamMessages.slice(-100), msg] };
+  }),
   setRoomLocked: (locked) => set({ isLocked: locked }),
   setRoomLockError: (val) => set({ roomLockError: val }),
   setIsWaitingForApproval: (val) => set({ isWaitingForApproval: val }),

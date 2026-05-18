@@ -141,7 +141,7 @@ class SocketService {
     this.socket.on('cell_locked', (event: CellLockEvent) => useSheetStore.getState().updateCellLock(event));
     this.socket.on('sheet_action_received', (payload: { action: string, index?: number, colIndex?: number }) => useSheetStore.getState().applyRemoteSheetAction(payload));
     this.socket.on('incoming_join_request', (payload: { requesterSocketId: string, requesterUserId: string, name: string }) => useSheetStore.getState().addJoinRequest(payload));
-    this.socket.on('chat_message_received', (payload: { userName: string, message: string, timestamp: string }) => useSheetStore.getState().addTeamMessage(payload));
+    this.socket.on('chat_message_received', (payload: { id?: string, userName: string, message: string, timestamp: string }) => useSheetStore.getState().addTeamMessage(payload));
     this.socket.on('room_lock_status', (payload: { locked: boolean }) => useSheetStore.getState().setRoomLocked(payload.locked));
     this.socket.on('host_changed', (data: { newHostId: string }) => {
       const state = useSheetStore.getState();
@@ -271,12 +271,14 @@ class SocketService {
   }
 
   public emitChatMessage(message: string, userName: string) {
+    const id = Math.random().toString(36).substring(2, 9) + '-' + Date.now();
     this.socket?.emit(SocketEvent.CHAT_MESSAGE, { 
+      id,
       workbookId: this.getWorkbookId(), 
       message, 
       userName 
     });
-    useSheetStore.getState().addTeamMessage({ userName, message, timestamp: new Date().toISOString() });
+    useSheetStore.getState().addTeamMessage({ id, userName, message, timestamp: new Date().toISOString() });
   }
 
   public emitToggleRoomLock(workbookId: string, locked: boolean) {
