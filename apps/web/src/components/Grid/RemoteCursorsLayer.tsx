@@ -1,11 +1,12 @@
 import React from 'react';
 import type { CursorMoveEvent, ConnectedUser } from '../../store/useSheetStore';
+import type { Virtualizer, VirtualItem } from '@tanstack/react-virtual';
 
 interface RemoteCursorsLayerProps {
   remoteCursors: Record<string, CursorMoveEvent>;
   connectedUsers: ConnectedUser[];
-  rowVirtualizer: any;
-  colVirtualizer: any;
+  rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
+  colVirtualizer: Virtualizer<HTMLDivElement, Element>;
   visibleRowIndices: number[];
   finalHeaderH: number;
   finalIndexW: number;
@@ -29,8 +30,8 @@ export const RemoteCursorsLayer: React.FC<RemoteCursorsLayerProps> = ({
         const user = connectedUsers.find(u => u.userId === userId);
         const color = user?.color || '#6366f1';
         
-        const rowItem = rowVirtualizer.getVirtualItems().find((v: any) => visibleRowIndices[v.index] === cursor.row);
-        const colItem = colVirtualizer.getVirtualItems().find((v: any) => v.index === cursor.col);
+        const rowItem = rowVirtualizer.getVirtualItems().find((v: VirtualItem) => visibleRowIndices[v.index] === cursor.row);
+        const colItem = colVirtualizer.getVirtualItems().find((v: VirtualItem) => v.index === cursor.col);
         
         if (!rowItem || !colItem) return null;
 
