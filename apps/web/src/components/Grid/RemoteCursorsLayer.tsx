@@ -9,6 +9,7 @@ interface RemoteCursorsLayerProps {
   visibleRowIndices: number[];
   finalHeaderH: number;
   finalIndexW: number;
+  activeSheetId: string;
 }
 
 export const RemoteCursorsLayer: React.FC<RemoteCursorsLayerProps> = ({
@@ -19,10 +20,12 @@ export const RemoteCursorsLayer: React.FC<RemoteCursorsLayerProps> = ({
   visibleRowIndices,
   finalHeaderH,
   finalIndexW,
+  activeSheetId,
 }) => {
   return (
     <>
       {Object.entries(remoteCursors).map(([userId, cursor]) => {
+        if (cursor.sheetId !== activeSheetId) return null;
         const user = connectedUsers.find(u => u.userId === userId);
         const color = user?.color || '#6366f1';
         

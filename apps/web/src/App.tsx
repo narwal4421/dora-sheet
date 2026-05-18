@@ -20,6 +20,7 @@ import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal'
 import { IncomingCallOverlay } from './components/Modals/IncomingCallOverlay';
 import { ActiveCallOverlay } from './components/Modals/ActiveCallOverlay';
 import { TemplatesModal } from './components/Modals/TemplatesModal';
+import { SheetTabs } from './components/SheetTabs';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -232,6 +233,7 @@ function App() {
       <div className="flex-1 flex overflow-hidden relative">
         <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden">
           <Grid isDashboard={isDashboard} workbookId={workbookId} />
+          {!isDashboard && <SheetTabs />}
           {!isDashboard && <FindReplace />}
         </main>
 

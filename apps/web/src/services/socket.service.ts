@@ -136,10 +136,10 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on('cell_updated', (event: CellUpdateEvent) => useSheetStore.getState().applyRemoteUpdate(event));
-    this.socket.on('bulk_cell_updated', (event: { updates: Record<string, Partial<import('../store/useSheetStore').CellData>> }) => useSheetStore.getState().applyRemoteBulkUpdate(event.updates));
+    this.socket.on('bulk_cell_updated', (event: { sheetId?: string, updates: Record<string, Partial<import('../store/useSheetStore').CellData>> }) => useSheetStore.getState().applyRemoteBulkUpdate(event.updates, event.sheetId));
     this.socket.on('cursor_moved', (event: CursorMoveEvent) => useSheetStore.getState().updateRemoteCursor(event));
     this.socket.on('cell_locked', (event: CellLockEvent) => useSheetStore.getState().updateCellLock(event));
-    this.socket.on('sheet_action_received', (payload: { action: string, index?: number, colIndex?: number }) => useSheetStore.getState().applyRemoteSheetAction(payload));
+    this.socket.on('sheet_action_received', (payload: { action: string, index?: number, colIndex?: number, name?: string, data?: unknown, sender?: string }) => useSheetStore.getState().applyRemoteSheetAction(payload));
     this.socket.on('incoming_join_request', (payload: { requesterSocketId: string, requesterUserId: string, name: string }) => useSheetStore.getState().addJoinRequest(payload));
     this.socket.on('chat_message_received', (payload: { id?: string, userName: string, message: string, timestamp: string }) => useSheetStore.getState().addTeamMessage(payload));
     this.socket.on('room_lock_status', (payload: { locked: boolean }) => useSheetStore.getState().setRoomLocked(payload.locked));

@@ -70,6 +70,13 @@ interface SheetState {
   editingCell: string | null;
   selectionRange: { start: string, end: string } | null;
   
+  sheets: Array<{ id: string; name: string; data: SheetData }>;
+  activeSheetId: string;
+  addSheetTab: (name?: string, id?: string, remote?: boolean) => void;
+  renameSheetTab: (id: string, newName: string, remote?: boolean) => void;
+  deleteSheetTab: (id: string, remote?: boolean) => void;
+  switchSheetTab: (id: string) => void;
+
   cursors: Record<string, CursorMoveEvent>;
   lockedCells: Record<string, string>;
   connectedUsers: ConnectedUser[];
@@ -119,7 +126,7 @@ interface SheetState {
   restoreSnapshot: (id: string) => void;
   
   applyRemoteUpdate: (event: CellUpdateEvent) => void;
-  applyRemoteBulkUpdate: (updates: Record<string, Partial<CellData>>) => void;
+  applyRemoteBulkUpdate: (updates: Record<string, Partial<CellData>>, sheetId?: string) => void;
   updateRemoteCursor: (event: CursorMoveEvent) => void;
   cleanupStaleCursors: () => void;
   updateCellLock: (event: CellLockEvent) => void;
@@ -167,6 +174,9 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   activeCell: 'r_0_c_0',
   editingCell: null,
   selectionRange: null,
+
+  sheets: [{ id: 'sheet-1', name: 'Sheet1', data: {} }],
+  activeSheetId: 'sheet-1',
   
   // --- COLLABORATION DOMAIN ---
   cursors: {},
@@ -233,14 +243,45 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   })),
 
   // --- ACTIONS: REMOTE UPDATES (HIGH FREQUENCY) ---
-  applyRemoteUpdate: (event) => set(state => ({
-    data: { ...state.data, [event.cellKey]: { ...state.data[event.cellKey], ...event.cell } }
-  })),
+  applyRemoteUpdate: (event) => set(state => {
+    const updatedSheets = state.sheets.map(s => {
+      if (s.id === event.sheetId) {
+        return {
+          ...s,
+          data: { ...s.data, [event.cellKey]: { ...s.data[event.cellKey], ...event.cell } }
+        };
+      }
+      return s;
+    });
 
-  applyRemoteBulkUpdate: (updates) => set(state => {
-    const newData = { ...state.data };
-    Object.assign(newData, updates);
-    return { data: newData };
+    if (event.sheetId === state.activeSheetId) {
+      return {
+        sheets: updatedSheets,
+        data: { ...state.data, [event.cellKey]: { ...state.data[event.cellKey], ...event.cell } }
+      };
+    }
+
+    return { sheets: updatedSheets };
+  }),
+
+  applyRemoteBulkUpdate: (updates, sheetId) => set(state => {
+    const targetSheetId = sheetId || state.activeSheetId;
+    const updatedSheets = state.sheets.map(s => {
+      if (s.id === targetSheetId) {
+        const newData = { ...s.data };
+        Object.assign(newData, updates);
+        return { ...s, data: newData };
+      }
+      return s;
+    });
+
+    if (targetSheetId === state.activeSheetId) {
+      const newData = { ...state.data };
+      Object.assign(newData, updates);
+      return { sheets: updatedSheets, data: newData };
+    }
+
+    return { sheets: updatedSheets };
   }),
 
   updateRemoteCursor: (event) => set(state => ({
@@ -279,6 +320,98 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       window.dispatchEvent(new CustomEvent('show-dashboard', { detail: payload.data }));
       toast(`${payload.sender || 'A collaborator'} shared a Cinematic Dashboard!`, 'success');
     }
+    else if (action === 'add_sheet_tab') {
+      const p = payload.data as { id: string; name: string };
+      if (p) store.addSheetTab(p.name, p.id, true);
+    }
+    else if (action === 'rename_sheet_tab') {
+      const p = payload.data as { id: string; name: string };
+      if (p) store.renameSheetTab(p.id, p.name, true);
+    }
+    else if (action === 'delete_sheet_tab') {
+      const p = payload.data as { id: string };
+      if (p) store.deleteSheetTab(p.id, true);
+    }
+  },
+
+  addSheetTab: (name, id, remote = false) => {
+    const newId = id || `sheet-${Date.now()}`;
+    const newName = name || `Sheet ${get().sheets.length + 1}`;
+    
+    set(state => {
+      const newSheet = { id: newId, name: newName, data: {} };
+      const updatedSheets = [...state.sheets, newSheet];
+      return { sheets: updatedSheets };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction('default', 'add_sheet_tab', { id: newId, name: newName });
+      get().switchSheetTab(newId);
+    }
+  },
+
+  renameSheetTab: (id, newName, remote = false) => {
+    set(state => {
+      const updatedSheets = state.sheets.map(s => s.id === id ? { ...s, name: newName } : s);
+      return { sheets: updatedSheets };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction('default', 'rename_sheet_tab', { id, name: newName });
+    }
+  },
+
+  deleteSheetTab: (id, remote = false) => {
+    const store = get();
+    if (store.sheets.length <= 1) {
+      toast("Cannot delete the last remaining sheet tab!", "warning");
+      return;
+    }
+
+    if (store.activeSheetId === id) {
+      const remainingSheets = store.sheets.filter(s => s.id !== id);
+      const fallbackSheet = remainingSheets[0];
+      store.switchSheetTab(fallbackSheet.id);
+    }
+
+    set(state => {
+      const updatedSheets = state.sheets.filter(s => s.id !== id);
+      return { sheets: updatedSheets };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction('default', 'delete_sheet_tab', { id });
+    }
+  },
+
+  switchSheetTab: (id) => {
+    const store = get();
+    if (store.activeSheetId === id) return;
+
+    const updatedSheets = store.sheets.map(s => {
+      if (s.id === store.activeSheetId) {
+        return { ...s, data: store.data };
+      }
+      return s;
+    });
+
+    const targetSheet = updatedSheets.find(s => s.id === id);
+    if (!targetSheet) return;
+
+    set({
+      sheets: updatedSheets,
+      activeSheetId: id,
+      data: targetSheet.data,
+      activeCell: 'r_0_c_0',
+      editingCell: null,
+      selectionRange: null,
+      history: [],
+      future: [],
+      lockedCells: {}
+    });
+
+    const { r, c } = parseRef('r_0_c_0');
+    socketService.emitCursorMove(store.localUserName, id, r, c, '#6366f1');
   },
 
   // --- ACTIONS: GRID OPERATIONS ---
@@ -288,9 +421,13 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   
   setCellData: (ref, cellData) => set(state => {
     const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data, [ref]: { ...state.data[ref], ...cellData } };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
     return {
-      data: { ...state.data, [ref]: { ...state.data[ref], ...cellData } },
-      history, future: []
+      data: newData,
+      sheets: updatedSheets,
+      history,
+      future: []
     };
   }),
 
@@ -299,7 +436,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       const history = [...state.history, state.data].slice(-50);
       const existing = state.data[ref]?.fmt || {};
       const newData = { ...state.data, [ref]: { ...state.data[ref], fmt: { ...existing, ...formatPatch } } };
-      return { data: newData, history, future: [] };
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
     });
     // Emit formatting update to other users
     const currentFmt = get().data[ref]?.fmt;
@@ -310,26 +448,31 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   bulkSetCellData: (updates) => set(state => {
     const history = [...state.history, state.data].slice(-50);
-    return { data: { ...state.data, ...updates }, history, future: [] };
+    const newData = { ...state.data, ...updates };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
   }),
 
   clearCell: (ref) => set(state => {
     const history = [...state.history, state.data].slice(-50);
     const newData = { ...state.data };
     delete newData[ref];
-    return { data: newData, history, future: [] };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
   }),
 
   clearSheet: () => set(state => {
     const history = [...state.history, state.data].slice(-50);
-    return { data: {}, history, future: [] };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: {} } : s);
+    return { data: {}, sheets: updatedSheets, history, future: [] };
   }),
 
   clearRange: (refs) => set(state => {
     const history = [...state.history, state.data].slice(-50);
     const newData = { ...state.data };
     refs.forEach(ref => delete newData[ref]);
-    return { data: newData, history, future: [] };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
   }),
 
   // --- ACTIONS: HISTORY & SNAPSHOTS ---

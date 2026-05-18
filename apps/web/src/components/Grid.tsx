@@ -40,7 +40,7 @@ const parseRef = (ref: string) => {
  * Features optimized DOM virtualization, sub-millisecond interaction feedback,
  * and high-fidelity collaborator tracking.
  */
-export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashboard?: boolean, workbookId?: string }) => {
+export const Grid = ({ isDashboard = false }: { isDashboard?: boolean, workbookId?: string }) => {
   const parentRef = useRef<HTMLDivElement>(null);
   // --- STATE SELECTORS (ELITE PERFORMANCE) ---
   const data = useSheetStore(state => state.data);
@@ -51,6 +51,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
   const hiddenRows = useSheetStore(state => state.hiddenRows);
   const columnWidths = useSheetStore(state => state.columnWidths);
   const rowHeights = useSheetStore(state => state.rowHeights);
+  const activeSheetId = useSheetStore(state => state.activeSheetId);
 
   const [engine, setEngine] = useState<EngineWrapper | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -88,8 +89,8 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
     useSheetStore.getState().setActiveCell(ref);
     useSheetStore.getState().setSelectionRange({ start: ref, end: ref });
     const { r, c } = parseRef(ref);
-    socketService.emitCursorMove(localUserName, workbookId, r, c, '#6366f1');
-  }, [localUserName, workbookId]);
+    socketService.emitCursorMove(localUserName, activeSheetId, r, c, '#6366f1');
+  }, [localUserName, activeSheetId]);
 
   const handleCellMouseDown = useCallback((ref: string) => {
     if (isDashboard) return;
@@ -173,7 +174,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
               const { activeCell } = useSheetStore.getState();
               const index = activeCell ? parseRef(activeCell).r : 0;
               useSheetStore.getState().insertRowAbove();
-              socketService.emitSheetAction(workbookId, 'insertRow', { index });
+              socketService.emitSheetAction(activeSheetId, 'insertRow', { index });
             } 
           },
           { 
@@ -185,7 +186,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
               const index = activeCell ? parseRef(activeCell).r : -1;
               if (index !== -1) {
                 useSheetStore.getState().deleteRow();
-                socketService.emitSheetAction(workbookId, 'deleteRow', { index });
+                socketService.emitSheetAction(activeSheetId, 'deleteRow', { index });
               }
             } 
           }
@@ -251,14 +252,14 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
                   const isF = val.startsWith('=');
                   const update = { [isF ? 'f' : 'v']: val, ...(isF ? {} : { f: undefined }) };
                   useSheetStore.getState().setCellData(ref, update);
-                  socketService.emitCellUpdate(workbookId, ref, update);
+                  socketService.emitCellUpdate(activeSheetId, ref, update);
 
                   if (engine && isF) {
                     try {
                       const res = await engine.setData(r, c, val);
                       const final = { v: res.v };
                       useSheetStore.getState().setCellData(ref, final);
-                      socketService.emitCellUpdate(workbookId, ref, final);
+                      socketService.emitCellUpdate(activeSheetId, ref, final);
                     } catch (e) {
                       console.error('Formula error:', e);
                     }
@@ -281,6 +282,7 @@ export const Grid = ({ isDashboard = false, workbookId = 'default' }: { isDashbo
             visibleRowIndices={visibleRowIndices}
             finalHeaderH={finalHeaderH}
             finalIndexW={finalIndexW}
+            activeSheetId={activeSheetId}
           />
         )}
       </div>
