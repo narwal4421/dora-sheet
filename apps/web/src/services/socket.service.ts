@@ -222,6 +222,7 @@ class SocketService {
       if (res.userId) state.setLocalUserId(res.userId);
       if (res.workbookName) state.renameWorkbook(res.workbookName);
       if (res.members) state.setConnectedUsers(res.members);
+      state.setRoomLockError(false);
       console.log(`[GOD_SOCKET] Host status: ${isHost} | Members: ${members.length} | UserId: ${res.userId}`);
     }
     return res;
