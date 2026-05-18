@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { useSheetStore } from '../store/useSheetStore';
 import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent } from '../store/useSheetStore';
+import { useCallStore } from '../store/useCallStore';
 
 /**
  * GOD LEVEL SOCKET SERVICE
@@ -21,6 +22,7 @@ export const SocketEvent = {
   REQUEST_JOIN: 'request_to_join',
   RESPOND_JOIN: 'respond_to_join',
   UPDATE_NAME: 'update_user_name',
+  START_CALL: 'start_call',
 } as const;
 
 type SocketEventType = typeof SocketEvent[keyof typeof SocketEvent];
@@ -168,6 +170,10 @@ class SocketService {
         useSheetStore.getState().setIsWaitingForApproval(false);
       }
     });
+
+    this.socket.on('incoming_call', (payload: { callerName: string, video: boolean, audio: boolean }) => {
+      useCallStore.getState().setIncomingCall(payload);
+    });
   }
 
   /**
@@ -305,6 +311,15 @@ class SocketService {
     this.socket?.emit(SocketEvent.UPDATE_NAME, {
       workbookId: this.getWorkbookId(),
       name
+    });
+  }
+
+  public emitCallStarted(callerName: string, video: boolean, audio: boolean) {
+    this.socket?.emit(SocketEvent.START_CALL, {
+      workbookId: this.getWorkbookId(),
+      callerName,
+      video,
+      audio
     });
   }
 

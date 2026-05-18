@@ -260,10 +260,19 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('chat_message', (payload: any) => {
       if (!activeWorkbookId) return;
-      io.to(`workbook:${activeWorkbookId}`).emit('chat_message_received', {
+      socket.to(`workbook:${activeWorkbookId}`).emit('chat_message_received', {
         userName: socket.data.name,
         message: sanitize(payload.message),
         timestamp: new Date().toISOString()
+      });
+    });
+
+    socket.on('start_call', (payload: any) => {
+      if (!activeWorkbookId) return;
+      socket.to(`workbook:${activeWorkbookId}`).emit('incoming_call', {
+        callerName: payload.callerName,
+        video: !!payload.video,
+        audio: !!payload.audio
       });
     });
 

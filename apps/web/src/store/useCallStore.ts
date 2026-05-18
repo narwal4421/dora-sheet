@@ -2,11 +2,18 @@ import { create } from 'zustand';
 
 export type CallStateStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'failed';
 
+interface IncomingCallInfo {
+  callerName: string;
+  video: boolean;
+  audio: boolean;
+}
+
 interface CallState {
   isCallActive: boolean;
   callToken: string | null;
   callStatus: CallStateStatus;
   showStats: boolean;
+  incomingCall: IncomingCallInfo | null;
   
   // Initial device preferences
   initialVideo: boolean;
@@ -18,6 +25,8 @@ interface CallState {
   setStatus: (status: CallStateStatus) => void;
   endCall: () => void;
   toggleStats: () => void;
+  setIncomingCall: (call: IncomingCallInfo) => void;
+  clearIncomingCall: () => void;
 }
 
 export const useCallStore = create<CallState>((set) => ({
@@ -25,6 +34,7 @@ export const useCallStore = create<CallState>((set) => ({
   callToken: null,
   callStatus: 'disconnected',
   showStats: false,
+  incomingCall: null,
   initialVideo: false,
   initialAudio: true,
 
@@ -32,7 +42,8 @@ export const useCallStore = create<CallState>((set) => ({
     isCallActive: true, 
     initialVideo: video, 
     initialAudio: audio,
-    callStatus: 'connecting'
+    callStatus: 'connecting',
+    incomingCall: null // Clear incoming call popup once active
   }),
   
   setToken: (token) => set({ callToken: token }),
@@ -45,5 +56,9 @@ export const useCallStore = create<CallState>((set) => ({
     callStatus: 'disconnected'
   }),
   
-  toggleStats: () => set((state) => ({ showStats: !state.showStats }))
+  toggleStats: () => set((state) => ({ showStats: !state.showStats })),
+  
+  setIncomingCall: (call) => set({ incomingCall: call }),
+  
+  clearIncomingCall: () => set({ incomingCall: null })
 }));

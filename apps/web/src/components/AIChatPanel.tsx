@@ -546,13 +546,19 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
             {connectedUsers.length > 0 && !isCallActive && (
               <div className="flex items-center gap-2 px-1">
                 <button 
-                  onClick={() => startCall(false, true)}
+                  onClick={() => {
+                    socketService.emitCallStarted(localUserName, false, true);
+                    startCall(false, true);
+                  }}
                   className="flex-1 bg-accent/20 hover:bg-accent hover:text-white text-accent py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-accent/30"
                 >
                   <Phone size={14} /> Voice Call
                 </button>
                 <button 
-                  onClick={() => startCall(true, true)}
+                  onClick={() => {
+                    socketService.emitCallStarted(localUserName, true, true);
+                    startCall(true, true);
+                  }}
                   className="flex-1 bg-accent/20 hover:bg-accent hover:text-white text-accent py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-accent/30"
                 >
                   <Video size={14} /> Video Call

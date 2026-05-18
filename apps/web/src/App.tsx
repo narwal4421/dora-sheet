@@ -18,6 +18,7 @@ import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
 import { RoomLockedModal } from './components/Collaboration/RoomLockedModal';
 import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal';
 import { toast } from './store/useToastStore';
+import { IncomingCallOverlay } from './components/Modals/IncomingCallOverlay';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -182,6 +183,7 @@ function App() {
           />
         )}
       </div>
+      <IncomingCallOverlay />
       <ToastContainer />
     </div>
   );
