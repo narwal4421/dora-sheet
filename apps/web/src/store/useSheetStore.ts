@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { socketService } from '../services/socket.service';
 import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
+import { toast } from './useToastStore';
 
 export type CellFormat = {
   bold?: boolean;
@@ -122,7 +123,7 @@ interface SheetState {
   updateRemoteCursor: (event: CursorMoveEvent) => void;
   cleanupStaleCursors: () => void;
   updateCellLock: (event: CellLockEvent) => void;
-  applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number, name?: string }) => void;
+  applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number, name?: string, data?: any, sender?: string }) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
   isHost: boolean;
   setIsHost: (isHost: boolean) => void;
@@ -274,6 +275,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     else if (action === 'toggleFilter') store.toggleFilter(colIndex);
     else if (action === 'clearSheet') store.clearSheet();
     else if (action === 'rename_sheet') store.renameWorkbook(payload.name || 'Untitled Workbook');
+    else if (action === 'share_dashboard') {
+      window.dispatchEvent(new CustomEvent('show-dashboard', { detail: payload.data }));
+      toast(`${payload.sender || 'A collaborator'} shared a Cinematic Dashboard!`, 'success');
+    }
   },
 
   // --- ACTIONS: GRID OPERATIONS ---

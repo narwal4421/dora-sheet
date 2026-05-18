@@ -1,221 +1,240 @@
-import { useState } from 'react';
-import { X, LayoutTemplate, DollarSign, CheckSquare, TrendingUp, FileText, ChevronRight } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { X, Sparkles, Receipt, ListTodo, Wallet, Check } from 'lucide-react';
+import gsap from 'gsap';
 import { useSheetStore, type CellData } from '../../store/useSheetStore';
+import { socketService } from '../../services/socket.service';
+import { getWorkbookIdFromUrl } from '../../utils/workbookUrl';
+import { toast } from '../../store/useToastStore';
 
 interface Template {
   id: string;
   name: string;
   description: string;
-  icon: React.ReactNode;
+  icon: typeof Wallet | typeof ListTodo | typeof Receipt;
   color: string;
-  data: Record<string, Partial<CellData>>;
+  bgColor: string;
+  borderColor: string;
+  cells: Record<string, Partial<CellData>>;
 }
 
-const TEMPLATES: Template[] = [
-  {
-    id: 'budget',
-    name: 'Personal Budget',
-    description: 'Track monthly income vs expenses with auto-calculated totals.',
-    icon: <DollarSign size={24} />,
-    color: '#22c55e',
-    data: {
-      r_0_c_0: { v: 'Category', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#22c55e' } },
-      r_0_c_1: { v: 'Planned (₹)', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#22c55e' } },
-      r_0_c_2: { v: 'Actual (₹)', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#22c55e' } },
-      r_0_c_3: { v: 'Difference', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#22c55e' } },
-      r_1_c_0: { v: 'INCOME', fmt: { bold: true, color: '#22c55e' } },
-      r_2_c_0: { v: 'Salary' }, r_2_c_1: { v: 50000 }, r_2_c_2: { v: 50000 }, r_2_c_3: { f: '=C3-B3' },
-      r_3_c_0: { v: 'Freelance' }, r_3_c_1: { v: 10000 }, r_3_c_2: { v: 8000 }, r_3_c_3: { f: '=C4-B4' },
-      r_4_c_0: { v: 'Other' }, r_4_c_1: { v: 2000 }, r_4_c_2: { v: 1500 }, r_4_c_3: { f: '=C5-B5' },
-      r_5_c_0: { v: 'Total Income', fmt: { bold: true } }, r_5_c_1: { f: '=SUM(B3:B5)' }, r_5_c_2: { f: '=SUM(C3:C5)' }, r_5_c_3: { f: '=C6-B6' },
-      r_6_c_0: { v: '' },
-      r_7_c_0: { v: 'EXPENSES', fmt: { bold: true, color: '#ef4444' } },
-      r_8_c_0: { v: 'Rent' }, r_8_c_1: { v: 15000 }, r_8_c_2: { v: 15000 }, r_8_c_3: { f: '=C9-B9' },
-      r_9_c_0: { v: 'Food' }, r_9_c_1: { v: 8000 }, r_9_c_2: { v: 9500 }, r_9_c_3: { f: '=C10-B10' },
-      r_10_c_0: { v: 'Transport' }, r_10_c_1: { v: 3000 }, r_10_c_2: { v: 2500 }, r_10_c_3: { f: '=C11-B11' },
-      r_11_c_0: { v: 'Utilities' }, r_11_c_1: { v: 2000 }, r_11_c_2: { v: 2200 }, r_11_c_3: { f: '=C12-B12' },
-      r_12_c_0: { v: 'Entertainment' }, r_12_c_1: { v: 3000 }, r_12_c_2: { v: 4000 }, r_12_c_3: { f: '=C13-B13' },
-      r_13_c_0: { v: 'Total Expenses', fmt: { bold: true } }, r_13_c_1: { f: '=SUM(B9:B13)' }, r_13_c_2: { f: '=SUM(C9:C13)' }, r_13_c_3: { f: '=C14-B14' },
-      r_14_c_0: { v: '' },
-      r_15_c_0: { v: 'NET SAVINGS', fmt: { bold: true, color: '#7b5ef6' } }, r_15_c_1: { f: '=B6-B14' }, r_15_c_2: { f: '=C6-C14' }, r_15_c_3: { f: '=C16-B16' },
-    }
-  },
-  {
-    id: 'tasks',
-    name: 'Task Manager',
-    description: 'Organize your work with status, priority, and deadlines.',
-    icon: <CheckSquare size={24} />,
-    color: '#7b5ef6',
-    data: {
-      r_0_c_0: { v: 'Task', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#7b5ef6' } },
-      r_0_c_1: { v: 'Priority', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#7b5ef6' } },
-      r_0_c_2: { v: 'Status', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#7b5ef6' } },
-      r_0_c_3: { v: 'Deadline', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#7b5ef6' } },
-      r_0_c_4: { v: 'Assigned To', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#7b5ef6' } },
-      r_1_c_0: { v: 'Design landing page' }, r_1_c_1: { v: '🔴 High' }, r_1_c_2: { v: '✅ Done' }, r_1_c_3: { v: '2025-05-10' }, r_1_c_4: { v: 'Pranjal' },
-      r_2_c_0: { v: 'Build API endpoints' }, r_2_c_1: { v: '🔴 High' }, r_2_c_2: { v: '🔄 In Progress' }, r_2_c_3: { v: '2025-05-15' }, r_2_c_4: { v: 'Pranjal' },
-      r_3_c_0: { v: 'Write documentation' }, r_3_c_1: { v: '🟡 Medium' }, r_3_c_2: { v: '⏳ Pending' }, r_3_c_3: { v: '2025-05-20' }, r_3_c_4: { v: 'Team' },
-      r_4_c_0: { v: 'Setup CI/CD pipeline' }, r_4_c_1: { v: '🟡 Medium' }, r_4_c_2: { v: '⏳ Pending' }, r_4_c_3: { v: '2025-05-22' }, r_4_c_4: { v: 'DevOps' },
-      r_5_c_0: { v: 'User testing' }, r_5_c_1: { v: '🟢 Low' }, r_5_c_2: { v: '⏳ Pending' }, r_5_c_3: { v: '2025-05-30' }, r_5_c_4: { v: 'QA Team' },
-      r_6_c_0: { v: 'Launch on Product Hunt' }, r_6_c_1: { v: '🔴 High' }, r_6_c_2: { v: '⏳ Pending' }, r_6_c_3: { v: '2025-06-01' }, r_6_c_4: { v: 'Pranjal' },
-      r_7_c_0: { v: 'Send investor update' }, r_7_c_1: { v: '🟡 Medium' }, r_7_c_2: { v: '⏳ Pending' }, r_7_c_3: { v: '2025-06-05' }, r_7_c_4: { v: 'Pranjal' },
-      r_8_c_0: { v: 'Add payment gateway' }, r_8_c_1: { v: '🔴 High' }, r_8_c_2: { v: '⏳ Pending' }, r_8_c_3: { v: '2025-06-10' }, r_8_c_4: { v: 'Pranjal' },
-    }
-  },
-  {
-    id: 'sales',
-    name: 'Sales Tracker',
-    description: 'Track your leads, deals, and revenue with conversion rates.',
-    icon: <TrendingUp size={24} />,
-    color: '#f97316',
-    data: {
-      r_0_c_0: { v: 'Lead Name', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#f97316' } },
-      r_0_c_1: { v: 'Company', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#f97316' } },
-      r_0_c_2: { v: 'Stage', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#f97316' } },
-      r_0_c_3: { v: 'Deal Value (₹)', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#f97316' } },
-      r_0_c_4: { v: 'Close Date', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#f97316' } },
-      r_0_c_5: { v: 'Status', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#f97316' } },
-      r_1_c_0: { v: 'Rahul Sharma' }, r_1_c_1: { v: 'Tech Corp' }, r_1_c_2: { v: 'Proposal' }, r_1_c_3: { v: 75000 }, r_1_c_4: { v: '2025-05-15' }, r_1_c_5: { v: '🟡 In Progress' },
-      r_2_c_0: { v: 'Ananya Singh' }, r_2_c_1: { v: 'Design Studio' }, r_2_c_2: { v: 'Negotiation' }, r_2_c_3: { v: 45000 }, r_2_c_4: { v: '2025-05-20' }, r_2_c_5: { v: '🔴 At Risk' },
-      r_3_c_0: { v: 'Vikram Patel' }, r_3_c_1: { v: 'StartupX' }, r_3_c_2: { v: 'Closed Won' }, r_3_c_3: { v: 120000 }, r_3_c_4: { v: '2025-05-05' }, r_3_c_5: { v: '✅ Won' },
-      r_4_c_0: { v: 'Sneha Gupta' }, r_4_c_1: { v: 'Media House' }, r_4_c_2: { v: 'Discovery' }, r_4_c_3: { v: 30000 }, r_4_c_4: { v: '2025-06-01' }, r_4_c_5: { v: '🟢 On Track' },
-      r_5_c_0: { v: 'Arjun Mehta' }, r_5_c_1: { v: 'Finance Inc' }, r_5_c_2: { v: 'Closed Lost' }, r_5_c_3: { v: 90000 }, r_5_c_4: { v: '2025-04-30' }, r_5_c_5: { v: '❌ Lost' },
-      r_6_c_0: { v: '' },
-      r_7_c_0: { v: 'Total Pipeline', fmt: { bold: true } }, r_7_c_3: { f: '=SUM(D2:D6)' },
-      r_8_c_0: { v: 'Won Revenue', fmt: { bold: true, color: '#22c55e' } }, r_8_c_3: { v: 120000 },
-      r_9_c_0: { v: 'Win Rate', fmt: { bold: true } }, r_9_c_3: { v: '20%' },
-    }
-  },
-  {
-    id: 'invoice',
-    name: 'Invoice Generator',
-    description: 'Create professional invoices with auto-calculated totals and GST.',
-    icon: <FileText size={24} />,
-    color: '#06b6d4',
-    data: {
-      r_0_c_0: { v: 'INVOICE', fmt: { bold: true, fontSize: 20, color: '#06b6d4' } },
-      r_1_c_0: { v: 'From:', fmt: { bold: true } }, r_1_c_1: { v: 'Pranjal Narwal' },
-      r_2_c_0: { v: 'Email:', fmt: { bold: true } }, r_2_c_1: { v: 'doranarwal@gmail.com' },
-      r_3_c_0: { v: 'Invoice No:', fmt: { bold: true } }, r_3_c_1: { v: 'INV-001' },
-      r_4_c_0: { v: 'Date:', fmt: { bold: true } }, r_4_c_1: { v: new Date().toLocaleDateString('en-IN') },
-      r_5_c_0: { v: '' },
-      r_6_c_0: { v: 'Bill To:', fmt: { bold: true } }, r_6_c_1: { v: 'Client Name' },
-      r_7_c_0: { v: '' },
-      r_8_c_0: { v: 'Item', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#06b6d4' } },
-      r_8_c_1: { v: 'Description', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#06b6d4' } },
-      r_8_c_2: { v: 'Qty', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#06b6d4' } },
-      r_8_c_3: { v: 'Rate (₹)', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#06b6d4' } },
-      r_8_c_4: { v: 'Amount (₹)', fmt: { bold: true, backgroundColor: '#1a1a2e', color: '#06b6d4' } },
-      r_9_c_0: { v: 'Web Development' }, r_9_c_1: { v: 'Frontend UI Design' }, r_9_c_2: { v: 1 }, r_9_c_3: { v: 25000 }, r_9_c_4: { f: '=C10*D10' },
-      r_10_c_0: { v: 'API Integration' }, r_10_c_1: { v: 'Backend Services' }, r_10_c_2: { v: 2 }, r_10_c_3: { v: 15000 }, r_10_c_4: { f: '=C11*D11' },
-      r_11_c_0: { v: 'Consultation' }, r_11_c_1: { v: 'Technical Advice' }, r_11_c_2: { v: 3 }, r_11_c_3: { v: 5000 }, r_11_c_4: { f: '=C12*D12' },
-      r_12_c_0: { v: '' },
-      r_13_c_3: { v: 'Subtotal', fmt: { bold: true } }, r_13_c_4: { f: '=SUM(E10:E12)' },
-      r_14_c_3: { v: 'GST (18%)', fmt: { bold: true } }, r_14_c_4: { f: '=E14*0.18' },
-      r_15_c_3: { v: 'TOTAL', fmt: { bold: true, color: '#06b6d4' } }, r_15_c_4: { f: '=E14+E15', fmt: { bold: true, color: '#06b6d4' } },
-      r_16_c_0: { v: '' },
-      r_17_c_0: { v: 'Payment Terms: Due within 30 days', fmt: { italic: true, color: '#666' } },
-      r_18_c_0: { v: 'Thank you for your business! 🙏', fmt: { italic: true, color: '#7b5ef6' } },
-    }
-  }
-];
-
 export const TemplatesModal = ({ onClose }: { onClose: () => void }) => {
-  const [selected, setSelected] = useState<string | null>(null);
-  const bulkSetCellData = useSheetStore(s => s.bulkSetCellData);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const { bulkSetCellData } = useSheetStore();
 
-  const handleLoad = () => {
-    const template = TEMPLATES.find(t => t.id === selected);
-    if (!template) return;
-    // Clear existing data first, then bulk load
-    useSheetStore.setState({ data: {}, history: [], future: [] });
-    bulkSetCellData(template.data);
+  useEffect(() => {
+    gsap.fromTo(modalRef.current,
+      { scale: 0.9, opacity: 0, y: 20 },
+      { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'power4.out' }
+    );
+  }, []);
+
+  const templates: Template[] = [
+    {
+      id: 'budget',
+      name: 'Monthly Budget',
+      description: 'Track household or personal income and expenses with automatic totals and net difference calculations.',
+      icon: Wallet,
+      color: '#6366f1',
+      bgColor: 'rgba(99, 102, 241, 0.05)',
+      borderColor: 'rgba(99, 102, 241, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Monthly Budget Plan', fmt: { bold: true, fontSize: 16, color: '#6366f1' } },
+        'r_2_c_0': { v: 'Category', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Budgeted ($)', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Actual ($)', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Difference ($)', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Housing', fmt: { italic: false } },
+        'r_3_c_1': { v: 1500 },
+        'r_3_c_2': { v: 1450 },
+        'r_3_c_3': { f: '=B4-C4', v: 50 },
+        'r_4_c_0': { v: 'Utilities' },
+        'r_4_c_1': { v: 300 },
+        'r_4_c_2': { v: 330 },
+        'r_4_c_3': { f: '=B5-C5', v: -30 },
+        'r_5_c_0': { v: 'Groceries' },
+        'r_5_c_1': { v: 450 },
+        'r_5_c_2': { v: 420 },
+        'r_5_c_3': { f: '=B6-C6', v: 30 },
+        'r_6_c_0': { v: 'Transportation' },
+        'r_6_c_1': { v: 250 },
+        'r_6_c_2': { v: 280 },
+        'r_6_c_3': { f: '=B7-C7', v: -30 },
+        'r_7_c_0': { v: 'Entertainment' },
+        'r_7_c_1': { v: 200 },
+        'r_7_c_2': { v: 150 },
+        'r_7_c_3': { f: '=B8-C8', v: 50 },
+        'r_8_c_0': { v: 'Savings' },
+        'r_8_c_1': { v: 500 },
+        'r_8_c_2': { v: 500 },
+        'r_8_c_3': { f: '=B9-C9', v: 0 },
+        'r_10_c_0': { v: 'Total Net', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_10_c_1': { f: '=SUM(B4:B9)', v: 3200, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_10_c_2': { f: '=SUM(C4:C9)', v: 3130, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_10_c_3': { f: '=SUM(D4:D9)', v: 70, fmt: { bold: true, backgroundColor: '#0f172a', color: '#6366f1' } }
+      }
+    },
+    {
+      id: 'todo',
+      name: 'Team Project Planner',
+      description: 'Streamline team sprints, prioritize product backlogs, assign deadlines, and track current project tasks.',
+      icon: ListTodo,
+      color: '#10b981',
+      bgColor: 'rgba(16, 185, 129, 0.05)',
+      borderColor: 'rgba(16, 185, 129, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Project Task Board', fmt: { bold: true, fontSize: 16, color: '#10b981' } },
+        'r_2_c_0': { v: 'Task Assignment', fmt: { bold: true, backgroundColor: '#064e3b', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Priority Level', fmt: { bold: true, backgroundColor: '#064e3b', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Sprint Status', fmt: { bold: true, backgroundColor: '#064e3b', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Target Deadline', fmt: { bold: true, backgroundColor: '#064e3b', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Optimize LiveKit Active Call Overlay' },
+        'r_3_c_1': { v: 'High', fmt: { color: '#ef4444', bold: true } },
+        'r_3_c_2': { v: 'Completed', fmt: { color: '#10b981', bold: true } },
+        'r_3_c_3': { v: '2026-05-18' },
+        'r_4_c_0': { v: 'Implement Help & Contact Us Page' },
+        'r_4_c_1': { v: 'High', fmt: { color: '#ef4444', bold: true } },
+        'r_4_c_2': { v: 'Completed', fmt: { color: '#10b981', bold: true } },
+        'r_4_c_3': { v: '2026-05-18' },
+        'r_5_c_0': { v: 'Add Beautiful Templates Modal' },
+        'r_5_c_1': { v: 'Medium', fmt: { color: '#f59e0b', bold: true } },
+        'r_5_c_2': { v: 'In Progress', fmt: { color: '#f59e0b', bold: true } },
+        'r_5_c_3': { v: '2026-05-19' },
+        'r_6_c_0': { v: 'Integrate Collaborative Dashboard Sharing' },
+        'r_6_c_1': { v: 'Medium', fmt: { color: '#f59e0b', bold: true } },
+        'r_6_c_2': { v: 'In Progress', fmt: { color: '#f59e0b', bold: true } },
+        'r_6_c_3': { v: '2026-05-19' },
+        'r_7_c_0': { v: 'Perform Production Build & Verification' },
+        'r_7_c_1': { v: 'High', fmt: { color: '#ef4444', bold: true } },
+        'r_7_c_2': { v: 'Planned', fmt: { color: '#94a3b8' } },
+        'r_7_c_3': { v: '2026-05-20' }
+      }
+    },
+    {
+      id: 'invoice',
+      name: 'Professional Client Invoice',
+      description: 'Generate customizable bills for clients with item description, active quantity, price, and auto-computed grand totals.',
+      icon: Receipt,
+      color: '#f59e0b',
+      bgColor: 'rgba(245, 158, 11, 0.05)',
+      borderColor: 'rgba(245, 158, 11, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Client Invoice Details', fmt: { bold: true, fontSize: 16, color: '#f59e0b' } },
+        'r_2_c_0': { v: 'Item Description', fmt: { bold: true, backgroundColor: '#78350f', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Quantity', fmt: { bold: true, backgroundColor: '#78350f', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Unit Price ($)', fmt: { bold: true, backgroundColor: '#78350f', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Total Price ($)', fmt: { bold: true, backgroundColor: '#78350f', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Spreadsheet Core Engine Development' },
+        'r_3_c_1': { v: 45 },
+        'r_3_c_2': { v: 80 },
+        'r_3_c_3': { f: '=B4*C4', v: 3600 },
+        'r_4_c_0': { v: 'Real-time Socket Collaboration Integration' },
+        'r_4_c_1': { v: 20 },
+        'r_4_c_2': { v: 75 },
+        'r_4_c_3': { f: '=B5*C5', v: 1500 },
+        'r_5_c_0': { v: 'Vanta Cinematic Aurora About Page Design' },
+        'r_5_c_1': { v: 12 },
+        'r_5_c_2': { v: 90 },
+        'r_5_c_3': { f: '=B6*C6', v: 1080 },
+        'r_7_c_0': { v: 'Grand Total', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_7_c_3': { f: '=SUM(D4:D6)', v: 6180, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f59e0b' } }
+      }
+    }
+  ];
+
+  const handleSelectTemplate = (template: Template) => {
+    // Stage and apply template locally
+    bulkSetCellData(template.cells);
+
+    // Sync template bulk changes to other connected collaborators via sockets
+    const workbookId = getWorkbookIdFromUrl();
+    socketService.emitBulkCellUpdate(workbookId, template.cells);
+
+    toast(`Successfully loaded "${template.name}" Template!`, 'success');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
-      <div className="bg-[#0f0f1a] border border-white/10 rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.6)] w-full max-w-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-        
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/50 backdrop-blur-md">
+      <div 
+        ref={modalRef}
+        className="w-full max-w-4xl bg-surface border border-white/10 shadow-2xl rounded-3xl overflow-hidden flex flex-col max-h-[85vh]"
+      >
         {/* Header */}
-        <div className="p-8 border-b border-white/5 flex justify-between items-center bg-gradient-to-b from-white/[0.02] to-transparent">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-surface/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-accent/20 flex items-center justify-center text-accent">
-              <LayoutTemplate size={20} />
+            <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-lg shadow-accent/20">
+              <Sparkles size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">Templates</h2>
-              <p className="text-xs text-textMuted">Choose a template to get started instantly</p>
+              <h2 className="text-lg font-bold text-white tracking-tight">Sheet Templates Directory</h2>
+              <p className="text-xs text-textMuted font-medium uppercase tracking-widest mt-0.5">Pre-built collaborative spreadsheet blueprints</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 text-textMuted hover:text-white transition-all">
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-white transition-all"
+            title="Close"
+          >
             <X size={20} />
           </button>
         </div>
 
-        {/* Template Grid */}
-        <div className="p-8 grid grid-cols-2 gap-4">
-          {TEMPLATES.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setSelected(t.id)}
-              className={`relative text-left p-6 rounded-2xl border transition-all duration-300 group overflow-hidden ${
-                selected === t.id
-                  ? 'border-white/30 bg-white/5 scale-[1.02]'
-                  : 'border-white/[0.06] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]'
-              }`}
-            >
-              {/* Color glow */}
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: `radial-gradient(ellipse at top left, ${t.color}15, transparent 70%)` }}
-              />
-              {selected === t.id && (
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ background: `radial-gradient(ellipse at top left, ${t.color}20, transparent 70%)` }}
+        {/* Templates Grid */}
+        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-gradient-to-b from-transparent to-black/10">
+          {templates.map((template) => {
+            const Icon = template.icon;
+            return (
+              <button
+                key={template.id}
+                onClick={() => handleSelectTemplate(template)}
+                className="group relative flex flex-col justify-between items-start text-left p-6 bg-surfaceHover/30 border border-white/5 rounded-2xl hover:border-accentHover hover:bg-accent/5 transition-all duration-300 shadow-sm"
+                style={{ 
+                  backgroundColor: template.bgColor,
+                  borderColor: template.borderColor
+                }}
+              >
+                {/* Floating shine */}
+                <div 
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none"
+                  style={{
+                    background: `radial-gradient(400px circle at var(--x, 0px) var(--y, 0px), rgba(255,255,255,0.03), transparent)`
+                  }}
                 />
-              )}
 
-              <div className="relative z-10">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                  style={{ backgroundColor: `${t.color}20`, color: t.color }}
-                >
-                  {t.icon}
+                <div className="w-full">
+                  {/* Icon */}
+                  <div 
+                    className="p-3 rounded-xl mb-5 flex items-center justify-center w-12 h-12 shadow-sm"
+                    style={{ 
+                      backgroundColor: `${template.color}15`, 
+                      color: template.color 
+                    }}
+                  >
+                    <Icon size={22} />
+                  </div>
+
+                  <h3 className="font-bold text-white text-base group-hover:text-accent transition-colors duration-300 mb-2">
+                    {template.name}
+                  </h3>
+                  
+                  <p className="text-xs text-textMuted leading-relaxed mb-6 font-medium">
+                    {template.description}
+                  </p>
                 </div>
-                <h3 className="text-sm font-bold text-white mb-1">{t.name}</h3>
-                <p className="text-xs text-textMuted leading-relaxed">{t.description}</p>
-              </div>
 
-              {selected === t.id && (
-                <div
-                  className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: t.color }}
-                >
-                  <span className="text-white text-[10px] font-black">✓</span>
+                <div className="w-full flex items-center justify-between pt-4 border-t border-white/5">
+                  <span className="text-[10px] font-bold text-textMuted group-hover:text-accent uppercase tracking-wider transition-colors">
+                    Load Blueprint
+                  </span>
+                  <div 
+                    className="w-8 h-8 rounded-full border border-white/5 bg-white/5 flex items-center justify-center text-textMuted group-hover:bg-accent group-hover:text-white group-hover:scale-110 transition-all duration-300"
+                  >
+                    <Check size={14} />
+                  </div>
                 </div>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="p-8 pt-0 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-2xl border border-white/10 text-textMuted hover:text-white hover:bg-white/5 text-sm font-bold transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleLoad}
-            disabled={!selected}
-            className="flex-1 py-3 rounded-2xl bg-accent hover:bg-accentHover text-white text-sm font-bold transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span>Load Template</span>
-            <ChevronRight size={16} />
-          </button>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

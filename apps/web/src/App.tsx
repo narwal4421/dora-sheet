@@ -17,9 +17,9 @@ import { DashboardOverlay, type DashboardData } from './components/DashboardOver
 import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
 import { RoomLockedModal } from './components/Collaboration/RoomLockedModal';
 import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal';
-import { toast } from './store/useToastStore';
 import { IncomingCallOverlay } from './components/Modals/IncomingCallOverlay';
 import { ActiveCallOverlay } from './components/Modals/ActiveCallOverlay';
+import { TemplatesModal } from './components/Modals/TemplatesModal';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -57,6 +57,7 @@ function App() {
   const [showAI, setShowAI] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // --- LIFECYCLE: SOCKET HANDSHAKE ---
   useEffect(() => {
@@ -76,6 +77,112 @@ function App() {
 
     return () => { socketService.socket?.disconnect(); };
   }, [workbookId, isDashboard]);
+
+  // --- LIFECYCLE: LISTEN FOR CINEMATIC DASHBOARD TRIGGERS ---
+  useEffect(() => {
+    const handleShowDashboard = (e: Event) => {
+      const customEvent = e as CustomEvent<DashboardData>;
+      setDashboardData(customEvent.detail);
+    };
+
+    window.addEventListener('show-dashboard', handleShowDashboard);
+    return () => {
+      window.removeEventListener('show-dashboard', handleShowDashboard);
+    };
+  }, []);
+
+  // --- LIFECYCLE: LOAD DYNAMIC DASHBOARD ON QUERY PARAM ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dashboard') === 'true') {
+      const timer = setTimeout(() => {
+        const sheetData = useSheetStore.getState().data;
+        const cells = Object.keys(sheetData);
+
+        if (cells.length === 0) {
+          // If empty, load a beautiful starter budget dashboard preview
+          setDashboardData({
+            kpis: [
+              { label: 'Total Revenue', value: '$8,450', change: '+12.4%', trend: 'up' },
+              { label: 'Operating Cost', value: '$3,120', change: '-4.2%', trend: 'down' },
+              { label: 'Net Profit Margin', value: '63.1%', change: '+8.3%', trend: 'up' },
+              { label: 'Active Projects', value: '5', change: 'Stable', trend: 'neutral' }
+            ],
+            charts: [
+              {
+                title: 'Monthly Financial Growth',
+                type: 'area',
+                dataKeys: ['Revenue', 'Profit'],
+                data: [
+                  { name: 'Jan', Revenue: 4000, Profit: 2400 },
+                  { name: 'Feb', Revenue: 5000, Profit: 3000 },
+                  { name: 'Mar', Revenue: 6200, Profit: 4100 },
+                  { name: 'Apr', Revenue: 7500, Profit: 5200 },
+                  { name: 'May', Revenue: 8450, Profit: 5330 }
+                ]
+              },
+              {
+                title: 'Revenue Allocation',
+                type: 'pie',
+                dataKeys: ['Share'],
+                data: [
+                  { name: 'Product Sales', Share: 55 },
+                  { name: 'Consulting', Share: 30 },
+                  { name: 'Subscribes', Share: 15 }
+                ]
+              }
+            ],
+            summary: 'This dashboard provides a live, dynamic summary of the project workspace. Populate cells in the spreadsheet grid or prompt the AI to generate deeper insights!'
+          });
+          return;
+        }
+
+        let totalSum = 0;
+        let numCount = 0;
+        let maxR = 0;
+        let maxC = 0;
+
+        Object.entries(sheetData).forEach(([ref, cell]) => {
+          const match = ref.match(/r_(\d+)_c_(\d+)/);
+          if (match) {
+            maxR = Math.max(maxR, parseInt(match[1]));
+            maxC = Math.max(maxC, parseInt(match[2]));
+          }
+          if (cell.v !== undefined && cell.v !== null && !isNaN(Number(cell.v))) {
+            totalSum += Number(cell.v);
+            numCount++;
+          }
+        });
+
+        const avgVal = numCount > 0 ? (totalSum / numCount).toFixed(1) : '0';
+
+        setDashboardData({
+          kpis: [
+            { label: 'Active Rows', value: String(maxR + 1), change: 'Grid dimension', trend: 'neutral' },
+            { label: 'Active Columns', value: String(maxC + 1), change: 'Grid dimension', trend: 'neutral' },
+            { label: 'Populated Cells', value: String(cells.length), change: 'Active dataset', trend: 'up' },
+            { label: 'Aggregate Metric Sum', value: totalSum > 0 ? totalSum.toLocaleString() : '0', change: `Avg: ${avgVal}`, trend: totalSum > 0 ? 'up' : 'neutral' }
+          ],
+          charts: [
+            {
+              title: 'Spreadsheet Dataset Visualizer',
+              type: 'bar',
+              dataKeys: ['Values'],
+              data: Object.entries(sheetData)
+                .filter(([, c]) => c.v !== undefined && c.v !== null && !isNaN(Number(c.v)))
+                .slice(0, 8)
+                .map(([ref, c]) => ({
+                  name: ref.replace('r_', 'Row ').replace('_c_', ' Col '),
+                  Values: Number(c.v)
+                }))
+            }
+          ],
+          summary: `This shared live dashboard displays real-time spreadsheet intelligence for your active workbook room (${maxR + 1} rows by ${maxC + 1} columns). It dynamically updates as collaborators modify cells!`
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [workbookId]);
 
   // --- ANIMATIONS: GSAP PREMIUM ---
   useGSAP(() => {
@@ -116,7 +223,7 @@ function App() {
             const newId = Math.floor(100000 + Math.random() * 900000).toString();
             window.location.href = `/workbook/${newId}`;
           }}
-          onShowTemplates={() => toast('Templates feature is coming soon!', 'info')}
+          onShowTemplates={() => setShowTemplates(true)}
         />
       )}
 
@@ -138,6 +245,7 @@ function App() {
         
         {showShare && <ShareModal workbookId={workbookId} onClose={() => setShowShare(false)} />}
         {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
+        {showTemplates && <TemplatesModal onClose={() => setShowTemplates(false)} />}
         {showJoinModal && <JoinIdentityModal onJoin={(name) => {
           useSheetStore.getState().setLocalUserName(name);
           socketService.updateName(name);

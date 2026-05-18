@@ -3,6 +3,9 @@ import ReactECharts from 'echarts-for-react';
 import { X, TrendingUp, TrendingDown, Minus, LayoutDashboard, Share2, Download } from 'lucide-react';
 import gsap from 'gsap';
 import { toast } from '../store/useToastStore';
+import { socketService } from '../services/socket.service';
+import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
+import { useSheetStore } from '../store/useSheetStore';
 
 export interface DashboardData {
   kpis: Array<{ label: string; value: string; change?: string; trend?: 'up' | 'down' | 'neutral' }>;
@@ -96,7 +99,21 @@ export const DashboardOverlay = ({ data, onClose }: { data: DashboardData; onClo
           <div className="flex items-center gap-2 md:gap-3 justify-between md:justify-end">
             <div className="flex items-center gap-2">
               <button 
-                onClick={() => toast('Dashboard sharing coming soon!', 'info')}
+                onClick={() => {
+                  const workbookId = getWorkbookIdFromUrl();
+                  const shareUrl = `${window.location.origin}${window.location.pathname}?dashboard=true`;
+                  navigator.clipboard.writeText(shareUrl).then(() => {
+                    toast('Dashboard link copied to clipboard!', 'success');
+                  }).catch(() => {
+                    toast('Failed to copy link, but shared with team!', 'warning');
+                  });
+
+                  socketService.emitSheetAction(workbookId, 'share_dashboard', {
+                    data,
+                    sender: useSheetStore.getState().localUserName
+                  });
+                  toast('Broadcasted live cinematic dashboard to all connected collaborators!', 'success');
+                }}
                 className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-xs md:text-sm text-textMain transition-all" 
                 title="Share"
               >
