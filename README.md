@@ -44,6 +44,24 @@ Built as a **monorepo** with shared type safety across the entire stack, Dora Sh
 
 ---
 
+## ⚔️ How Dora Sheet Compares
+
+| Capability | Google Sheets | Notion Tables | Airtable | **Dora Sheet** |
+|-----------|:---:|:---:|:---:|:---:|
+| Custom-built grid engine | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary | ✅ **From scratch** |
+| Embedded AI assistant | ⚠️ Gemini (limited) | ✅ Notion AI | ❌ | ✅ **10-tool function calling** |
+| Real-time multiplayer cursors | ✅ | ⚠️ Partial | ⚠️ Partial | ✅ **Color-coded live cursors** |
+| In-app voice & video calls | ❌ | ❌ | ❌ | ✅ **LiveKit SFU** |
+| AI-generated dashboards | ❌ | ❌ | ⚠️ Paid add-on | ✅ **Built-in with ECharts** |
+| Document → spreadsheet extraction | ❌ | ❌ | ❌ | ✅ **PDF/Image/Excel → Grid** |
+| Room lock & host controls | ❌ | ❌ | ❌ | ✅ **Approval-based join flow** |
+| Team chat inside spreadsheet | ❌ Comments only | ❌ Comments only | ❌ | ✅ **Real-time team messaging** |
+| Built-in starter templates | ⚠️ Gallery | ⚠️ Gallery | ✅ | ✅ **9 professional templates** |
+| Self-hostable & open architecture | ❌ | ❌ | ❌ | ✅ **Docker Compose ready** |
+| Formula engine in Web Worker | ❌ Main thread | ❌ N/A | ❌ N/A | ✅ **Off-thread computation** |
+
+---
+
 ## ✨ Features
 
 ### 📊 Spreadsheet Core
@@ -63,7 +81,9 @@ Built as a **monorepo** with shared type safety across the entire stack, Dora Sh
 - **10 AI Tools** — `apply_formula` · `fill_data` · `format_cells` · `organize_data` · `modify_structure` · `semantic_search` · `extract_to_table` · `generate_dashboard` · `analyze_data` · `clear_data`
 - **Document Intelligence** — Attach Excel, CSV, PDF, or image files and the AI extracts structured data directly into the grid
 - **Approval Workflow** — AI suggests actions, you review and approve before they're applied
+- **12-Step Decision Hierarchy** — Deterministic intent routing: greeting → formula → file extraction → data fill → formatting → search → dashboard → structure → inventory → inference
 - **Multilingual Support** — Auto-detects language, translates data to English, responds in your language
+- **Inventory Mode** — Natural commands like "add 10 apples" or "sold 3 chairs" auto-structured into tabular data
 - **Powered by GPT-4o-mini** via OpenRouter with function calling
 
 ### 👥 Real-Time Collaboration
@@ -90,14 +110,15 @@ Built as a **monorepo** with shared type safety across the entire stack, Dora Sh
 - **Collaborative Sharing** — Broadcast your dashboard to all connected users in real-time
 - **GSAP Animations** — Staggered entrance animations for cards and charts
 
-### 🛡️ Security & Infrastructure
-- **Bodyguard™ Security Layer** — Rate limiting per IP (connections, grid updates, chat messages), XSS sanitization, payload size limits
-- **JWT Authentication** — Access + refresh token rotation with bcrypt password hashing
-- **Guest Mode** — Instant access without signup using stable guest identifiers
-- **RBAC** — Role-based access control middleware (`ADMIN`, `EDITOR`, `VIEWER`)
-- **Host Handover** — Automatic host reassignment when the room creator disconnects
-- **Auto-Snapshots** — Server-side periodic snapshots every 5 minutes for data recovery
-- **Helmet + CORS** — HTTP security headers and dynamic origin reflection
+### 🛡️ Security Architecture
+- **Bodyguard™ Security Layer** — Multi-layer defense: rate limiting per IP (50 connections/min, 100 grid ops/min, 30 chat msgs/min), XSS sanitization on all user input, payload size caps at 5KB
+- **JWT Authentication** — Dual-token system: short-lived access tokens + long-lived refresh tokens with bcrypt password hashing (salt rounds: 10)
+- **Guest Mode** — Instant access without signup using stable `guestId` identifiers that persist across reconnections
+- **RBAC Middleware** — Role-based access control at route level (`ADMIN`, `EDITOR`, `VIEWER`) with Zod schema validation on all inputs
+- **Cell-Level Locking** — Redis-backed pessimistic locks with 30s TTL auto-expiry and bulk cleanup on disconnect
+- **Host Handover** — Automatic host reassignment when the room creator disconnects; falls back to next connected socket
+- **Auto-Snapshots** — Server-side periodic snapshots every 5 minutes for data recovery with full sheet state serialization
+- **Helmet + CORS** — HTTP security headers via Helmet.js, dynamic CORS origin reflection, trust proxy for Render deployment
 
 ### 🎨 UI/UX
 - **Dark & Light Mode** — Toggle themes with smooth CSS variable transitions
@@ -162,6 +183,58 @@ dora-sheet/
 | **Logging** | Winston | Structured production logging |
 | **API Docs** | Swagger/OpenAPI 3.0 | Auto-generated REST documentation |
 | **DevOps** | Docker Compose, Vercel, Render | Container orchestration + cloud deploy |
+
+---
+
+## ⚙️ Core Engine Deep-Dive
+
+The heart of Dora Sheet is a **custom-built spreadsheet engine** — no libraries like Handsontable or AG Grid. Here's how it works:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    React Component Tree                  │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────────────┐ │
+│  │  TopNav   │  │ Toolbar  │  │   AIChatPanel (400px)  │ │
+│  └──────────┘  └──────────┘  │  ┌──────────────────┐  │ │
+│  ┌─────────────────────────┐ │  │  AI Messages     │  │ │
+│  │         Grid            │ │  │  Tool Results     │  │ │
+│  │  ┌───────────────────┐  │ │  │  Approve/Apply    │  │ │
+│  │  │ @tanstack/virtual  │  │ │  └──────────────────┘  │ │
+│  │  │ 1000 rows × 26 col│  │ │  ┌──────────────────┐  │ │
+│  │  │ Only renders ~40   │  │ │  │  Team Chat        │  │ │
+│  │  │ visible rows       │  │ │  │  Voice/Video Call  │  │ │
+│  │  └───────────────────┘  │ │  └──────────────────┘  │ │
+│  │  ┌─────────┐ ┌───────┐  │ └────────────────────────┘ │
+│  │  │Cursors  │ │Select │  │                            │
+│  │  │Layer    │ │Overlay│  │                            │
+│  │  └─────────┘ └───────┘  │                            │
+│  └─────────────────────────┘                            │
+│  ┌─────────────────────────┐                            │
+│  │      SheetTabs          │                            │
+│  └─────────────────────────┘                            │
+└─────────────────────────────────────────────────────────┘
+         │                              │
+    ┌────▼────┐                   ┌─────▼──────┐
+    │ Zustand │◄──── Socket.IO ──►│  Express   │
+    │  Store  │    (real-time)    │  API + WS  │
+    └────┬────┘                   └─────┬──────┘
+         │                              │
+    ┌────▼────┐                   ┌─────▼──────┐
+    │ Formula │                   │ PostgreSQL │
+    │ Worker  │                   │  + Redis   │
+    │ (thread)│                   └────────────┘
+    └─────────┘
+```
+
+### Key Design Decisions
+
+| Decision | Why |
+|----------|-----|
+| **Virtualized rendering** | Only ~40 rows + ~10 cols are in the DOM at any time. Scrolling dynamically swaps elements — the grid holds 26,000 cells but renders ~400. |
+| **Web Worker formula engine** | Formula computation (`=SUM`, `=AVERAGE`, etc.) runs in a dedicated thread via `packages/formula-engine`, keeping the UI at 60fps even during heavy calculations. |
+| **Zustand over Redux** | Selector-based subscriptions mean only the cells that change re-render. The store handles 50-level undo history, remote updates, cursor tracking, and sheet tabs without performance degradation. |
+| **Pessimistic cell locking** | Redis `SET NX EX 30` gives atomic lock acquisition with auto-expiry. On disconnect, all user locks are bulk-released via `SMEMBERS` + `DEL`. |
+| **Socket.IO over raw WS** | Built-in room management, automatic reconnection, and the Redis adapter for horizontal scaling made Socket.IO the pragmatic choice. |
 
 ---
 
@@ -307,17 +380,49 @@ User ──< Snapshot
 ## 🧪 Testing
 
 ```bash
-# Run all tests
+# Run all tests across workspaces
 npm test
 
-# Run API tests
-cd apps/api && npm test
+# Run API tests only
+cd apps/api; npm test
 
-# Run formula engine tests
-cd packages/formula-engine && npm test
+# Run formula engine tests only
+cd packages/formula-engine; npm test
 ```
 
 Testing stack: **Jest** + **Supertest** + **ts-jest**
+
+---
+
+## 📜 Available Scripts
+
+### Root (Monorepo)
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start all workspaces in development mode concurrently |
+| `npm run build` | Build all workspaces for production |
+| `npm test` | Run test suites across all workspaces |
+
+### `apps/api`
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start API with hot-reload (`ts-node-dev --respawn`) |
+| `npm run build` | Generate Prisma client + compile TypeScript |
+| `npm start` | Run compiled production server (`node dist/index.js`) |
+| `npm test` | Run Jest test suite |
+| `npm run db:push` | Push Prisma schema to PostgreSQL |
+| `npm run db:studio` | Open Prisma Studio GUI for database inspection |
+| `npm run db:generate` | Regenerate Prisma client after schema changes |
+
+### `apps/web`
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server with HMR (`localhost:5173`) |
+| `npm run build` | Production build with TypeScript check + Vite bundle |
+| `npm run preview` | Preview production build locally |
 
 ---
 
@@ -370,13 +475,84 @@ This project uses **npm workspaces** for dependency management across packages:
 
 ---
 
+## ✅ Full Feature Checklist
+
+### Spreadsheet Core
+- [x] Custom virtualized grid (1000×26) with `@tanstack/virtual`
+- [x] Web Worker formula engine (`SUM`, `AVERAGE`, `IF`, `VLOOKUP`)
+- [x] Cell formatting (bold, italic, strikethrough, colors, alignment)
+- [x] Multi-sheet tabs (add, rename, delete, switch)
+- [x] 50-level undo/redo history stack
+- [x] Find & Replace with regex support
+- [x] Column/row drag-to-resize + auto-fit
+- [x] Right-click context menu
+- [x] Multi-cell click-and-drag selection
+- [x] Excel `.xlsx` export via SheetJS
+- [x] Number formatting (currency `$`, percentage `%`)
+
+### AI Assistant
+- [x] 10 function-calling tools via GPT-4o-mini
+- [x] Document attachment (Excel, CSV, PDF, Image)
+- [x] Approve/Apply workflow for all AI actions
+- [x] 12-step deterministic decision hierarchy
+- [x] Multilingual auto-detection + translation
+- [x] Inventory/stock natural language commands
+- [x] AI-generated cinematic dashboards
+- [x] Semantic search across cell data
+- [x] Data analysis with actionable suggestions
+
+### Real-Time Collaboration
+- [x] Live multiplayer cursors (color-coded)
+- [x] Real-time cell sync via Socket.IO
+- [x] Pessimistic cell locking with Redis
+- [x] Room system with 6-digit join codes
+- [x] Host lock/unlock + join approval flow
+- [x] Automatic host handover on disconnect
+- [x] Live workbook rename sync
+- [x] Built-in team chat
+
+### Voice & Video
+- [x] LiveKit SFU integration
+- [x] One-click voice/video call initiation
+- [x] Screen sharing
+- [x] Floating minimizable call overlay
+- [x] Incoming call notifications
+- [x] Live call duration timer
+
+### Dashboards & Visualization
+- [x] AI-generated KPI cards with trend indicators
+- [x] Bar, line, area, and pie charts (ECharts SVG)
+- [x] Collaborative dashboard broadcasting
+- [x] GSAP staggered entrance animations
+
+### Security & Infrastructure
+- [x] JWT dual-token auth (access + refresh)
+- [x] bcrypt password hashing
+- [x] Guest mode with stable identifiers
+- [x] RBAC middleware (Admin/Editor/Viewer)
+- [x] Bodyguard™ rate limiting (IP-based)
+- [x] XSS input sanitization
+- [x] Auto-snapshots every 5 minutes
+- [x] Helmet.js security headers
+- [x] Swagger/OpenAPI documentation
+
+### UI/UX
+- [x] Dark & light mode toggle
+- [x] 9 professional starter templates
+- [x] GSAP micro-animations throughout
+- [x] Fully responsive (mobile + desktop)
+- [x] Glassmorphism design language
+- [x] Toast notification system
+
+---
+
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **Fork** the repository
+2. **Create** your feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'feat: add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request with a clear description
 
 ---
 
