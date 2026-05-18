@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { X, Sparkles, Receipt, ListTodo, Wallet, Check, TrendingUp, Target, Activity } from 'lucide-react';
+import { X, Sparkles, Receipt, ListTodo, Wallet, Check, TrendingUp, Target, Activity, Clock, Coins, GraduationCap } from 'lucide-react';
 import gsap from 'gsap';
 import { useSheetStore, type CellData } from '../../store/useSheetStore';
 import { socketService } from '../../services/socket.service';
@@ -10,7 +10,7 @@ interface Template {
   id: string;
   name: string;
   description: string;
-  icon: typeof Wallet | typeof ListTodo | typeof Receipt | typeof TrendingUp | typeof Target | typeof Activity;
+  icon: typeof Wallet | typeof ListTodo | typeof Receipt | typeof TrendingUp | typeof Target | typeof Activity | typeof Clock | typeof Coins | typeof GraduationCap;
   color: string;
   bgColor: string;
   borderColor: string;
@@ -137,6 +137,117 @@ export const TemplatesModal = ({ onClose }: { onClose: () => void }) => {
         'r_5_c_3': { f: '=B6*C6', v: 1080 },
         'r_7_c_0': { v: 'Grand Total', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
         'r_7_c_3': { f: '=SUM(D4:D6)', v: 6180, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f59e0b' } }
+      }
+    },
+    {
+      id: 'timesheet',
+      name: 'Employee Timesheet',
+      description: 'Log weekly work hours, active regular and overtime breakdowns, and compute total employee payroll.',
+      icon: Clock,
+      color: '#0d9488',
+      bgColor: 'rgba(13, 148, 136, 0.05)',
+      borderColor: 'rgba(13, 148, 136, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Weekly Employee Timesheet', fmt: { bold: true, fontSize: 16, color: '#0d9488' } },
+        'r_2_c_0': { v: 'Day of Week', fmt: { bold: true, backgroundColor: '#0f3d3e', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Regular Hours', fmt: { bold: true, backgroundColor: '#0f3d3e', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Overtime Hours', fmt: { bold: true, backgroundColor: '#0f3d3e', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Total Daily Pay ($)', fmt: { bold: true, backgroundColor: '#0f3d3e', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Monday' },
+        'r_3_c_1': { v: 8 },
+        'r_3_c_2': { v: 1 },
+        'r_3_c_3': { f: '=(B4*25)+(C4*37.5)', v: 237.5 },
+        'r_4_c_0': { v: 'Tuesday' },
+        'r_4_c_1': { v: 8 },
+        'r_4_c_2': { v: 0 },
+        'r_4_c_3': { f: '=(B5*25)+(C5*37.5)', v: 200 },
+        'r_5_c_0': { v: 'Wednesday' },
+        'r_5_c_1': { v: 8 },
+        'r_5_c_2': { v: 2 },
+        'r_5_c_3': { f: '=(B6*25)+(C6*37.5)', v: 275 },
+        'r_6_c_0': { v: 'Thursday' },
+        'r_6_c_1': { v: 8 },
+        'r_6_c_2': { v: 0 },
+        'r_6_c_3': { f: '=(B7*25)+(C7*37.5)', v: 200 },
+        'r_7_c_0': { v: 'Friday' },
+        'r_7_c_1': { v: 8 },
+        'r_7_c_2': { v: 0 },
+        'r_7_c_3': { f: '=(B8*25)+(C8*37.5)', v: 200 },
+        'r_9_c_0': { v: 'Weekly Total Summary', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_9_c_1': { f: '=SUM(B4:B8)', v: 40, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_9_c_2': { f: '=SUM(C4:C8)', v: 3, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_9_c_3': { f: '=SUM(D4:D8)', v: 1112.5, fmt: { bold: true, backgroundColor: '#0f172a', color: '#0d9488' } }
+      }
+    },
+    {
+      id: 'networth',
+      name: 'Personal Net Worth Statement',
+      description: 'Audit personal checking, real estate, and portfolio assets against mortgages and credit balances.',
+      icon: Coins,
+      color: '#059669',
+      bgColor: 'rgba(5, 150, 105, 0.05)',
+      borderColor: 'rgba(5, 150, 105, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Personal Net Worth Statement', fmt: { bold: true, fontSize: 16, color: '#059669' } },
+        'r_2_c_0': { v: 'Asset Categories', fmt: { bold: true, backgroundColor: '#064e3b', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Market Value ($)', fmt: { bold: true, backgroundColor: '#064e3b', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Checking & Savings' },
+        'r_3_c_1': { v: 12500 },
+        'r_4_c_0': { v: 'Brokerage Portfolios' },
+        'r_4_c_1': { v: 45000 },
+        'r_5_c_0': { v: 'Real Estate Property' },
+        'r_5_c_1': { v: 350000 },
+        'r_6_c_0': { v: 'Retirement Portfolios (401k)' },
+        'r_6_c_1': { v: 85000 },
+        'r_7_c_0': { v: 'Total Asset Values', fmt: { bold: true, backgroundColor: '#1e293b', color: '#f8fafc' } },
+        'r_7_c_1': { f: '=SUM(B4:B7)', v: 492500, fmt: { bold: true, backgroundColor: '#1e293b', color: '#f8fafc' } },
+        'r_9_c_0': { v: 'Liability & Loan Categories', fmt: { bold: true, backgroundColor: '#7f1d1d', color: '#ffffff' } },
+        'r_9_c_1': { v: 'Outstanding Balance ($)', fmt: { bold: true, backgroundColor: '#7f1d1d', color: '#ffffff' } },
+        'r_10_c_0': { v: 'Credit Card Balances' },
+        'r_10_c_1': { v: 2400 },
+        'r_11_c_0': { v: 'Student Loans' },
+        'r_11_c_1': { v: 18500 },
+        'r_12_c_0': { v: 'Home Mortgage' },
+        'r_12_c_1': { v: 245000 },
+        'r_13_c_0': { v: 'Total Liability Balance', fmt: { bold: true, backgroundColor: '#1e293b', color: '#f8fafc' } },
+        'r_13_c_1': { f: '=SUM(B11:B13)', v: 265900, fmt: { bold: true, backgroundColor: '#1e293b', color: '#f8fafc' } },
+        'r_15_c_0': { v: 'Net Worth (Assets - Liabilities)', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_15_c_1': { f: '=B8-B14', v: 226600, fmt: { bold: true, backgroundColor: '#0f172a', color: '#059669' } }
+      }
+    },
+    {
+      id: 'grades',
+      name: 'Syllabus Grade Calculator',
+      description: 'Model homework, quiz, and final exam grade scores against syllabus weight distributions.',
+      icon: GraduationCap,
+      color: '#2563eb',
+      bgColor: 'rgba(37, 99, 235, 0.05)',
+      borderColor: 'rgba(37, 99, 235, 0.2)',
+      cells: {
+        'r_0_c_0': { v: 'Syllabus Grade Calculator', fmt: { bold: true, fontSize: 16, color: '#2563eb' } },
+        'r_2_c_0': { v: 'Graded Deliverable', fmt: { bold: true, backgroundColor: '#1e3a8a', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Score Received (%)', fmt: { bold: true, backgroundColor: '#1e3a8a', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Syllabus Weight (%)', fmt: { bold: true, backgroundColor: '#1e3a8a', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Weighted Contribution (%)', fmt: { bold: true, backgroundColor: '#1e3a8a', color: '#ffffff' } },
+        'r_3_c_0': { v: 'Homework & Assignments' },
+        'r_3_c_1': { v: 92 },
+        'r_3_c_2': { v: 0.3 },
+        'r_3_c_3': { f: '=B4*C4', v: 27.6 },
+        'r_4_c_0': { v: 'Quizzes & Participation' },
+        'r_4_c_1': { v: 85 },
+        'r_4_c_2': { v: 0.2 },
+        'r_4_c_3': { f: '=B5*C5', v: 17 },
+        'r_5_c_0': { v: 'Midterm Examination' },
+        'r_5_c_1': { v: 78 },
+        'r_5_c_2': { v: 0.2 },
+        'r_5_c_3': { f: '=B6*C6', v: 15.6 },
+        'r_6_c_0': { v: 'Final Course Project' },
+        'r_6_c_1': { v: 95 },
+        'r_6_c_2': { v: 0.3 },
+        'r_6_c_3': { f: '=B7*C7', v: 28.5 },
+        'r_8_c_0': { v: 'Final Weighted Grade Score', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_8_c_2': { f: '=SUM(C4:C7)', v: 1, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
+        'r_8_c_3': { f: '=SUM(D4:D7)', v: 88.7, fmt: { bold: true, backgroundColor: '#0f172a', color: '#2563eb' } }
       }
     },
     {
