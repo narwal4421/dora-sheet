@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
-import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon } from 'lucide-react';
+import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon, Mail } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
 
@@ -163,6 +163,13 @@ export const TopNav = ({
     { label: 'Filter', onClick: () => useSheetStore.getState().toggleFilter() }
   ];
 
+  const helpMenu: MenuItem[] = [
+    { label: 'About Dora AI', onClick: onShowAbout },
+    { label: 'Contact Us', onClick: onShowAbout },
+    { divider: true, label: '', onClick: () => {} },
+    { label: 'Documentation', onClick: () => window.open('https://github.com/narwal4421/dora-sheet#readme', '_blank') }
+  ];
+
   return (
     <div className="dark flex items-center justify-between px-2 md:px-4 py-2 border-b border-border bg-background z-20">
       <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
@@ -190,6 +197,7 @@ export const TopNav = ({
               <DropdownMenu label="Insert" items={insertMenu} />
               <DropdownMenu label="Format" items={formatMenu} />
               <DropdownMenu label="Data" items={dataMenu} />
+              <DropdownMenu label="Help" items={helpMenu} />
             </div>
             
             {/* Mobile Menu */}
@@ -208,6 +216,8 @@ export const TopNav = ({
                   ...formatMenu,
                   { divider: true, label: '', onClick: () => {} },
                   ...dataMenu,
+                  { divider: true, label: '', onClick: () => {} },
+                  ...helpMenu,
                 ]} 
               />
             </div>
@@ -262,15 +272,6 @@ export const TopNav = ({
               {user.name.charAt(0).toUpperCase()}
             </div>
           ))}
-          {connectedUsers.length === 0 && (
-            <button 
-              onClick={onShowAbout}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border bg-surface text-textMuted hover:text-white hover:border-accent transition-all text-xs font-bold uppercase tracking-wider shadow-sm"
-              title="Learn about Dora AI"
-            >
-              Contact Us
-            </button>
-          )}
         </div>
 
         <div className="relative flex items-center">
@@ -300,6 +301,15 @@ export const TopNav = ({
         >
           <Clock size={16} />
           <span className="hidden md:inline">History</span>
+        </button>
+
+        <button 
+          onClick={onShowAbout}
+          className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-textMain transition-colors text-sm font-medium"
+          title="Contact Us"
+        >
+          <Mail size={16} />
+          <span className="hidden md:inline">Contact Us</span>
         </button>
 
         <button 

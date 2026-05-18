@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, X, Check, Loader2, Paperclip, FileText, Users, Phone, Video, PhoneOff, MonitorUp } from 'lucide-react';
-import { LiveKitRoom, VideoConference, RoomAudioRenderer } from '@livekit/components-react';
+import { Bot, Send, X, Check, Loader2, Paperclip, FileText, Users, Phone, Video, PhoneOff } from 'lucide-react';
 import '@livekit/components-styles';
 import { useSheetStore } from '../store/useSheetStore';
 import type { CellData } from '../store/useSheetStore';
@@ -74,7 +73,6 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   const { isCallActive, callToken, startCall, endCall, setToken, setStatus } = useCallStore();
 
   const workbookId = getWorkbookIdFromUrl();
-  const livekitUrl = import.meta.env.VITE_LIVEKIT_URL;
 
   const fetchToken = useCallback(async () => {
     try {
@@ -566,52 +564,24 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
               </div>
             )}
 
-            {/* Active Call: LiveKit SFU embedded in Team Chat */}
+            {/* Active Call: Floating global call message */}
             {isCallActive && (
-              <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/20 flex flex-col" style={{ height: '340px' }}>
-                {/* Call Header */}
-                <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Live Call</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      title="Screen Share (use controls below)"
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-textMuted hover:text-white transition-all"
-                    >
-                      <MonitorUp size={14} />
-                    </button>
-                    <button
-                      onClick={() => endCall()}
-                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white transition-all"
-                      title="End Call"
-                    >
-                      <PhoneOff size={14} />
-                    </button>
-                  </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex flex-col gap-2 shadow-lg backdrop-blur-sm animate-in slide-in-from-bottom duration-300">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Active Call Connected</span>
                 </div>
-
-                {/* LiveKit Room */}
-                {!callToken ? (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="w-6 h-6 text-accent animate-spin" />
-                    <span className="text-[10px] font-black text-textMuted uppercase tracking-widest animate-pulse">Connecting...</span>
-                  </div>
-                ) : (
-                  <LiveKitRoom
-                    video={true}
-                    audio={true}
-                    token={callToken}
-                    serverUrl={livekitUrl}
-                    onDisconnected={() => endCall()}
-                    className="flex-1 overflow-hidden"
-                    style={{ '--lk-bg': 'transparent' } as React.CSSProperties}
+                <p className="text-xs text-textMuted leading-relaxed font-semibold">
+                  You are currently in a live collaboration call. Use the floating overlay in the bottom-right corner of your screen to toggle your microphone, video feed, screen share, or to disconnect.
+                </p>
+                <div className="flex gap-2 mt-1">
+                  <button 
+                    onClick={() => endCall()}
+                    className="flex-1 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95 duration-200"
                   >
-                    <VideoConference className="h-full" style={{ border: 'none' }} />
-                    <RoomAudioRenderer />
-                  </LiveKitRoom>
-                )}
+                    <PhoneOff size={12} /> Leave Call
+                  </button>
+                </div>
               </div>
             )}
 

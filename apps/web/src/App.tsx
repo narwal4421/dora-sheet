@@ -19,6 +19,7 @@ import { RoomLockedModal } from './components/Collaboration/RoomLockedModal';
 import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal';
 import { toast } from './store/useToastStore';
 import { IncomingCallOverlay } from './components/Modals/IncomingCallOverlay';
+import { ActiveCallOverlay } from './components/Modals/ActiveCallOverlay';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -184,6 +185,7 @@ function App() {
         )}
       </div>
       <IncomingCallOverlay />
+      <ActiveCallOverlay />
       <ToastContainer />
     </div>
   );
