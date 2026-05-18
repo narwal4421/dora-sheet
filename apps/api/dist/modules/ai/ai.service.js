@@ -118,7 +118,16 @@ Supported formula triggers (non-exhaustive):
 "calculate discount", "percentage of", "multiply", "subtract",
 "formula for", "give me a formula"
 
-── FILL_DATA TOOL RULES ──
+ ── CLEAR_DATA TOOL RULES ──
+ CLEAR DATA MODE // Triggers: "clear", "reset", "wipe", "delete everything", "empty the sheet"
+ 
+ ALWAYS use the \`clear_data\` tool for bulk deletions. Rules:
+ - If the user says "clear the sheet" or "delete everything", set range to "all".
+ - If the user specifies a range (e.g., "clear A1:B10"), set range to "selection" and provide the A1 references.
+ - NEVER use \`modify_structure\` (deleteRow/deleteCol) to clear data if the intention is just to empty the cells while keeping the structure.
+ - Briefly confirm: "I'll clear the specified area for you. Approve to apply."
+ 
+ ── FILL_DATA TOOL RULES ──
 DATA INSERTION MODE // Triggers: pasted text, uploaded files, "put this in", raw data
 
 ALWAYS use the \`fill_data\` tool. Non-negotiable rules:
@@ -425,6 +434,22 @@ FORBIDDEN BEHAVIORS // Hard stops — no exceptions
                             index: { type: "integer" }
                         },
                         required: ["action", "index"],
+                        additionalProperties: false
+                    }
+                }
+            },
+            {
+                type: "function",
+                function: {
+                    name: "clear_data",
+                    description: "Clears values from a range of cells or the entire sheet.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            range: { type: "string", enum: ["all", "selection"], description: "'all' to clear everything, 'selection' for specific range." },
+                            references: { type: "array", items: { type: "string" }, description: "List of A1 references if range is not 'all'." }
+                        },
+                        required: ["range"],
                         additionalProperties: false
                     }
                 }

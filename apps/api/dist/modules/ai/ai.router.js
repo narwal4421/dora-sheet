@@ -9,5 +9,15 @@ const ai_controller_1 = require("./ai.controller");
 const multer_1 = __importDefault(require("multer"));
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 exports.aiRouter = (0, express_1.Router)();
-/** @swagger /api/v1/ai/chat: post: summary: AI Chat tags: [AI] */
+/**
+ * @swagger
+ * /api/v1/ai/chat:
+ *   post:
+ *     summary: AI Chat
+ *     tags:
+ *       - AI
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 exports.aiRouter.post('/chat', upload.single('attachedFile'), ai_controller_1.AIController.chat);

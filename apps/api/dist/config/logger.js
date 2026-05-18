@@ -15,12 +15,13 @@ exports.logger = winston_1.default.createLogger({
     format: combine(timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.default.format.errors({ stack: true }), winston_1.default.format.splat(), winston_1.default.format.json()),
     defaultMeta: { service: 'smartsheet-api' },
     transports: [
-        new winston_1.default.transports.File({ filename: 'error.log', level: 'error' }),
-        new winston_1.default.transports.File({ filename: 'combined.log' }),
+    // Console is enough for Render logs
     ],
 });
 if (env_1.env.NODE_ENV !== 'production') {
-    exports.logger.add(new winston_1.default.transports.Console({
-        format: combine(colorize(), myFormat),
-    }));
+    exports.logger.add(new winston_1.default.transports.File({ filename: 'error.log', level: 'error' }));
+    exports.logger.add(new winston_1.default.transports.File({ filename: 'combined.log' }));
 }
+exports.logger.add(new winston_1.default.transports.Console({
+    format: combine(colorize(), myFormat),
+}));

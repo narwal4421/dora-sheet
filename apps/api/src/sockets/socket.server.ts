@@ -5,6 +5,9 @@ import { env } from '../config/env';
 import { redis } from '../config/redis';
 import { prisma } from '../config/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { createAdapter } from '@socket.io/redis-adapter';
+import Redis from 'ioredis';
+
 
 const BODYGUARD_LIMITS = {
   JOIN_REQUESTS: 20,
@@ -45,6 +48,16 @@ export const initSockets = (httpServer: Server) => {
     pingTimeout: 30000,
     pingInterval: 10000
   });
+
+  const redisUrl = env.REDIS_URL || process.env.REDIS_URL;
+  const forceMock = true; // Temporary bypass to allow immediate production deployment without real Redis
+
+  if (!forceMock && redisUrl && process.env.NODE_ENV === 'production') {
+    const pubClient = new Redis(redisUrl);
+    const subClient = pubClient.duplicate();
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('🚀 Redis Adapter connected to Socket.IO');
+  }
 
   // --- MIDDLEWARE: AUTH & SECURITY ---
   io.use(async (socket, next) => {
@@ -125,8 +138,13 @@ export const initSockets = (httpServer: Server) => {
           isHost: s.data.userId === hostId
         }])).values());
 
-        const workbook = await prisma.workbook.findUnique({ where: { id: workbookId }, select: { name: true } });
-        const workbookName = workbook?.name || 'Untitled Workbook';
+        let workbookName = 'Untitled Workbook';
+        try {
+          const workbook = await prisma.workbook.findUnique({ where: { id: workbookId }, select: { name: true } });
+          if (workbook?.name) workbookName = workbook.name;
+        } catch (dbErr) {
+          console.warn(`[GOD_SOCKET] DB unreachable for workbook name, using fallback for ${workbookId}`);
+        }
 
         callback?.({ success: true, isHost, members, color: socket.data.color, userId, workbookName });
       } catch (err) {

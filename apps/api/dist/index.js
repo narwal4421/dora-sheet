@@ -20,6 +20,12 @@ const ai_router_1 = require("./modules/ai/ai.router");
 const file_router_1 = require("./modules/file/file.router");
 const call_router_1 = require("./modules/call/call.router");
 const app = (0, express_1.default)();
+process.on('uncaughtException', (err) => {
+    console.error('🔥 UNCAUGHT EXCEPTION:', err);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('🌊 UNHANDLED REJECTION:', reason);
+});
 app.set('trust proxy', 1); // Trust the Render proxy for accurate rate-limiting IP detection
 const swaggerOptions = {
     definition: {
@@ -49,7 +55,7 @@ app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
         // Dynamic origin reflection for demo - allows any requester to connect
-        callback(null, origin || true);
+        callback(null, true);
     },
     credentials: true
 }));
@@ -96,7 +102,7 @@ setInterval(async () => {
                     workbookId: wb.id,
                     userId: wb.workspace.members[0].userId, // Attribution to first member for auto-saves
                     label: `Auto-save ${new Date().toISOString()}`,
-                    data: snapshotData
+                    data: JSON.stringify(snapshotData)
                 }
             });
         }
@@ -106,13 +112,22 @@ setInterval(async () => {
     }
 }, 5 * 60 * 1000);
 server.listen(port, async () => {
-    logger_1.logger.info(`SmartSheet API running on port ${port} in ${env_1.env.NODE_ENV} mode`);
+    logger_1.logger.info(`🚀 SmartSheet API running on port ${port} [${env_1.env.NODE_ENV}]`);
+    // DB CONNECTIVITY CHECK
+    try {
+        await prisma_1.prisma.$connect();
+        logger_1.logger.info('✅ Database connection established');
+    }
+    catch (dbErr) {
+        logger_1.logger.error('❌ CRITICAL: Database connection failed. DB features will be unavailable.', dbErr);
+        // We don't exit here to allow the server to at least start and serve static/ready checks
+    }
     // SEED DEFAULT DATA FOR DEMO
     try {
         const defaultId = 'default-workbook-id';
         const existingSheet = await prisma_1.prisma.sheet.findUnique({ where: { id: defaultId } });
         if (!existingSheet) {
-            logger_1.logger.info('Seeding default workbook and sheet...');
+            logger_1.logger.info('🌱 Seeding default demo data...');
             const workspace = await prisma_1.prisma.workspace.create({
                 data: { name: 'Public Workspace', id: 'default-workspace-id' }
             });
@@ -136,10 +151,10 @@ server.listen(port, async () => {
                     colCount: 26
                 }
             });
-            logger_1.logger.info('Default data seeded successfully.');
+            logger_1.logger.info('✅ Default data seeded successfully');
         }
     }
     catch (err) {
-        logger_1.logger.error('Startup seeding failed:', err);
+        logger_1.logger.error('⚠️ Startup seeding skipped or failed (likely DB issue):', err);
     }
 });

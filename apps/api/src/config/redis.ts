@@ -14,8 +14,9 @@ class RedisManager {
 
   private constructor() {
     const redisUrl = env.REDIS_URL || process.env.REDIS_URL;
+    const forceMock = true; // Temporary bypass to allow immediate production deployment without real Redis
     
-    if (redisUrl && process.env.NODE_ENV === 'production') {
+    if (!forceMock && redisUrl && process.env.NODE_ENV === 'production') {
       const options: RedisOptions = {
         maxRetriesPerRequest: 3,
         retryStrategy: (times: number) => {
