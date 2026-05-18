@@ -17,7 +17,7 @@ app.use('/api/v1', fileRouter);
 // Mocking OpenAI and Redis for AI tests
 jest.mock('../src/modules/ai/ai.service', () => ({
   AIService: {
-    handleChat: jest.fn().mockResolvedValue({
+    chat: jest.fn().mockResolvedValue({
       tool_used: 'query_data',
       result: { query: 'test' },
       suggestion: 'suggestion'
@@ -89,7 +89,7 @@ describe('API Integration Tests', () => {
   });
 
   test('POST /ai/chat returns 429 after 50 calls', async () => {
-    jest.spyOn(redis, 'incr').mockResolvedValue(51);
+    jest.spyOn(redis, 'incr').mockResolvedValue(101);
 
     const res = await request(app)
       .post('/api/v1/ai/chat')
@@ -100,7 +100,7 @@ describe('API Integration Tests', () => {
       });
     
     expect(res.status).toBe(429);
-    expect(res.body.error.message).toBe('Rate limit exceeded');
+    expect(res.body.message).toBe('Rate limit exceeded');
   });
 
   test('POST /import/xlsx maps to sparse format', async () => {
