@@ -61,6 +61,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+      - run: npx -w apps/api prisma generate
       - run: npx -w apps/api prisma migrate deploy
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}

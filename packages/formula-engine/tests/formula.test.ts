@@ -36,7 +36,7 @@ describe('Formula Engine Calculations', () => {
   test('VLOOKUP returns correct value', () => {
     hf.setCellContents({ sheet: sheetId, col: 0, row: 0 }, [['Apples', '10']]);
     hf.setCellContents({ sheet: sheetId, col: 0, row: 1 }, [['Bananas', '20']]);
-    hf.setCellContents({ sheet: sheetId, col: 0, row: 2 }, [['=VLOOKUP("Bananas", A1:B2, 2, FALSE)']]);
+    hf.setCellContents({ sheet: sheetId, col: 0, row: 2 }, [['=VLOOKUP("Bananas", A1:B2, 2, 0)']]);
     
     expect(hf.getCellValue({ sheet: sheetId, col: 0, row: 2 })).toBe(20);
   });
