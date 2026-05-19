@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════════════
+# Dora Sheet — Search Engine Crawler Configuration
+# https://dora-sheet.vercel.app/
+# ═══════════════════════════════════════════════════════════
+
+# Allow all major search engines full access
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: *
+Allow: /
+
+# Block private workbook rooms and session states
+Disallow: /workbook/
+Disallow: /room/
+
+# Block internal API proxy paths
+Disallow: /api/
+
+# Sitemap declaration
+Sitemap: https://dora-sheet.vercel.app/sitemap.xml
+
+# Host declaration
+Host: https://dora-sheet.vercel.app

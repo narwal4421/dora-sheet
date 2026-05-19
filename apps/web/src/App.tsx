@@ -21,6 +21,7 @@ import { IncomingCallOverlay } from './components/Modals/IncomingCallOverlay';
 import { ActiveCallOverlay } from './components/Modals/ActiveCallOverlay';
 import { TemplatesModal } from './components/Modals/TemplatesModal';
 import { SheetTabs } from './components/SheetTabs';
+import { useSEOMetadata } from './hooks/useSEOMetadata';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -52,13 +53,16 @@ function App() {
 
   // --- UI TOGGLES ---
   const [showShare, setShowShare] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
+  const [showAbout, setShowAbout] = useState(() => new URLSearchParams(window.location.search).get('about') === 'true');
   const [showJoinModal, setShowJoinModal] = useState(!localStorage.getItem('userName') || localStorage.getItem('userName') === 'Guest User');
   const [joinNotification, setJoinNotification] = useState<string | null>(null);
-  const [showAI, setShowAI] = useState(false);
+  const [showAI, setShowAI] = useState(() => new URLSearchParams(window.location.search).get('ai') === 'true');
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [showTemplates, setShowTemplates] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(() => new URLSearchParams(window.location.search).get('templates') === 'true');
+
+  // --- DYNAMIC DOM SEO METADATA INJECTION ---
+  useSEOMetadata({ isDashboard, showAbout, showTemplates, showAI });
 
   // --- LIFECYCLE: SOCKET HANDSHAKE ---
   useEffect(() => {
