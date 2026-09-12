@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
-import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon, Mail } from 'lucide-react';
+import { Share2, FileSpreadsheet, Clock, Download, Sun, Moon, Mail, Calculator, FolderOpen } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
+import { handleImportExcelFile } from '../utils/excelImporter';
 
 import { DropdownMenu, type MenuItem } from './DropdownMenu';
 import { toast } from '../store/useToastStore';
@@ -13,20 +14,35 @@ export const TopNav = ({
   onShowShare, 
   onShowAbout, 
   onNewWorkbook, 
-  onShowTemplates 
+  onShowTemplates,
+  onShowCalculator
 }: { 
   onShowVersionHistory: () => void;
   onShowShare: () => void;
   onShowAbout: () => void;
   onNewWorkbook: () => void;
   onShowTemplates: () => void;
+  onShowCalculator?: () => void;
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedUsers = useSheetStore(state => state.connectedUsers);
   const isLightMode = useSheetStore(state => state.isLightMode);
   const setIsLightMode = useSheetStore(state => state.setIsLightMode);
   const userName = useSheetStore(state => state.localUserName);
   const setUserName = useSheetStore(state => state.setLocalUserName);
   const [isEditingName, setIsEditingName] = useState(false);
+
+  const handleOpenClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      await handleImportExcelFile(files[0]);
+      e.target.value = ''; // Reset file input
+    }
+  };
 
   useEffect(() => {
     if (isLightMode) {
@@ -35,6 +51,14 @@ export const TopNav = ({
       document.documentElement.classList.remove('light');
     }
   }, [isLightMode]);
+
+  // Listen for global Ctrl+O shortcut to trigger file picker
+  useEffect(() => {
+    const handler = () => fileInputRef.current?.click();
+    window.addEventListener('open-excel-file', handler);
+    return () => window.removeEventListener('open-excel-file', handler);
+  }, []);
+
 
   const handleExport = () => {
     const { data: cells } = useSheetStore.getState();
@@ -69,9 +93,10 @@ export const TopNav = ({
 
   const fileMenu: MenuItem[] = [
     { label: 'New Workbook', onClick: onNewWorkbook },
+    { label: '📂 Open Excel / CSV...', shortcut: 'Ctrl+O', onClick: handleOpenClick },
     { label: 'Templates', onClick: onShowTemplates },
     { divider: true, label: '', onClick: () => {} },
-    { label: 'Export to Excel (.xlsx)', onClick: handleExport },
+    { label: '📥 Export to Excel (.xlsx)', onClick: handleExport },
     { label: 'Print', shortcut: 'Ctrl+P', onClick: () => window.print() }
   ];
 
@@ -136,7 +161,9 @@ export const TopNav = ({
 
   const insertMenu: MenuItem[] = [
     { label: 'Row Above', onClick: () => useSheetStore.getState().insertRowAbove() },
-    { label: 'Column Right', onClick: () => useSheetStore.getState().insertColumnRight() }
+    { label: 'Column Right', onClick: () => useSheetStore.getState().insertColumnRight() },
+    { divider: true, label: '', onClick: () => {} },
+    { label: 'Calculator', shortcut: 'Alt+C', onClick: () => onShowCalculator?.() }
   ];
 
   const formatMenu: MenuItem[] = [
@@ -272,6 +299,37 @@ export const TopNav = ({
               {user.name.charAt(0).toUpperCase()}
             </div>
           ))}
+        </div>
+
+        {/* Hidden file input for Excel / CSV upload */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          accept=".xlsx, .xls, .xlsm, .csv, .tsv" 
+          className="hidden" 
+          onChange={handleFileChange} 
+        />
+
+        <div className="relative flex items-center">
+          <button 
+            onClick={handleOpenClick}
+            className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-accent transition-colors text-sm font-medium"
+            title="Open Excel / CSV File (Ctrl+O)"
+          >
+            <FolderOpen size={16} />
+            <span className="hidden md:inline">Open</span>
+          </button>
+        </div>
+
+        <div className="relative flex items-center">
+          <button 
+            onClick={() => onShowCalculator?.()}
+            className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 rounded text-textMuted hover:bg-surfaceHover hover:text-accent transition-colors text-sm font-medium"
+            title="Calculator (Alt+C)"
+          >
+            <Calculator size={16} />
+            <span className="hidden md:inline">Calculator</span>
+          </button>
         </div>
 
         <div className="relative flex items-center">

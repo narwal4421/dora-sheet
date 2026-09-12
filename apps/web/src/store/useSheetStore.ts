@@ -6,9 +6,18 @@ import { toast } from './useToastStore';
 export type CellFormat = {
   bold?: boolean;
   italic?: boolean;
+  strikethrough?: boolean;
+  underline?: boolean;
   color?: string;
   backgroundColor?: string;
   fontSize?: number;
+  fontFamily?: string;
+  align?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+  wrapText?: boolean;
+  numFmt?: 'general' | 'currency' | 'percent' | 'number' | 'date';
+  decimals?: number;
+  border?: 'all' | 'outer' | 'bottom' | 'top' | 'none';
   [key: string]: string | number | boolean | undefined;
 };
 
@@ -64,11 +73,25 @@ export type FindReplaceState = {
   currentIndex: number;
 };
 
+export type RibbonTab = 'home' | 'insert' | 'formulas' | 'data' | 'view' | 'ai';
+
 interface SheetState {
   data: SheetData;
   activeCell: string | null; // e.g. "r_0_c_0"
   editingCell: string | null;
   selectionRange: { start: string, end: string } | null;
+  selectedRanges: Array<{ start: string, end: string }>;
+  setSelectedRanges: (ranges: Array<{ start: string, end: string }>) => void;
+  addSelectionRange: (range: { start: string, end: string }) => void;
+  clearMultiSelection: () => void;
+
+  formatPainter: { active: boolean; persistent: boolean; format: CellFormat | null };
+  activateFormatPainter: (format: CellFormat, persistent?: boolean) => void;
+  deactivateFormatPainter: () => void;
+
+  clipboardData: { grid: Array<Array<CellData | undefined>>; text: string } | null;
+  setClipboardData: (data: { grid: Array<Array<CellData | undefined>>; text: string } | null) => void;
+  pasteSpecial: (type: 'values' | 'formulas' | 'formats' | 'transpose' | 'add' | 'subtract') => void;
   
   sheets: Array<{ id: string; name: string; data: SheetData }>;
   activeSheetId: string;
@@ -76,6 +99,7 @@ interface SheetState {
   renameSheetTab: (id: string, newName: string, remote?: boolean) => void;
   deleteSheetTab: (id: string, remote?: boolean) => void;
   switchSheetTab: (id: string) => void;
+  importWorkbook: (sheets: Array<{ id: string; name: string; data: SheetData }>, workbookName?: string) => void;
 
   cursors: Record<string, CursorMoveEvent>;
   lockedCells: Record<string, string>;
@@ -88,6 +112,18 @@ interface SheetState {
   isLightMode: boolean;
   setIsLightMode: (val: boolean) => void;
 
+  // View toggles
+  activeRibbonTab: RibbonTab;
+  setActiveRibbonTab: (tab: RibbonTab) => void;
+  showGridlines: boolean;
+  setShowGridlines: (val: boolean) => void;
+  showHeaders: boolean;
+  setShowHeaders: (val: boolean) => void;
+  showFormulaBar: boolean;
+  setShowFormulaBar: (val: boolean) => void;
+  zoomLevel: number;
+  setZoomLevel: (val: number | ((prev: number) => number)) => void;
+
   findReplace: FindReplaceState;
   setFindReplace: (state: Partial<FindReplaceState>) => void;
   executeFind: () => void;
@@ -99,16 +135,25 @@ interface SheetState {
   hiddenRows: Set<number>;
   columnWidths: Record<number, number>;
   rowHeights: Record<number, number>;
+  rowCount: number;
+  colCount: number;
+  expandRows: (count?: number) => void;
+  expandCols: (count?: number) => void;
+  ensureDimensions: (r: number, c: number) => void;
   
   insertRowAbove: (rowIndex?: number) => void;
   insertColumnRight: (colIndex?: number) => void;
   deleteRow: (rowIndex?: number) => void;
   deleteColumn: (colIndex?: number) => void;
   sortAZ: (colIndex?: number) => void;
+  sortZA: (colIndex?: number) => void;
   toggleFilter: (colIndex?: number) => void;
+  jumpToCell: (coord: string) => boolean;
   
   setColumnWidth: (index: number, width: number) => void;
   setRowHeight: (index: number, height: number) => void;
+  autoFitColumn: (colIndex?: number) => void;
+  autoFitRow: (rowIndex?: number) => void;
 
   setSelectionRange: (range: { start: string, end: string } | null) => void;
   setActiveCell: (ref: string) => void;
@@ -117,8 +162,11 @@ interface SheetState {
   setCellFormat: (ref: string, format: Partial<CellFormat>) => void;
   bulkSetCellData: (updates: Record<string, Partial<CellData>>) => void;
   clearCell: (ref: string) => void;
+  clearCellFormats: (ref: string) => void;
   clearSheet: () => void;
   clearRange: (refs: string[]) => void;
+  clearRangeFormats: (refs: string[]) => void;
+  clearRangeContents: (refs: string[]) => void;
   undo: () => void;
   redo: () => void;
   
@@ -153,6 +201,18 @@ interface SheetState {
   removeJoinRequest: (socketId: string) => void;
   teamMessages: { id?: string, userName: string, message: string, timestamp: string }[];
   addTeamMessage: (msg: { id?: string, userName: string, message: string, timestamp: string }) => void;
+
+  // Merged cells & Freeze panes
+  mergedCells: Record<string, string>;
+  mergeCell: (refs: string[]) => void;
+  unmergeCell: (ref: string) => void;
+  freezeRow: number;
+  freezeCol: number;
+  setFreezeRow: (r: number) => void;
+  setFreezeCol: (c: number) => void;
+  fillDown: () => void;
+  fillRight: () => void;
+  removeDuplicates: () => void;
 }
 
 const parseRef = (ref: string) => {
@@ -174,9 +234,25 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   activeCell: 'r_0_c_0',
   editingCell: null,
   selectionRange: null,
+  selectedRanges: [],
+  setSelectedRanges: (ranges) => set({ selectedRanges: ranges }),
+  addSelectionRange: (range) => set(state => ({ selectedRanges: [...state.selectedRanges, range] })),
+  clearMultiSelection: () => set({ selectedRanges: [] }),
+
+  formatPainter: { active: false, persistent: false, format: null },
+  activateFormatPainter: (format, persistent = false) => set({ formatPainter: { active: true, persistent, format } }),
+  deactivateFormatPainter: () => set({ formatPainter: { active: false, persistent: false, format: null } }),
+
+  clipboardData: null,
+  setClipboardData: (clip) => set({ clipboardData: clip }),
 
   sheets: [{ id: 'sheet-1', name: 'Sheet1', data: {} }],
   activeSheetId: 'sheet-1',
+  mergedCells: {},
+  freezeRow: 0,
+  freezeCol: 0,
+  setFreezeRow: (r) => set({ freezeRow: r }),
+  setFreezeCol: (c) => set({ freezeCol: c }),
   
   // --- COLLABORATION DOMAIN ---
   cursors: {},
@@ -195,9 +271,29 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   // --- UI & LAYOUT DOMAIN ---
   isLightMode: false,
+  activeRibbonTab: 'home',
+  setActiveRibbonTab: (tab) => set({ activeRibbonTab: tab }),
+  showGridlines: true,
+  setShowGridlines: (val) => set({ showGridlines: val }),
+  showHeaders: true,
+  setShowHeaders: (val) => set({ showHeaders: val }),
+  showFormulaBar: true,
+  setShowFormulaBar: (val) => set({ showFormulaBar: val }),
+  zoomLevel: 1,
+  setZoomLevel: (val) => set(state => ({
+    zoomLevel: typeof val === 'function' ? Math.max(0.5, Math.min(2, val(state.zoomLevel))) : Math.max(0.5, Math.min(2, val))
+  })),
   hiddenRows: new Set(),
   columnWidths: {},
   rowHeights: {},
+  rowCount: 1000,
+  colCount: 100,
+  expandRows: (count = 500) => set(state => ({ rowCount: state.rowCount + count })),
+  expandCols: (count = 50) => set(state => ({ colCount: state.colCount + count })),
+  ensureDimensions: (r: number, c: number) => set(state => ({
+    rowCount: Math.max(state.rowCount, r + 50),
+    colCount: Math.max(state.colCount, c + 20)
+  })),
   findReplace: {
     isOpen: false,
     findText: '',
@@ -414,6 +510,37 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     socketService.emitCursorMove(store.localUserName, id, r, c, '#6366f1');
   },
 
+  importWorkbook: (newSheets, name) => {
+    if (!newSheets || newSheets.length === 0) return;
+    const firstSheet = newSheets[0];
+
+    // Find max rows and cols in the first sheet to adjust initial grid dimensions
+    let maxR = 50;
+    let maxC = 26;
+    Object.keys(firstSheet.data).forEach(ref => {
+      const match = ref.match(/r_(\d+)_c_(\d+)/);
+      if (match) {
+        maxR = Math.max(maxR, parseInt(match[1], 10) + 15);
+        maxC = Math.max(maxC, parseInt(match[2], 10) + 10);
+      }
+    });
+
+    set({
+      sheets: newSheets,
+      activeSheetId: firstSheet.id,
+      data: firstSheet.data,
+      rowCount: Math.max(100, maxR),
+      colCount: Math.max(26, maxC),
+      activeCell: 'r_0_c_0',
+      editingCell: null,
+      selectionRange: null,
+      selectedRanges: [],
+      history: [],
+      future: [],
+      workbookName: name || 'Imported Workbook'
+    });
+  },
+
   // --- ACTIONS: GRID OPERATIONS ---
   setActiveCell: (ref) => set({ activeCell: ref }),
   setEditingCell: (ref) => set({ editingCell: ref }),
@@ -510,6 +637,60 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   setIsLightMode: (val) => set({ isLightMode: val }),
   setColumnWidth: (idx, w) => set(state => ({ columnWidths: { ...state.columnWidths, [idx]: w } })),
   setRowHeight: (idx, h) => set(state => ({ rowHeights: { ...state.rowHeights, [idx]: h } })),
+  
+  autoFitColumn: (colIndex) => set(state => {
+    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
+    let maxPx = 60;
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const match = ref.match(/r_(\d+)_c_(\d+)/);
+      if (!match || parseInt(match[2], 10) !== targetC) return;
+      const text = cell.v !== undefined && cell.v !== null ? String(cell.v) : (cell.f || '');
+      if (!text) return;
+      const fontSize = cell.fmt?.fontSize || 13;
+      const isBold = !!cell.fmt?.bold;
+      const charWidth = (fontSize * 0.6) * (isBold ? 1.15 : 1.0);
+      const lines = text.split('\n');
+      lines.forEach(l => {
+        const px = l.length * charWidth + 28;
+        if (px > maxPx) maxPx = px;
+      });
+    });
+    const finalW = Math.min(600, Math.max(50, Math.ceil(maxPx)));
+    return { columnWidths: { ...state.columnWidths, [targetC]: finalW } };
+  }),
+
+  autoFitRow: (rowIndex) => set(state => {
+    const targetR = rowIndex ?? (state.activeCell ? parseRef(state.activeCell).r : 0);
+    let maxH = 24;
+    Object.entries(state.data).forEach(([ref, cell]) => {
+      const match = ref.match(/r_(\d+)_c_(\d+)/);
+      if (!match || parseInt(match[1], 10) !== targetR) return;
+      const c = parseInt(match[2], 10);
+      const colW = state.columnWidths[c] || 100;
+      const text = cell.v !== undefined && cell.v !== null ? String(cell.v) : (cell.f || '');
+      if (!text) return;
+      const fontSize = cell.fmt?.fontSize || 13;
+      const lineHeight = fontSize * 1.35;
+      const charWidth = fontSize * 0.6;
+      if (cell.fmt?.wrapText) {
+        const charsPerLine = Math.max(1, Math.floor((colW - 16) / charWidth));
+        const lines = text.split('\n');
+        let totalLines = 0;
+        lines.forEach(l => {
+          totalLines += Math.max(1, Math.ceil(l.length / charsPerLine));
+        });
+        const h = Math.ceil(totalLines * lineHeight + 10);
+        if (h > maxH) maxH = h;
+      } else {
+        const lines = text.split('\n');
+        const h = Math.ceil(lines.length * lineHeight + 8);
+        if (h > maxH) maxH = h;
+      }
+    });
+    const finalH = Math.min(300, Math.max(24, maxH));
+    return { rowHeights: { ...state.rowHeights, [targetR]: finalH } };
+  }),
+
   setFindReplace: (partial) => set(state => ({ findReplace: { ...state.findReplace, ...partial } })),
 
   executeFind: () => set(state => {
@@ -604,8 +785,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   sortAZ: (colIndex) => set(state => {
     const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
-    const rows = Array.from({ length: 1000 }, (_, r) => 
-      Array.from({ length: 26 }, (_, c) => state.data[`r_${r}_c_${c}`])
+    // Find max row currently with data
+    let maxR = 0;
+    Object.keys(state.data).forEach(ref => {
+      const match = ref.match(/r_(\d+)_c_(\d+)/);
+      if (match) maxR = Math.max(maxR, parseInt(match[1], 10));
+    });
+    const totalR = Math.max(maxR + 1, 100);
+
+    const rows = Array.from({ length: totalR }, (_, r) => 
+      Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
     ).filter(row => row.some(cell => !!cell));
 
     rows.sort((a, b) => String(a[targetC]?.v || '').localeCompare(String(b[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
@@ -614,6 +803,184 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     rows.forEach((row, r) => row.forEach((cell, c) => { if (cell) newData[`r_${r}_c_${c}`] = cell; }));
     return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
   }),
+
+  clearCellFormats: (ref) => set(state => {
+    if (!state.data[ref]) return {};
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data, [ref]: { ...state.data[ref], fmt: undefined } };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
+  }),
+
+  clearRangeFormats: (refs) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data };
+    refs.forEach(ref => {
+      if (newData[ref]) {
+        newData[ref] = { ...newData[ref], fmt: undefined };
+      }
+    });
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
+  }),
+
+  clearRangeContents: (refs) => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data };
+    refs.forEach(ref => {
+      if (newData[ref]) {
+        newData[ref] = { ...newData[ref], v: undefined, f: undefined };
+      }
+    });
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
+  }),
+
+  sortZA: (colIndex) => set(state => {
+    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
+    let maxR = 0;
+    Object.keys(state.data).forEach(ref => {
+      const match = ref.match(/r_(\d+)_c_(\d+)/);
+      if (match) maxR = Math.max(maxR, parseInt(match[1], 10));
+    });
+    const totalR = Math.max(maxR + 1, 100);
+
+    const rows = Array.from({ length: totalR }, (_, r) => 
+      Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
+    ).filter(row => row.some(cell => !!cell));
+
+    rows.sort((a, b) => String(b[targetC]?.v || '').localeCompare(String(a[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
+
+    const newData: SheetData = {};
+    rows.forEach((row, r) => row.forEach((cell, c) => { if (cell) newData[`r_${r}_c_${c}`] = cell; }));
+    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+  }),
+
+  pasteSpecial: (type) => {
+    const store = get();
+    const clip = store.clipboardData;
+    const active = store.activeCell;
+    if (!clip || !active || clip.grid.length === 0) {
+      toast('Clipboard is empty. Copy cells first (Ctrl+C).', 'warning');
+      return;
+    }
+
+    const start = parseRef(active);
+    const updates: SheetData = {};
+
+    if (type === 'transpose') {
+      const rowCount = clip.grid.length;
+      const colCount = clip.grid[0]?.length || 0;
+      store.ensureDimensions(start.r + colCount, start.c + rowCount);
+
+      for (let r = 0; r < rowCount; r++) {
+        for (let c = 0; c < colCount; c++) {
+          const srcCell = clip.grid[r][c];
+          if (!srcCell) continue;
+          const targetRef = `r_${start.r + c}_c_${start.c + r}`;
+          updates[targetRef] = { ...srcCell };
+        }
+      }
+    } else {
+      const rowCount = clip.grid.length;
+      const colCount = clip.grid[0]?.length || 0;
+      store.ensureDimensions(start.r + rowCount, start.c + colCount);
+
+      for (let r = 0; r < rowCount; r++) {
+        for (let c = 0; c < colCount; c++) {
+          const srcCell = clip.grid[r][c];
+          if (!srcCell) continue;
+          const targetRef = `r_${start.r + r}_c_${start.c + c}`;
+          const existing = store.data[targetRef] || {};
+
+          if (type === 'values') {
+            updates[targetRef] = {
+              ...existing,
+              v: srcCell.v !== undefined ? srcCell.v : (srcCell.f || ''),
+              f: undefined
+            };
+          } else if (type === 'formulas') {
+            updates[targetRef] = {
+              ...existing,
+              v: srcCell.v,
+              f: srcCell.f
+            };
+          } else if (type === 'formats') {
+            if (srcCell.fmt) {
+              updates[targetRef] = {
+                ...existing,
+                fmt: { ...srcCell.fmt }
+              };
+            }
+          } else if (type === 'add' || type === 'subtract') {
+            const existingVal = Number(existing.v) || 0;
+            const srcVal = Number(srcCell.v) || 0;
+            const result = type === 'add' ? existingVal + srcVal : existingVal - srcVal;
+            updates[targetRef] = {
+              ...existing,
+              v: result,
+              f: undefined
+            };
+          }
+        }
+      }
+    }
+
+    store.bulkSetCellData(updates);
+    toast(`Paste Special: ${type.toUpperCase()}`, 'success');
+  },
+
+  jumpToCell: (coord: string) => {
+    const trimmed = coord.trim().toUpperCase();
+
+    // Check range like A1:D20
+    const rangeMatch = trimmed.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/);
+    if (rangeMatch) {
+      const colStr1 = rangeMatch[1];
+      const row1 = parseInt(rangeMatch[2], 10) - 1;
+      const colStr2 = rangeMatch[3];
+      const row2 = parseInt(rangeMatch[4], 10) - 1;
+
+      let col1 = 0;
+      for (let i = 0; i < colStr1.length; i++) col1 = col1 * 26 + (colStr1.charCodeAt(i) - 64);
+      col1 -= 1;
+
+      let col2 = 0;
+      for (let i = 0; i < colStr2.length; i++) col2 = col2 * 26 + (colStr2.charCodeAt(i) - 64);
+      col2 -= 1;
+
+      if (row1 < 0 || row2 < 0 || col1 < 0 || col2 < 0) return false;
+
+      get().ensureDimensions(Math.max(row1, row2), Math.max(col1, col2));
+      const startRef = `r_${row1}_c_${col1}`;
+      const endRef = `r_${row2}_c_${col2}`;
+      get().setActiveCell(startRef);
+      get().setSelectionRange({ start: startRef, end: endRef });
+      return true;
+    }
+
+    // Single coordinate like A1
+    const match = trimmed.match(/^([A-Z]+)(\d+)$/);
+    if (!match) return false;
+    const colStr = match[1];
+    const rowNum = parseInt(match[2], 10) - 1;
+    if (rowNum < 0) return false;
+
+    let colNum = 0;
+    for (let i = 0; i < colStr.length; i++) {
+      colNum = colNum * 26 + (colStr.charCodeAt(i) - 64);
+    }
+    colNum -= 1;
+    if (colNum < 0) return false;
+
+    // Ensure sheet dimensions are expanded to contain target cell
+    get().ensureDimensions(rowNum, colNum);
+
+    const ref = `r_${rowNum}_c_${colNum}`;
+    get().setActiveCell(ref);
+    get().setSelectionRange({ start: ref, end: ref });
+    return true;
+  },
 
   toggleFilter: (colIndex) => set(state => {
     const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
@@ -624,7 +991,197 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       if (c === targetC && (!cell.v && !cell.f)) newHidden.add(r);
     });
     return { hiddenRows: newHidden };
+  }),
+
+  mergeCell: (refs) => set(state => {
+    if (!refs || refs.length < 2) return {};
+    let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+    refs.forEach(ref => {
+      const { r, c } = parseRef(ref);
+      if (r < minR) minR = r;
+      if (r > maxR) maxR = r;
+      if (c < minC) minC = c;
+      if (c > maxC) maxC = c;
+    });
+    if (minR === Infinity) return {};
+    const topLeftRef = `r_${minR}_c_${minC}`;
+    const bounds = `r_${minR}_c_${minC}:r_${maxR}_c_${maxC}`;
+    const newMerged = { ...state.mergedCells, [topLeftRef]: bounds };
+    const history = [...state.history, state.data].slice(-50);
+    const topLeftCell = state.data[topLeftRef] || {};
+    const newData = {
+      ...state.data,
+      [topLeftRef]: {
+        ...topLeftCell,
+        fmt: { ...topLeftCell.fmt, align: topLeftCell.fmt?.align || 'center' }
+      }
+    };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    toast('Cells merged & centered', 'success');
+    return { mergedCells: newMerged, data: newData, sheets: updatedSheets, history, future: [] };
+  }),
+
+  unmergeCell: (ref) => set(state => {
+    const newMerged = { ...state.mergedCells };
+    let found = false;
+    const { r: targetR, c: targetC } = parseRef(ref);
+    Object.entries(newMerged).forEach(([key, bounds]) => {
+      const [start, end] = bounds.split(':');
+      const s = parseRef(start);
+      const e = parseRef(end);
+      if (targetR >= Math.min(s.r, e.r) && targetR <= Math.max(s.r, e.r) &&
+          targetC >= Math.min(s.c, e.c) && targetC <= Math.max(s.c, e.c)) {
+        delete newMerged[key];
+        found = true;
+      }
+    });
+    if (found) {
+      toast('Cells unmerged', 'info');
+      return { mergedCells: newMerged };
+    }
+    return {};
+  }),
+
+  fillDown: () => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data };
+    if (state.selectionRange) {
+      const s = parseRef(state.selectionRange.start);
+      const e = parseRef(state.selectionRange.end);
+      const minR = Math.min(s.r, e.r);
+      const maxR = Math.max(s.r, e.r);
+      const minC = Math.min(s.c, e.c);
+      const maxC = Math.max(s.c, e.c);
+      if (minR === maxR) {
+        if (minR > 0) {
+          for (let c = minC; c <= maxC; c++) {
+            const src = state.data[`r_${minR - 1}_c_${c}`];
+            if (src) newData[`r_${minR}_c_${c}`] = JSON.parse(JSON.stringify(src));
+            else delete newData[`r_${minR}_c_${c}`];
+          }
+        }
+      } else {
+        for (let c = minC; c <= maxC; c++) {
+          const src = state.data[`r_${minR}_c_${c}`];
+          for (let r = minR + 1; r <= maxR; r++) {
+            if (src) newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
+            else delete newData[`r_${r}_c_${c}`];
+          }
+        }
+      }
+      toast('Filled down', 'success');
+    } else if (state.activeCell) {
+      const { r, c } = parseRef(state.activeCell);
+      if (r > 0) {
+        const src = state.data[`r_${r - 1}_c_${c}`];
+        if (src) {
+          newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
+          toast('Filled down from cell above', 'success');
+        }
+      }
+    }
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
+  }),
+
+  fillRight: () => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    const newData = { ...state.data };
+    if (state.selectionRange) {
+      const s = parseRef(state.selectionRange.start);
+      const e = parseRef(state.selectionRange.end);
+      const minR = Math.min(s.r, e.r);
+      const maxR = Math.max(s.r, e.r);
+      const minC = Math.min(s.c, e.c);
+      const maxC = Math.max(s.c, e.c);
+      if (minC === maxC) {
+        if (minC > 0) {
+          for (let r = minR; r <= maxR; r++) {
+            const src = state.data[`r_${r}_c_${minC - 1}`];
+            if (src) newData[`r_${r}_c_${minC}`] = JSON.parse(JSON.stringify(src));
+            else delete newData[`r_${r}_c_${minC}`];
+          }
+        }
+      } else {
+        for (let r = minR; r <= maxR; r++) {
+          const src = state.data[`r_${r}_c_${minC}`];
+          for (let c = minC + 1; c <= maxC; c++) {
+            if (src) newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
+            else delete newData[`r_${r}_c_${c}`];
+          }
+        }
+      }
+      toast('Filled right', 'success');
+    } else if (state.activeCell) {
+      const { r, c } = parseRef(state.activeCell);
+      if (c > 0) {
+        const src = state.data[`r_${r}_c_${c - 1}`];
+        if (src) {
+          newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
+          toast('Filled right from cell left', 'success');
+        }
+      }
+    }
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    return { data: newData, sheets: updatedSheets, history, future: [] };
+  }),
+
+  removeDuplicates: () => set(state => {
+    const history = [...state.history, state.data].slice(-50);
+    let minR = 0, maxR = 0, minC = 0, maxC = state.colCount - 1;
+    if (state.selectionRange) {
+      const s = parseRef(state.selectionRange.start);
+      const e = parseRef(state.selectionRange.end);
+      minR = Math.min(s.r, e.r);
+      maxR = Math.max(s.r, e.r);
+      minC = Math.min(s.c, e.c);
+      maxC = Math.max(s.c, e.c);
+    } else {
+      Object.keys(state.data).forEach(ref => {
+        const { r, c } = parseRef(ref);
+        if (r > maxR) maxR = r;
+        if (c > maxC) maxC = c;
+      });
+    }
+
+    const seenRows = new Set<string>();
+    const duplicateRows = new Set<number>();
+
+    for (let r = minR; r <= maxR; r++) {
+      const rowKey = Array.from({ length: maxC - minC + 1 }, (_, i) => {
+        const cell = state.data[`r_${r}_c_${minC + i}`];
+        return String(cell?.v ?? cell?.f ?? '');
+      }).join('|||');
+
+      // Ignore purely empty lines unless repeated
+      if (seenRows.has(rowKey)) {
+        duplicateRows.add(r);
+      } else {
+        seenRows.add(rowKey);
+      }
+    }
+
+    if (duplicateRows.size === 0) {
+      toast('No duplicate rows found', 'info');
+      return {};
+    }
+
+    const newData: SheetData = {};
+    let targetRow = 0;
+    for (let r = 0; r <= state.rowCount; r++) {
+      if (duplicateRows.has(r)) continue;
+      for (let c = 0; c < state.colCount; c++) {
+        const cell = state.data[`r_${r}_c_${c}`];
+        if (cell) newData[`r_${targetRow}_c_${c}`] = cell;
+      }
+      targetRow++;
+    }
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    toast(`Removed ${duplicateRows.size} duplicate row${duplicateRows.size > 1 ? 's' : ''}`, 'success');
+    return { data: newData, sheets: updatedSheets, history, future: [] };
   })
 }));
+
 
 

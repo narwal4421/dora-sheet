@@ -1,18 +1,26 @@
-import React from 'react';
+import { type FC, type MouseEvent } from 'react';
+import { type Virtualizer, type VirtualItem } from '@tanstack/react-virtual';
+import { useSheetStore } from '../../store/useSheetStore';
 
 interface GridHeadersProps {
-  colVirtualizer: any;
-  rowVirtualizer: any;
+  colVirtualizer: Virtualizer<HTMLDivElement, Element>;
+  rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   visibleRowIndices: number[];
   finalHeaderH: number;
   finalIndexW: number;
   getColName: (c: number) => string;
-  onColResizeStart: (e: React.MouseEvent, index: number, width: number) => void;
-  onRowResizeStart: (e: React.MouseEvent, index: number, height: number) => void;
+  onColResizeStart: (e: MouseEvent, index: number, width: number) => void;
+  onRowResizeStart: (e: MouseEvent, index: number, height: number) => void;
   onAutoFit: (index: number) => void;
+  onAutoFitRow?: (index: number) => void;
+  onSelectColumn?: (colIndex: number, e?: MouseEvent) => void;
+  onSelectRow?: (rowIndex: number, e?: MouseEvent) => void;
+  onColumnMouseEnter?: (colIndex: number) => void;
+  onRowMouseEnter?: (rowIndex: number) => void;
+  onSelectAll?: () => void;
 }
 
-export const GridHeaders: React.FC<GridHeadersProps> = ({
+export const GridHeaders: FC<GridHeadersProps> = ({
   colVirtualizer,
   rowVirtualizer,
   visibleRowIndices,
@@ -22,70 +30,111 @@ export const GridHeaders: React.FC<GridHeadersProps> = ({
   onColResizeStart,
   onRowResizeStart,
   onAutoFit,
+  onAutoFitRow,
+  onSelectColumn,
+  onSelectRow,
+  onColumnMouseEnter,
+  onRowMouseEnter,
+  onSelectAll,
 }) => {
+  const showHeaders = useSheetStore(state => state.showHeaders);
+
+  if (!showHeaders || finalHeaderH === 0) return null;
+
   return (
     <>
-      {/* Corner Header */}
+      {/* Top-Left Corner Box - Pinned both top & left */}
       <div 
-        className="sticky top-0 left-0 border-b border-r border-border bg-surface z-50 flex items-center justify-center font-bold text-[10px] text-textMuted" 
+        onClick={onSelectAll}
+        className="sticky top-0 left-0 border-b border-r border-border bg-surface z-50 flex items-center justify-center font-bold text-[10px] text-textMuted hover:bg-surfaceHover cursor-pointer select-none transition-colors shadow-sm" 
         style={{ width: finalIndexW, height: finalHeaderH }}
+        title="Select All (Ctrl+A)"
       >
-        <div className="w-2 h-2 rounded-full bg-accent/20" />
+        <div className="w-2.5 h-2.5 rounded-sm bg-accent/30 hover:bg-accent transition-colors" />
       </div>
 
-      {/* Column Headers */}
-      {colVirtualizer.getVirtualItems().map((virtualCol: any) => (
-        <div 
-          key={`header-col-${virtualCol.index}`} 
-          className="sticky top-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-40" 
-          style={{ 
-            left: finalIndexW + virtualCol.start, 
-            width: virtualCol.size, 
-            height: finalHeaderH, 
-            position: 'absolute', 
-            top: 0 
-          }}
-        >
-          <div className="sticky top-0 w-full h-full flex items-center justify-center bg-inherit">
-            {getColName(virtualCol.index)}
-          </div>
+      {/* Column Headers Container - Sticky at top */}
+      <div 
+        className="sticky top-0 z-40 pointer-events-none" 
+        style={{ height: finalHeaderH, marginTop: -finalHeaderH, marginLeft: finalIndexW }}
+      >
+        {colVirtualizer.getVirtualItems().map((virtualCol: VirtualItem) => (
           <div 
-            className="absolute right-0 top-0 w-1 h-full cursor-col-resize z-50 group" 
-            onMouseDown={(e) => onColResizeStart(e, virtualCol.index, virtualCol.size)} 
-            onDoubleClick={() => onAutoFit(virtualCol.index)}
-          >
-            <div className="absolute right-0 top-0 w-[1px] h-full bg-border group-hover:bg-accent" />
-          </div>
-        </div>
-      ))}
-
-      {/* Row Headers */}
-      {rowVirtualizer.getVirtualItems().map((virtualRow: any) => {
-        const rowIndex = visibleRowIndices[virtualRow.index];
-        return (
-          <div 
-            key={`header-row-${virtualRow.index}`} 
-            className="sticky left-0 absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-bold hover:bg-surfaceHover transition-none z-30" 
+            key={`header-col-${virtualCol.index}`} 
+            onMouseDown={(e) => onSelectColumn?.(virtualCol.index, e)}
+            onMouseEnter={() => onColumnMouseEnter?.(virtualCol.index)}
+            className="absolute flex items-center justify-center border-b border-r border-border bg-surface text-[11px] text-textMuted font-bold hover:bg-surfaceHover hover:text-textMain cursor-pointer select-none transition-colors pointer-events-auto shadow-sm" 
             style={{ 
-              top: finalHeaderH + virtualRow.start, 
-              left: 0, 
-              width: finalIndexW, 
-              height: virtualRow.size, 
-              position: 'absolute' 
+              left: virtualCol.start, 
+              width: virtualCol.size, 
+              height: finalHeaderH, 
+              top: 0 
             }}
+            title={`Column ${getColName(virtualCol.index)} (Drag to select columns, double-click border to AutoFit)`}
           >
-            <div className="sticky left-0 w-full h-full flex items-center justify-center bg-inherit">
-              {rowIndex + 1}
-            </div>
+            <span className="truncate px-1">{getColName(virtualCol.index)}</span>
+            
+            {/* Column Resize Handle */}
             <div 
-              className="absolute left-0 bottom-0 w-full h-1 cursor-row-resize z-50 group" 
-              onMouseDown={(e) => onRowResizeStart(e, virtualRow.index, virtualRow.size)}
+              className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-50 group flex items-center justify-end" 
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                onColResizeStart(e, virtualCol.index, virtualCol.size);
+              }} 
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onAutoFit(virtualCol.index);
+              }}
+              title="Drag to resize, double-click to AutoFit Column Width"
             >
-              <div className="absolute left-0 bottom-0 w-full h-[1px] bg-border group-hover:bg-accent" />
+              <div className="w-[2px] h-full bg-border/60 group-hover:bg-accent transition-colors" />
             </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
+
+      {/* Row Headers Container - Sticky on left */}
+      <div 
+        className="sticky left-0 z-30 pointer-events-none" 
+        style={{ width: finalIndexW, marginTop: 0 }}
+      >
+        {rowVirtualizer.getVirtualItems().map((virtualRow: VirtualItem) => {
+          const rowIndex = visibleRowIndices[virtualRow.index];
+          return (
+            <div 
+              key={`header-row-${virtualRow.index}`} 
+              onMouseDown={(e) => onSelectRow?.(rowIndex, e)}
+              onMouseEnter={() => onRowMouseEnter?.(rowIndex)}
+              className="absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-mono font-medium hover:bg-surfaceHover hover:text-textMain cursor-pointer select-none transition-colors pointer-events-auto shadow-sm" 
+              style={{ 
+                top: finalHeaderH + virtualRow.start, 
+                left: 0, 
+                width: finalIndexW, 
+                height: virtualRow.size 
+              }}
+              title={`Row ${rowIndex + 1} (Drag to select rows, double-click border to AutoFit)`}
+            >
+              <span>{rowIndex + 1}</span>
+
+              {/* Row Resize Handle */}
+              <div 
+                className="absolute left-0 bottom-0 w-full h-2 cursor-row-resize z-50 group flex items-end justify-center" 
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  onRowResizeStart(e, virtualRow.index, virtualRow.size);
+                }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  onAutoFitRow?.(rowIndex);
+                }}
+                title="Drag to resize, double-click to AutoFit Row Height"
+              >
+                <div className="w-full h-[2px] bg-border/60 group-hover:bg-accent transition-colors" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 };

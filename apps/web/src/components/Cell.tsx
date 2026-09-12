@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo, useState, useEffect, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
 import { Lock } from 'lucide-react';
 import { socketService } from '../services/socket.service';
@@ -6,17 +6,18 @@ import { socketService } from '../services/socket.service';
 interface CellProps {
   r: number;
   c: number;
-  style: React.CSSProperties;
+  style: CSSProperties;
   onCellSelect: (ref: string) => void;
   onCommitChange: (r: number, c: number, value: string) => void;
-  onCellKeydown: (e: React.KeyboardEvent, r: number, c: number, ref: string) => void;
-  onMouseDown?: () => void;
+  onCellKeydown: (e: KeyboardEvent, r: number, c: number, ref: string) => void;
+  onMouseDown?: (e: React.MouseEvent) => void;
   onMouseEnter?: () => void;
-  children?: React.ReactNode;
+  isMultiSelected?: boolean;
+  children?: ReactNode;
 }
 
 export const Cell = memo(({ 
-  r, c, style, onCellSelect, onCommitChange, onCellKeydown, onMouseDown, onMouseEnter, children 
+  r, c, style, onCellSelect, onCommitChange, onCellKeydown, onMouseDown, onMouseEnter, isMultiSelected, children 
 }: CellProps) => {
   const ref = `r_${r}_c_${c}`;
   
@@ -25,7 +26,18 @@ export const Cell = memo(({
   const isActive = useSheetStore(state => state.activeCell === ref);
   const isEditing = useSheetStore(state => state.editingCell === ref);
   const lockedBy = useSheetStore(state => state.lockedCells[ref]);
+  const showGridlines = useSheetStore(state => state.showGridlines);
+  const formatPainterActive = useSheetStore(state => state.formatPainter.active);
   
+  // Internal input state when editing
+  const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    if (isEditing) {
+      setInputValue(cellData?.f ?? cellData?.v?.toString() ?? '');
+    }
+  }, [isEditing, cellData]);
+
   // Only subscribe to the relevant remote cursor
   const remoteCursor = useSheetStore(state => {
     const cursors = state.cursors;
@@ -38,20 +50,54 @@ export const Cell = memo(({
     return null;
   });
 
-  // Performance: Avoid transitions during layout-heavy states
+  const borderClass = showGridlines ? "border-b border-r border-border/80" : "border-b border-r border-transparent";
+  
   const cellClassName = [
-    "absolute border-b border-r border-border select-none overflow-hidden",
-    isActive && !isEditing ? "z-20 ring-2 ring-accent ring-inset shadow-[0_0_12px_rgba(99,102,241,0.3)] bg-accent/5" : "bg-background/50",
+    "absolute select-none overflow-hidden",
+    formatPainterActive ? "cursor-copy" : "cursor-cell",
+    borderClass,
+    cellData?.fmt?.border === 'all' ? "!border-2 !border-textMain" : "",
+    isActive && !isEditing ? "z-20 ring-2 ring-accent ring-inset shadow-[0_0_12px_rgba(99,102,241,0.3)] bg-accent/5" : "",
+    !isActive && isMultiSelected ? "z-10 bg-accent/[0.12] ring-1 ring-accent/40 ring-inset" : (!isActive ? "bg-background/50" : ""),
     isActive && isEditing ? "z-30 shadow-2xl" : "",
-    !isActive ? "hover:bg-surfaceHover/40" : ""
-  ].join(" ");
+    !isActive && !isMultiSelected ? "hover:bg-surfaceHover/40" : ""
+  ].filter(Boolean).join(" ");
+
+  // Formatted value display
+  const formattedValue = (() => {
+    if (cellData?.v === undefined || cellData?.v === null) return '';
+    const numFmt = cellData?.fmt?.numFmt;
+    const decimals = cellData?.fmt?.decimals ?? 2;
+    const val = cellData.v;
+
+    if (typeof val === 'number' || (!isNaN(Number(val)) && val !== '')) {
+      const num = Number(val);
+      if (numFmt === 'currency') {
+        return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+      }
+      if (numFmt === 'percent') {
+        return `${(num * (num < 1 && num > -1 ? 100 : 1)).toFixed(decimals)}%`;
+      }
+      if (numFmt === 'number') {
+        return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+      }
+    }
+    return String(val);
+  })();
 
   const contentStyle: React.CSSProperties = {
     fontWeight: cellData?.fmt?.bold ? 'bold' : 'normal',
     fontStyle: cellData?.fmt?.italic ? 'italic' : 'normal',
-    textDecoration: cellData?.fmt?.strikethrough ? 'line-through' : 'none',
+    textDecoration: [
+      cellData?.fmt?.strikethrough ? 'line-through' : '',
+      cellData?.fmt?.underline ? 'underline' : ''
+    ].filter(Boolean).join(' ') || 'none',
     color: cellData?.fmt?.color || 'inherit',
-    justifyContent: cellData?.fmt?.align === 'center' ? 'center' : cellData?.fmt?.align === 'right' ? 'flex-end' : 'flex-start'
+    fontFamily: cellData?.fmt?.fontFamily || undefined,
+    fontSize: cellData?.fmt?.fontSize ? `${cellData.fmt.fontSize}px` : undefined,
+    justifyContent: cellData?.fmt?.align === 'center' ? 'center' : cellData?.fmt?.align === 'right' ? 'flex-end' : 'flex-start',
+    alignItems: cellData?.fmt?.verticalAlign === 'top' ? 'flex-start' : cellData?.fmt?.verticalAlign === 'bottom' ? 'flex-end' : 'center',
+    whiteSpace: cellData?.fmt?.wrapText ? 'pre-wrap' : 'nowrap',
   };
 
   return (
@@ -62,9 +108,9 @@ export const Cell = memo(({
         backgroundColor: cellData?.fmt?.backgroundColor || undefined,
         outline: remoteCursor && !isActive ? `2px solid ${remoteCursor.color}` : undefined,
         outlineOffset: '-2px',
-        contain: 'layout paint style', // CSS Containment for extreme render perf
+        contain: 'layout paint style',
       }}
-      onMouseDown={(e) => { if (e.button === 0) onMouseDown?.(); }}
+      onMouseDown={(e) => { if (e.button === 0) onMouseDown?.(e); }}
       onMouseEnter={onMouseEnter}
       onClick={(e) => {
         if (e.shiftKey) return;
@@ -105,18 +151,27 @@ export const Cell = memo(({
       {isEditing ? (
         <input
           autoFocus
-          className="w-full h-full outline-none border-2 border-accent px-1 text-sm font-sans absolute top-0 left-0 bg-surface text-textMain z-40 shadow-inner"
-          defaultValue={cellData?.f ?? cellData?.v?.toString() ?? ''}
-          onBlur={(e) => {
-            onCommitChange(r, c, e.target.value);
+          className="w-full h-full outline-none border-2 border-accent px-1 text-xs font-sans absolute top-0 left-0 bg-surface text-textMain z-40 shadow-inner"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onBlur={() => {
+            onCommitChange(r, c, inputValue);
             socketService.emitCellLock(ref, 'unlock');
             useSheetStore.getState().setEditingCell(null);
           }}
-          onKeyDown={(e) => onCellKeydown(e, r, c, ref)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              socketService.emitCellLock(ref, 'unlock');
+              useSheetStore.getState().setEditingCell(null);
+            } else {
+              onCellKeydown(e, r, c, ref);
+            }
+          }}
         />
       ) : (
-        <div className="w-full h-full px-1 flex items-center pointer-events-none text-sm truncate" style={contentStyle}>
-          {cellData?.v ?? ''}
+        <div className="w-full h-full px-1.5 flex pointer-events-none text-xs truncate" style={contentStyle}>
+          {formattedValue}
         </div>
       )}
       {children}

@@ -1,17 +1,18 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { Grid } from './components/Grid';
 import { socketService } from './services/socket.service';
 import { TopNav } from './components/TopNav';
-import { Toolbar } from './components/Toolbar';
+import { Ribbon } from './components/Ribbon/Ribbon';
+import { FormulaBar } from './components/FormulaBar';
 import { AIChatPanel } from './components/AIChatPanel';
 import { VersionHistory } from './components/VersionHistory';
 import { ShareModal } from './components/Modals/ShareModal';
 import { AboutPage } from './components/AboutPage';
 import { FindReplace } from './components/FindReplace';
 import { ToastContainer } from './components/ToastContainer';
-import { Sparkles, X as CloseIcon } from 'lucide-react';
+import { Sparkles, X as CloseIcon, Upload } from 'lucide-react';
 import { useSheetStore } from './store/useSheetStore';
 import { DashboardOverlay, type DashboardData } from './components/DashboardOverlay';
 import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
@@ -20,8 +21,11 @@ import { JoinIdentityModal } from './components/Collaboration/JoinIdentityModal'
 import { IncomingCallOverlay } from './components/Modals/IncomingCallOverlay';
 import { ActiveCallOverlay } from './components/Modals/ActiveCallOverlay';
 import { TemplatesModal } from './components/Modals/TemplatesModal';
+import { CalculatorModal } from './components/Modals/CalculatorModal';
+import { ChartModal, type ChartModalType } from './components/Modals/ChartModal';
 import { SheetTabs } from './components/SheetTabs';
 import { useSEOMetadata } from './hooks/useSEOMetadata';
+import { handleImportExcelFile } from './utils/excelImporter';
 
 const getWorkbookIdFromUrl = () => {
   const path = window.location.pathname;
@@ -60,6 +64,70 @@ function App() {
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [showTemplates, setShowTemplates] = useState(() => new URLSearchParams(window.location.search).get('templates') === 'true');
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [activeChartType, setActiveChartType] = useState<ChartModalType | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  // Drag-and-drop file import handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    const types = Array.from(e.dataTransfer.types);
+    if (types.includes('Files')) setIsDraggingFile(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDraggingFile(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      await handleImportExcelFile(file);
+    }
+  }, []);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Alt+C → Calculator
+      if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        setShowCalculator(prev => !prev);
+      }
+      // Ctrl+O → Open File
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('open-excel-file'));
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  // Listen for show-chart events from Ribbon
+  useEffect(() => {
+    const handleShowChart = (e: Event) => {
+      const customEvent = e as CustomEvent<{ type?: ChartModalType }>;
+      setActiveChartType(customEvent.detail?.type || 'bar');
+    };
+    window.addEventListener('show-chart', handleShowChart);
+    return () => window.removeEventListener('show-chart', handleShowChart);
+  }, []);
 
   // --- DYNAMIC DOM SEO METADATA INJECTION ---
   useSEOMetadata({ isDashboard, showAbout, showTemplates, showAI });
@@ -218,7 +286,14 @@ function App() {
   };
 
   return (
-    <div ref={containerRef} className="flex flex-col h-screen w-screen bg-background font-sans text-textMain overflow-hidden selection:bg-accent/30 selection:text-accentHover">
+    <div
+      ref={containerRef}
+      className="flex flex-col h-screen w-screen bg-background font-sans text-textMain overflow-hidden selection:bg-accent/30 selection:text-accentHover"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {!isDashboard && (
         <TopNav 
           onShowShare={() => setShowShare(true)} 
@@ -229,10 +304,22 @@ function App() {
             window.location.href = `/workbook/${newId}`;
           }}
           onShowTemplates={() => setShowTemplates(true)}
+          onShowCalculator={() => setShowCalculator(prev => !prev)}
         />
       )}
 
-      {!isDashboard && <Toolbar onToggleAI={() => setShowAI(!showAI)} />}
+      {!isDashboard && (
+        <Ribbon 
+          onToggleAI={() => setShowAI(!showAI)} 
+          onShowTemplates={() => setShowTemplates(true)}
+          onShowDashboard={() => {
+            window.location.href = '/dashboard';
+          }}
+          onShowCalculator={() => setShowCalculator(prev => !prev)}
+        />
+      )}
+
+      {!isDashboard && <FormulaBar />}
 
       <div className="flex-1 flex overflow-hidden relative">
         <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden">
@@ -240,6 +327,7 @@ function App() {
           {!isDashboard && <SheetTabs />}
           {!isDashboard && <FindReplace />}
         </main>
+
 
         {!isDashboard && (
           <div className={`fixed inset-0 md:relative md:h-full flex-shrink-0 z-[60] md:z-auto transition-all duration-300 ${showAI ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none absolute'}`}>
@@ -252,6 +340,7 @@ function App() {
         {showShare && <ShareModal workbookId={workbookId} onClose={() => setShowShare(false)} />}
         {showAbout && <AboutPage onClose={() => setShowAbout(false)} />}
         {showTemplates && <TemplatesModal onClose={() => setShowTemplates(false)} />}
+        <CalculatorModal isOpen={showCalculator} onClose={() => setShowCalculator(false)} />
         {showJoinModal && <JoinIdentityModal onJoin={(name) => {
           useSheetStore.getState().setLocalUserName(name);
           socketService.updateName(name);
@@ -296,6 +385,29 @@ function App() {
             isWaiting={isWaitingForApproval} 
             onRequestAccess={handleRequestAccess} 
           />
+        )}
+
+        {activeChartType && (
+          <ChartModal 
+            type={activeChartType} 
+            onClose={() => setActiveChartType(null)} 
+          />
+        )}
+
+        {/* Drag-and-Drop File Import Overlay */}
+        {isDraggingFile && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none">
+            <div className="absolute inset-0 bg-accent/10 backdrop-blur-sm border-4 border-dashed border-accent/60 rounded-xl m-4 animate-pulse" />
+            <div className="relative bg-surface/90 backdrop-blur-xl border border-accent/40 shadow-2xl rounded-2xl px-12 py-10 flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-accent/20 border-2 border-accent/50 flex items-center justify-center">
+                <Upload size={28} className="text-accent" />
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-textMain">Drop to Open</p>
+                <p className="text-sm text-textMuted mt-1">Supports .xlsx .xls .xlsm .csv .tsv</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
       <IncomingCallOverlay />

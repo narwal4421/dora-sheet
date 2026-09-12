@@ -21,9 +21,11 @@ interface ToolResult {
   targetCell?: string;
   data?: unknown[][];
   rows?: unknown[];
+  rowsJson?: string;
   columns?: string[];
   startRow?: number;
   startCol?: number;
+  orientation?: 'vertical' | 'horizontal';
   analysis?: string;
   suggestions?: string[];
   range?: string | string[];
@@ -221,20 +223,53 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       } else if (tool === 'fill_data' && (result.data || result.rows)) {
         const startRow = result.startRow !== undefined ? Number(result.startRow) : 0;
         const startCol = result.startCol !== undefined ? Number(result.startCol) : 0;
-        const dataToFill = result.data || (result.columns ? [result.columns, ...(result.rows || [])] : (result.rows || []));
+        const isHorizontal = result.orientation === 'horizontal';
         const updates: Record<string, { v?: string | number; f?: string }> = {};
-        
-        dataToFill.forEach((row: unknown, rIndex: number) => {
-          const rowArray = Array.isArray(row) ? row : [row];
-          rowArray.forEach((cellValue: unknown, cIndex: number) => {
-            const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
-            if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
-              updates[ref] = { f: cellValue };
-            } else if (typeof cellValue === 'string' || typeof cellValue === 'number') {
-              updates[ref] = { v: cellValue };
-            }
+
+        if (isHorizontal) {
+          // Horizontal layout:
+          // Row 0 → column HEADERS spread right: startRow, startCol … startCol+N
+          // Row 1 → VALUES spread right: startRow+1, startCol … startCol+N
+          const headers: unknown[] = result.columns || [];
+          let parsedRows: unknown[][] = [];
+          try {
+            const raw = result.rowsJson ?? (Array.isArray(result.rows) ? JSON.stringify(result.rows) : '[]');
+            parsedRows = JSON.parse(raw);
+          } catch { parsedRows = []; }
+
+          // Write header row
+          headers.forEach((header: unknown, cIdx: number) => {
+            const ref = `r_${startRow}_c_${startCol + cIdx}`;
+            updates[ref] = { v: String(header) };
           });
-        });
+
+          // Write value rows (each inner array = one data row placed horizontally)
+          parsedRows.forEach((rowArr: unknown, rOffset: number) => {
+            const cells = Array.isArray(rowArr) ? rowArr : [rowArr];
+            cells.forEach((cellValue: unknown, cIdx: number) => {
+              const ref = `r_${startRow + 1 + rOffset}_c_${startCol + cIdx}`;
+              if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
+                updates[ref] = { f: cellValue };
+              } else if (typeof cellValue === 'string' || typeof cellValue === 'number') {
+                updates[ref] = { v: cellValue };
+              }
+            });
+          });
+        } else {
+          // Vertical layout (default): rows expand downward
+          const dataToFill = result.data || (result.columns ? [result.columns, ...(result.rows || [])] : (result.rows || []));
+          dataToFill.forEach((row: unknown, rIndex: number) => {
+            const rowArray = Array.isArray(row) ? row : [row];
+            rowArray.forEach((cellValue: unknown, cIndex: number) => {
+              const ref = `r_${startRow + rIndex}_c_${startCol + cIndex}`;
+              if (typeof cellValue === 'string' && cellValue.startsWith('=')) {
+                updates[ref] = { f: cellValue };
+              } else if (typeof cellValue === 'string' || typeof cellValue === 'number') {
+                updates[ref] = { v: cellValue };
+              }
+            });
+          });
+        }
         
         bulkSetCellData(updates);
         const sheetId = getWorkbookIdFromUrl();
@@ -243,7 +278,8 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
         setMessages(prev => {
           const updated = [...prev];
           updated[msgIndex] = { ...updated[msgIndex], applied: true };
-          return [...updated, { role: 'ai', content: `Successfully updated ${Object.keys(updates).length} cells.` }];
+          const layoutLabel = isHorizontal ? 'horizontally' : 'vertically';
+          return [...updated, { role: 'ai', content: `Successfully filled ${Object.keys(updates).length} cells ${layoutLabel}.` }];
         });
       } else if (tool === 'format_cells' && result.range && result.format) {
         const { setCellFormat } = useSheetStore.getState();
