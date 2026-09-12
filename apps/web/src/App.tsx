@@ -330,7 +330,13 @@ function App() {
 
 
         {!isDashboard && (
-          <div className={`fixed inset-0 md:relative md:h-full flex-shrink-0 z-[60] md:z-auto transition-all duration-300 ${showAI ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none absolute'}`}>
+          <div
+            className={`
+              flex-shrink-0 h-full overflow-hidden
+              transition-all duration-300 ease-in-out
+              ${showAI ? 'w-full md:w-[400px] opacity-100' : 'w-0 opacity-0 pointer-events-none'}
+            `}
+          >
             <AIChatPanel onClose={() => setShowAI(false)} />
           </div>
         )}

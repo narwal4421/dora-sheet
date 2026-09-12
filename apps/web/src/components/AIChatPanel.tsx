@@ -411,9 +411,9 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full md:w-[400px] bg-background/80 backdrop-blur-2xl border-l border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col z-[100] animate-in slide-in-from-right duration-500 overflow-hidden">
+    <div className="w-full h-full bg-surface/95 dark:bg-[#0e121b]/95 backdrop-blur-2xl border-l border-white/10 shadow-[-10px_0_30px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 bg-surface/50">
+      <div className="p-4 border-b border-white/10 bg-surface/50 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shadow-inner glow-accent">
@@ -427,7 +427,11 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/5 text-textMuted hover:text-white transition-all">
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-xl hover:bg-white/10 text-textMuted hover:text-white transition-all cursor-pointer"
+            title="Close Assistant"
+          >
             <X size={20} />
           </button>
         </div>
@@ -452,7 +456,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-white/5">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-white/5">
         {activeTab === 'ai' ? (
           messages.map((m, i) => (
             <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
@@ -526,7 +530,7 @@ export const AIChatPanel = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-surface/50 border-t border-white/5">
+      <div className="p-4 bg-surface/50 border-t border-white/10 flex-shrink-0">
         {activeTab === 'ai' ? (
           <>
             {attachedFile && (
