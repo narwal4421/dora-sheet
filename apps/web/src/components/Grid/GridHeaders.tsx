@@ -96,7 +96,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
       {/* Row Headers Container - Sticky on left */}
       <div 
         className="sticky left-0 z-30 pointer-events-none" 
-        style={{ width: finalIndexW, marginTop: 0 }}
+        style={{ width: finalIndexW, marginTop: -finalHeaderH }}
       >
         {rowVirtualizer.getVirtualItems().map((virtualRow: VirtualItem) => {
           const rowIndex = visibleRowIndices[virtualRow.index];
