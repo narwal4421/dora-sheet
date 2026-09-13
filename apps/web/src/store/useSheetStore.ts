@@ -22,7 +22,7 @@ export type CellFormat = {
 
 export type CellData = {
   v?: string | number | boolean | null; // Evaluated value
-  f?: string;          // Formula
+  f?: string | null;          // Formula (null = explicit clear signal over socket)
   fmt?: CellFormat;    // Formatting
 };
 
