@@ -95,7 +95,7 @@ export async function parseExcelFile(file: File): Promise<ImportResult> {
 
     const columnWidths: Record<number, number> = {};
     if (ws && ws['!cols']) {
-      ws['!cols'].forEach((col: any, colIdx: number) => {
+      ws['!cols'].forEach((col: XLSX.ColInfo, colIdx: number) => {
         if (col && (col.wpx || col.wch)) {
           const width = col.wpx ? Math.round(col.wpx) : Math.round((col.wch || 10) * 8);
           columnWidths[colIdx] = Math.max(40, Math.min(600, width));

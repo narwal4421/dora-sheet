@@ -51,6 +51,24 @@ export type CellLockEvent = {
   action: 'lock' | 'unlock';
 };
 
+export type RemoteSheetActionPayload = {
+  action?: string;
+  index?: number;
+  colIndex?: number;
+  columnIndex?: number;
+  name?: string;
+  data?: unknown;
+  sender?: string;
+  payload?: {
+    index?: number;
+    colIndex?: number;
+    columnIndex?: number;
+    name?: string;
+    data?: unknown;
+    sender?: string;
+  };
+};
+
 export type ConnectedUser = {
   userId: string;
   name: string;
@@ -190,7 +208,7 @@ interface SheetState {
   updateRemoteCursor: (event: CursorMoveEvent) => void;
   cleanupStaleCursors: () => void;
   updateCellLock: (event: CellLockEvent) => void;
-  applyRemoteSheetAction: (payload: { action: string, index?: number, colIndex?: number, name?: string, data?: unknown, sender?: string }) => void;
+  applyRemoteSheetAction: (payload: RemoteSheetActionPayload) => void;
   setConnectedUsers: (users: ConnectedUser[]) => void;
   isHost: boolean;
   setIsHost: (isHost: boolean) => void;
@@ -235,7 +253,7 @@ const parseRef = (ref: string) => {
 
 const shiftMergedCellsRow = (mergedCells: Record<string, string>, target: number, delta: number): Record<string, string> => {
   const result: Record<string, string> = {};
-  Object.entries(mergedCells).forEach(([_topKey, bounds]) => {
+  Object.values(mergedCells).forEach((bounds) => {
     const [startRef, endRef] = bounds.split(':');
     if (!startRef || !endRef) return;
     const start = parseRef(startRef);
@@ -266,7 +284,7 @@ const shiftMergedCellsRow = (mergedCells: Record<string, string>, target: number
 
 const shiftMergedCellsCol = (mergedCells: Record<string, string>, target: number, delta: number): Record<string, string> => {
   const result: Record<string, string> = {};
-  Object.entries(mergedCells).forEach(([_topKey, bounds]) => {
+  Object.values(mergedCells).forEach((bounds) => {
     const [startRef, endRef] = bounds.split(':');
     if (!startRef || !endRef) return;
     const start = parseRef(startRef);
@@ -508,7 +526,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return { lockedCells: newLocks };
   }),
 
-  applyRemoteSheetAction: (rawPayload: any) => {
+  applyRemoteSheetAction: (rawPayload: RemoteSheetActionPayload) => {
     const action = rawPayload.action;
     const subPayload = rawPayload.payload || {};
     const index = rawPayload.index ?? subPayload.index;
