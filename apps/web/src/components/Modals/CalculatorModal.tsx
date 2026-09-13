@@ -347,22 +347,80 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     setWaitingForOperand(true);
   };
 
-  // Insert into active cell
-  const handleInsertToCell = useCallback((moveDown = false) => {
-    if (!activeCell) {
+  // Move sheet active cell (box) via WASD or Arrow keys
+  const moveActiveCell = useCallback((dRow: number, dCol: number, isShift = false) => {
+    const store = useSheetStore.getState();
+    const currentRef = store.activeCell || 'r_0_c_0';
+    const match = currentRef.match(/r_(\d+)_c_(\d+)/);
+    if (!match) return;
+
+    const curR = parseInt(match[1], 10);
+    const curC = parseInt(match[2], 10);
+    const nextR = Math.max(0, curR + dRow);
+    const nextC = Math.max(0, curC + dCol);
+
+    if (nextR >= store.rowCount - 5) store.expandRows(100);
+    if (nextC >= store.colCount - 5) store.expandCols(26);
+
+    const targetRef = `r_${nextR}_c_${nextC}`;
+    if (isShift) {
+      const start = store.selectionRange?.start || currentRef;
+      store.setSelectionRange({ start, end: targetRef });
+    } else {
+      store.setActiveCell(targetRef);
+      store.setSelectionRange({ start: targetRef, end: targetRef });
+      socketService.emitCursorMove(store.localUserName, store.activeSheetId, nextR, nextC, '#6366f1');
+    }
+  }, []);
+
+  // Calculate pending expression (if any) and insert directly into active cell (box)
+  const handleCalculateAndInsert = useCallback((moveDown = false) => {
+    let resultToInsert = display;
+
+    // If an arithmetic calculation is pending, evaluate it first!
+    if (lastOperator && prevValue !== null) {
+      const inputValue = parseFloat(display);
+      let result = prevValue;
+
+      if (lastOperator === '+') result = prevValue + inputValue;
+      else if (lastOperator === '−' || lastOperator === '-') result = prevValue - inputValue;
+      else if (lastOperator === '×' || lastOperator === '*') result = prevValue * inputValue;
+      else if (lastOperator === '÷' || lastOperator === '/') result = inputValue !== 0 ? prevValue / inputValue : 0;
+      else if (lastOperator === '^') result = Math.pow(prevValue, inputValue);
+
+      const formattedResult = Number(result.toFixed(8));
+      const fullExpr = `${prevValue} ${lastOperator} ${inputValue} =`;
+      resultToInsert = String(formattedResult);
+
+      setHistory(prev => [
+        { id: Date.now().toString(), expression: fullExpr, result: resultToInsert, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+        ...prev.slice(0, 24)
+      ]);
+
+      setExpression(fullExpr);
+      setDisplay(resultToInsert);
+      setPrevValue(null);
+      setLastOperator(null);
+    }
+    // Ensure subsequent digit entry starts a fresh calculation
+    setWaitingForOperand(true);
+
+    // Insert calculated value into current cell (box)
+    const store = useSheetStore.getState();
+    const cellRef = store.activeCell;
+    if (!cellRef) {
       toast('Please select a cell first', 'error');
       return;
     }
-    const val = parseFloat(display);
-    const finalVal = isNaN(val) ? display : val;
 
-    const store = useSheetStore.getState();
-    store.setCellData(activeCell, { v: finalVal });
-    socketService.emitCellUpdate(store.activeSheetId, activeCell, { v: finalVal });
+    const val = parseFloat(resultToInsert);
+    const finalVal = isNaN(val) ? resultToInsert : val;
 
-    // If Alt+Enter: move active cell down one row after inserting
+    store.setCellData(cellRef, { v: finalVal });
+    socketService.emitCellUpdate(store.activeSheetId, cellRef, { v: finalVal });
+
     if (moveDown) {
-      const match = activeCell.match(/r_(\d+)_c_(\d+)/);
+      const match = cellRef.match(/r_(\d+)_c_(\d+)/);
       if (match) {
         const nextRow = parseInt(match[1], 10) + 1;
         const col = parseInt(match[2], 10);
@@ -375,8 +433,8 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
 
     setInserted(true);
     setTimeout(() => setInserted(false), 1200);
-    toast(`Inserted ${display} into ${activeCellA1}${moveDown ? ' — moved down' : ''}`, 'success');
-  }, [activeCell, display, activeCellA1]);
+    toast(`Inserted ${resultToInsert} into ${activeCellA1}${moveDown ? ' — moved down' : ''}`, 'success');
+  }, [display, prevValue, lastOperator, activeCellA1]);
 
   // Copy to clipboard
   const handleCopy = () => {
@@ -386,28 +444,48 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     toast(`Copied ${display} to clipboard`, 'success');
   };
 
-  // Keyboard support with zero lag
+  // Keyboard support: WASD moves cell box, NumPad calculates, Enter calculates & inserts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return;
-    if ((e.target as HTMLElement).tagName === 'INPUT' && (e.target as HTMLElement).getAttribute('type') === 'text') return;
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
 
-    // Ctrl+Enter → insert result into active cell
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    // 1. WASD & Arrow Key Sheet Navigation: Move the active box
+    if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'w' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveActiveCell(-1, 0, e.shiftKey);
+        return;
+      }
+      if (key === 's' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveActiveCell(1, 0, e.shiftKey);
+        return;
+      }
+      if (key === 'a' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        moveActiveCell(0, -1, e.shiftKey);
+        return;
+      }
+      if (key === 'd' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        moveActiveCell(0, 1, e.shiftKey);
+        return;
+      }
+    }
+
+    // 2. Enter / NumPad Enter: calculate & insert directly into active cell (box)!
+    if (e.key === 'Enter') {
       e.preventDefault();
-      handleInsertToCell(false);
+      handleCalculateAndInsert(e.altKey);
       return;
     }
 
-    // Alt+Enter → insert result AND move active cell down (rapid column fill)
-    if (e.altKey && e.key === 'Enter') {
-      e.preventDefault();
-      handleInsertToCell(true);
-      return;
-    }
-
+    // 3. Calculator NumPad & Operators
     if (e.key >= '0' && e.key <= '9') {
       inputDigit(e.key);
-    } else if (e.key === '.') {
+    } else if (e.key === '.' || e.key === ',') {
       inputDecimal();
     } else if (e.key === '+' || e.key === '-') {
       performOperation(e.key === '-' ? '−' : '+');
@@ -415,7 +493,7 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
       performOperation('×');
     } else if (e.key === '/') {
       performOperation('÷');
-    } else if (e.key === 'Enter' || e.key === '=') {
+    } else if (e.key === '=') {
       e.preventDefault();
       calculateEquals();
     } else if (e.key === 'Backspace') {
@@ -423,7 +501,7 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     } else if (e.key === 'Escape') {
       clearAll();
     }
-  }, [isOpen, handleInsertToCell, inputDigit, inputDecimal, performOperation, calculateEquals, backspace, clearAll]);
+  }, [isOpen, moveActiveCell, handleCalculateAndInsert, inputDigit, inputDecimal, performOperation, calculateEquals, backspace, clearAll]);
 
   useEffect(() => {
     if (isOpen) {
@@ -520,17 +598,17 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
               <span>{copied ? 'Copied' : 'Copy'}</span>
             </button>
             <button
-              onClick={() => handleInsertToCell(false)}
+              onClick={() => handleCalculateAndInsert(false)}
               className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-accent hover:bg-accentHover text-white text-[11px] font-bold shadow-md shadow-accent/20 transition-all active:scale-95"
-              title="Insert into active cell (Ctrl+Enter)  |  Insert & move down (Alt+Enter)"
+              title="Calculate & insert into active cell (Enter)"
             >
               {inserted ? <Check size={12} /> : <ArrowDownToLine size={12} />}
-              <span>{inserted ? 'Inserted!' : `→ [${activeCellA1}]`}</span>
+              <span>{inserted ? 'Inserted!' : `Enter → [${activeCellA1}]`}</span>
             </button>
             <button
-              onClick={() => handleInsertToCell(true)}
+              onClick={() => handleCalculateAndInsert(true)}
               className="flex items-center gap-1 px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/30 text-accent text-[11px] font-bold transition-all active:scale-95"
-              title="Insert & move active cell down one row (Alt+Enter)"
+              title="Calculate, insert & move down one row (Alt+Enter)"
             >
               <ArrowDownToLine size={11} />
               <span className="text-[10px]">↓</span>
@@ -538,9 +616,19 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
           </div>
           </div>
           {/* Keyboard shortcut hint */}
-          <div className="flex items-center gap-3 text-[10px] text-textMuted/60 font-mono">
-            <span><kbd className="px-1 py-0.5 rounded bg-surfaceHover border border-border/60 text-[9px]">Ctrl+Enter</kbd> Insert</span>
-            <span><kbd className="px-1 py-0.5 rounded bg-surfaceHover border border-border/60 text-[9px]">Alt+Enter</kbd> Insert &amp; ↓</span>
+          <div className="flex items-center flex-wrap gap-2 text-[10px] text-textMuted font-mono pt-0.5">
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 rounded bg-accent/15 border border-accent/30 text-accent font-bold text-[9px]">WASD</kbd>
+              <span className="text-[10px]">Move Box</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 rounded bg-surfaceHover border border-border/60 text-[9px]">NumPad</kbd>
+              <span className="text-[10px]">Calculate</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 rounded bg-accent text-white font-bold text-[9px]">Enter</kbd>
+              <span className="text-[10px]">Insert</span>
+            </span>
           </div>
         </div>
       </div>

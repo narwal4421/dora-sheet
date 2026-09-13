@@ -146,6 +146,17 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     socketService.emitCursorMove(localUserName, activeSheetId, r, c, '#6366f1');
   }, [localUserName, activeSheetId]);
 
+  // Keep active cell scrolled into view during keyboard / WASD navigation
+  useEffect(() => {
+    if (!activeCell) return;
+    const { r, c } = parseRef(activeCell);
+    const visibleRowIdx = visibleRowIndices.indexOf(r);
+    if (visibleRowIdx !== -1) {
+      rowVirtualizer.scrollToIndex(visibleRowIdx, { align: 'auto' });
+    }
+    colVirtualizer.scrollToIndex(c, { align: 'auto' });
+  }, [activeCell, visibleRowIndices, rowVirtualizer, colVirtualizer]);
+
   // Excel Mouse Power: Format Painter apply, Shift+Click expand, Ctrl+Click multi-select, Standard Click
   const handleCellMouseDown = useCallback((ref: string, e?: React.MouseEvent) => {
     if (isDashboard) return;
