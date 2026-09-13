@@ -348,22 +348,35 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
   };
 
   // Insert into active cell
-  const handleInsertToCell = () => {
+  const handleInsertToCell = useCallback((moveDown = false) => {
     if (!activeCell) {
       toast('Please select a cell first', 'error');
       return;
     }
     const val = parseFloat(display);
     const finalVal = isNaN(val) ? display : val;
-    
-    useSheetStore.getState().setCellData(activeCell, { v: finalVal });
-    const sheetId = useSheetStore.getState().activeSheetId;
-    socketService.emitCellUpdate(sheetId, activeCell, { v: finalVal });
+
+    const store = useSheetStore.getState();
+    store.setCellData(activeCell, { v: finalVal });
+    socketService.emitCellUpdate(store.activeSheetId, activeCell, { v: finalVal });
+
+    // If Alt+Enter: move active cell down one row after inserting
+    if (moveDown) {
+      const match = activeCell.match(/r_(\d+)_c_(\d+)/);
+      if (match) {
+        const nextRow = parseInt(match[1], 10) + 1;
+        const col = parseInt(match[2], 10);
+        const nextRef = `r_${nextRow}_c_${col}`;
+        store.ensureDimensions(nextRow, col);
+        store.setActiveCell(nextRef);
+        store.setSelectionRange({ start: nextRef, end: nextRef });
+      }
+    }
 
     setInserted(true);
-    setTimeout(() => setInserted(false), 1500);
-    toast(`Inserted ${display} into ${activeCellA1}`, 'success');
-  };
+    setTimeout(() => setInserted(false), 1200);
+    toast(`Inserted ${display} into ${activeCellA1}${moveDown ? ' — moved down' : ''}`, 'success');
+  }, [activeCell, display, activeCellA1]);
 
   // Copy to clipboard
   const handleCopy = () => {
@@ -377,6 +390,20 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return;
     if ((e.target as HTMLElement).tagName === 'INPUT' && (e.target as HTMLElement).getAttribute('type') === 'text') return;
+
+    // Ctrl+Enter → insert result into active cell
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleInsertToCell(false);
+      return;
+    }
+
+    // Alt+Enter → insert result AND move active cell down (rapid column fill)
+    if (e.altKey && e.key === 'Enter') {
+      e.preventDefault();
+      handleInsertToCell(true);
+      return;
+    }
 
     if (e.key >= '0' && e.key <= '9') {
       inputDigit(e.key);
@@ -396,7 +423,7 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     } else if (e.key === 'Escape') {
       clearAll();
     }
-  }, [isOpen, inputDigit, inputDecimal, performOperation, calculateEquals, backspace, clearAll]);
+  }, [isOpen, handleInsertToCell, inputDigit, inputDecimal, performOperation, calculateEquals, backspace, clearAll]);
 
   useEffect(() => {
     if (isOpen) {
@@ -476,27 +503,44 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
         </div>
         
         {/* Cell Destination Bar */}
-        <div className="mt-2 pt-2 border-t border-border/30 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1 text-textMuted text-[11px]">
-            <span>Active:</span>
-            <span className="font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded">{activeCellA1}</span>
-          </div>
+        <div className="mt-2 pt-2 border-t border-border/30 flex flex-col gap-1.5 text-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 text-textMuted text-[11px]">
+              <span>Active:</span>
+              <span className="font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded">{activeCellA1}</span>
+            </div>
 
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleCopy}
               className="flex items-center gap-1 px-2 py-1 rounded-md bg-surfaceHover/80 hover:bg-surfaceHover text-[11px] font-medium text-textMain transition-all active:scale-95"
+              title="Copy result to clipboard"
             >
               {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
             </button>
             <button
-              onClick={handleInsertToCell}
+              onClick={() => handleInsertToCell(false)}
               className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-accent hover:bg-accentHover text-white text-[11px] font-bold shadow-md shadow-accent/20 transition-all active:scale-95"
+              title="Insert into active cell (Ctrl+Enter)  |  Insert & move down (Alt+Enter)"
             >
               {inserted ? <Check size={12} /> : <ArrowDownToLine size={12} />}
-              <span>{inserted ? 'Inserted!' : `Insert to [${activeCellA1}]`}</span>
+              <span>{inserted ? 'Inserted!' : `→ [${activeCellA1}]`}</span>
             </button>
+            <button
+              onClick={() => handleInsertToCell(true)}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/30 text-accent text-[11px] font-bold transition-all active:scale-95"
+              title="Insert & move active cell down one row (Alt+Enter)"
+            >
+              <ArrowDownToLine size={11} />
+              <span className="text-[10px]">↓</span>
+            </button>
+          </div>
+          </div>
+          {/* Keyboard shortcut hint */}
+          <div className="flex items-center gap-3 text-[10px] text-textMuted/60 font-mono">
+            <span><kbd className="px-1 py-0.5 rounded bg-surfaceHover border border-border/60 text-[9px]">Ctrl+Enter</kbd> Insert</span>
+            <span><kbd className="px-1 py-0.5 rounded bg-surfaceHover border border-border/60 text-[9px]">Alt+Enter</kbd> Insert &amp; ↓</span>
           </div>
         </div>
       </div>
