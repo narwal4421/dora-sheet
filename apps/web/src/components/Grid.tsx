@@ -728,6 +728,65 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
       return;
     }
 
+    // Bold / Italic / Underline formatting shortcuts
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'b') {
+      e.preventDefault();
+      if (activeCell) {
+        const store = useSheetStore.getState();
+        const curFmt = store.data[activeCell]?.fmt || {};
+        if (selectionRange) {
+          const s = parseRef(selectionRange.start);
+          const end = parseRef(selectionRange.end);
+          const refs: string[] = [];
+          for (let r = Math.min(s.r, end.r); r <= Math.max(s.r, end.r); r++)
+            for (let c = Math.min(s.c, end.c); c <= Math.max(s.c, end.c); c++)
+              refs.push(`r_${r}_c_${c}`);
+          store.setRangeFormat(refs, { bold: !curFmt.bold });
+        } else {
+          store.setCellFormat(activeCell, { bold: !curFmt.bold });
+        }
+      }
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'i') {
+      e.preventDefault();
+      if (activeCell) {
+        const store = useSheetStore.getState();
+        const curFmt = store.data[activeCell]?.fmt || {};
+        if (selectionRange) {
+          const s = parseRef(selectionRange.start);
+          const end = parseRef(selectionRange.end);
+          const refs: string[] = [];
+          for (let r = Math.min(s.r, end.r); r <= Math.max(s.r, end.r); r++)
+            for (let c = Math.min(s.c, end.c); c <= Math.max(s.c, end.c); c++)
+              refs.push(`r_${r}_c_${c}`);
+          store.setRangeFormat(refs, { italic: !curFmt.italic });
+        } else {
+          store.setCellFormat(activeCell, { italic: !curFmt.italic });
+        }
+      }
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'u') {
+      e.preventDefault();
+      if (activeCell) {
+        const store = useSheetStore.getState();
+        const curFmt = store.data[activeCell]?.fmt || {};
+        if (selectionRange) {
+          const s = parseRef(selectionRange.start);
+          const end = parseRef(selectionRange.end);
+          const refs: string[] = [];
+          for (let r = Math.min(s.r, end.r); r <= Math.max(s.r, end.r); r++)
+            for (let c = Math.min(s.c, end.c); c <= Math.max(s.c, end.c); c++)
+              refs.push(`r_${r}_c_${c}`);
+          store.setRangeFormat(refs, { underline: !curFmt.underline });
+        } else {
+          store.setCellFormat(activeCell, { underline: !curFmt.underline });
+        }
+      }
+      return;
+    }
+
     // Escape: deactivate Format Painter, clear multi-selection, close smart tag
     if (e.key === 'Escape') {
       deactivateFormatPainter();

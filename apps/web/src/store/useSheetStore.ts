@@ -622,6 +622,14 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     const targetSheet = updatedSheets.find(s => s.id === id);
     if (!targetSheet) return;
 
+    // Guard: hiddenRows may arrive as a plain array after JSON deserialization (socket payloads)
+    // A plain [] is truthy so `|| new Set()` won't fix it — we must explicitly coerce.
+    const safeHiddenRows = (raw: unknown): Set<number> => {
+      if (raw instanceof Set) return raw;
+      if (Array.isArray(raw)) return new Set<number>(raw as number[]);
+      return new Set<number>();
+    };
+
     set({
       sheets: updatedSheets,
       activeSheetId: id,
@@ -629,7 +637,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       columnWidths: targetSheet.columnWidths || {},
       rowHeights: targetSheet.rowHeights || {},
       mergedCells: targetSheet.mergedCells || {},
-      hiddenRows: targetSheet.hiddenRows || new Set<number>(),
+      hiddenRows: safeHiddenRows(targetSheet.hiddenRows),
       freezeRow: targetSheet.freezeRow ?? 0,
       freezeCol: targetSheet.freezeCol ?? 0,
       activeCell: 'r_0_c_0',
@@ -647,7 +655,21 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   importWorkbook: (newSheets, name, remote = false) => {
     if (!newSheets || newSheets.length === 0) return;
-    const firstSheet = newSheets[0];
+
+    // Guard: hiddenRows may be a plain array after JSON deserialization over socket
+    const safeHiddenRows = (raw: unknown): Set<number> => {
+      if (raw instanceof Set) return raw;
+      if (Array.isArray(raw)) return new Set<number>(raw as number[]);
+      return new Set<number>();
+    };
+
+    // Coerce all sheets' hiddenRows to proper Sets
+    const sanitizedSheets: SheetTab[] = newSheets.map(s => ({
+      ...s,
+      hiddenRows: safeHiddenRows(s.hiddenRows)
+    }));
+
+    const firstSheet = sanitizedSheets[0];
 
     // Find max rows and cols in the first sheet to adjust initial grid dimensions
     let maxR = 50;
@@ -661,13 +683,13 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     });
 
     set({
-      sheets: newSheets,
+      sheets: sanitizedSheets,
       activeSheetId: firstSheet.id,
       data: firstSheet.data,
       columnWidths: firstSheet.columnWidths || {},
       rowHeights: firstSheet.rowHeights || {},
       mergedCells: firstSheet.mergedCells || {},
-      hiddenRows: firstSheet.hiddenRows || new Set<number>(),
+      hiddenRows: safeHiddenRows(firstSheet.hiddenRows),
       freezeRow: firstSheet.freezeRow ?? 0,
       freezeCol: firstSheet.freezeCol ?? 0,
       rowCount: Math.max(100, maxR),
@@ -1622,7 +1644,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
     const newData: SheetData = {};
     let targetRow = 0;
-    for (let r = 0; r <= state.rowCount; r++) {
+    // Bug fix: was `<= state.rowCount` (off-by-one), now `< state.rowCount`
+    for (let r = 0; r < state.rowCount; r++) {
       if (duplicateRows.has(r)) continue;
       for (let c = 0; c < state.colCount; c++) {
         const cell = state.data[`r_${r}_c_${c}`];
