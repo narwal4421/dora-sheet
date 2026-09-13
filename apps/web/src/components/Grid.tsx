@@ -505,19 +505,32 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     const minC = Math.min(start.c, end.c);
     const maxC = Math.max(start.c, end.c);
 
-    const vMinRIdx = visibleRowIndices.indexOf(minR);
-    const vMaxRIdx = visibleRowIndices.indexOf(maxR);
+    // Find the first and last visible row indices within the selection range
+    let vStart = -1;
+    for (let i = 0; i < visibleRowIndices.length; i++) {
+      if (visibleRowIndices[i] >= minR) {
+        vStart = i;
+        break;
+      }
+    }
+    let vEnd = -1;
+    for (let i = visibleRowIndices.length - 1; i >= 0; i--) {
+      if (visibleRowIndices[i] <= maxR) {
+        vEnd = i;
+        break;
+      }
+    }
     
-    if (vMinRIdx === -1) return null;
+    if (vStart === -1 || vEnd === -1 || vStart > vEnd) return null;
 
     let top = 0;
-    for (let i = 0; i < vMinRIdx; i++) top += rowHeights[visibleRowIndices[i]] || 24;
+    for (let i = 0; i < vStart; i++) top += rowHeights[visibleRowIndices[i]] || 24;
     
     let left = 0;
     for (let i = 0; i < minC; i++) left += columnWidths[i] || 100;
 
     let height = 0;
-    for (let i = vMinRIdx; i <= vMaxRIdx; i++) height += rowHeights[visibleRowIndices[i]] || 24;
+    for (let i = vStart; i <= vEnd; i++) height += rowHeights[visibleRowIndices[i]] || 24;
 
     let width = 0;
     for (let i = minC; i <= maxC; i++) width += columnWidths[i] || 100;
@@ -537,18 +550,31 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     const minC = Math.min(s.c, e.c, t.c);
     const maxC = Math.max(s.c, e.c, t.c);
 
-    const vMinRIdx = visibleRowIndices.indexOf(minR);
-    const vMaxRIdx = visibleRowIndices.indexOf(maxR);
-    if (vMinRIdx === -1) return null;
+    let vStart = -1;
+    for (let i = 0; i < visibleRowIndices.length; i++) {
+      if (visibleRowIndices[i] >= minR) {
+        vStart = i;
+        break;
+      }
+    }
+    let vEnd = -1;
+    for (let i = visibleRowIndices.length - 1; i >= 0; i--) {
+      if (visibleRowIndices[i] <= maxR) {
+        vEnd = i;
+        break;
+      }
+    }
+
+    if (vStart === -1 || vEnd === -1 || vStart > vEnd) return null;
 
     let top = 0;
-    for (let i = 0; i < vMinRIdx; i++) top += rowHeights[visibleRowIndices[i]] || 24;
+    for (let i = 0; i < vStart; i++) top += rowHeights[visibleRowIndices[i]] || 24;
     
     let left = 0;
     for (let i = 0; i < minC; i++) left += columnWidths[i] || 100;
 
     let height = 0;
-    for (let i = vMinRIdx; i <= vMaxRIdx; i++) height += rowHeights[visibleRowIndices[i]] || 24;
+    for (let i = vStart; i <= vEnd; i++) height += rowHeights[visibleRowIndices[i]] || 24;
 
     let width = 0;
     for (let i = minC; i <= maxC; i++) width += columnWidths[i] || 100;

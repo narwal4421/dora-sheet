@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { memo, useState, useEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
 import { Lock } from 'lucide-react';
 import { socketService } from '../services/socket.service';
@@ -31,9 +31,12 @@ export const Cell = memo(({
   
   // Internal input state when editing
   const [inputValue, setInputValue] = useState('');
+  // Track if user explicitly cancelled (Escape) to suppress onBlur commit
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     if (isEditing) {
+      cancelledRef.current = false;
       setInputValue(cellData?.f ?? cellData?.v?.toString() ?? '');
     }
   }, [isEditing, cellData]);
@@ -76,7 +79,7 @@ export const Cell = memo(({
         return `$${num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
       }
       if (numFmt === 'percent') {
-        return `${(num * (num < 1 && num > -1 ? 100 : 1)).toFixed(decimals)}%`;
+        return `${(num * 100).toFixed(decimals)}%`;
       }
       if (numFmt === 'number') {
         return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -155,13 +158,19 @@ export const Cell = memo(({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onBlur={() => {
+            if (cancelledRef.current) {
+              cancelledRef.current = false;
+              return;
+            }
             onCommitChange(r, c, inputValue);
             socketService.emitCellLock(ref, 'unlock');
             useSheetStore.getState().setEditingCell(null);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {
+              e.preventDefault();
               e.stopPropagation();
+              cancelledRef.current = true;
               socketService.emitCellLock(ref, 'unlock');
               useSheetStore.getState().setEditingCell(null);
             } else {

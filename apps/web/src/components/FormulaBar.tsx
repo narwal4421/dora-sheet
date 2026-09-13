@@ -35,6 +35,20 @@ export const FormulaBar = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const functionMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close function dropdown when clicking outside
+  useEffect(() => {
+    if (!showFunctionMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (functionMenuRef.current && !functionMenuRef.current.contains(e.target as Node)) {
+        setShowFunctionMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFunctionMenu]);
+
   // Compute current display ref (e.g. A1, B12)
   const currentCellRef = activeCell ? (() => {
     const { r, c } = parseRef(activeCell);
@@ -129,6 +143,10 @@ export const FormulaBar = () => {
       {/* --- FORMULA COMMIT / CANCEL BUTTONS --- */}
       <div className="flex items-center gap-0.5">
         <button
+          onMouseDown={(e) => {
+            // Prevent input onBlur from firing before cancel click
+            e.preventDefault();
+          }}
           onClick={handleCancel}
           disabled={!isDirty}
           className={`p-1 rounded hover:bg-surfaceHover transition-colors ${isDirty ? 'text-rose-400 hover:text-rose-300' : 'text-textMuted/40 cursor-default'}`}
@@ -138,6 +156,9 @@ export const FormulaBar = () => {
         </button>
 
         <button
+          onMouseDown={(e) => {
+            e.preventDefault();
+          }}
           onClick={handleCommit}
           disabled={!isDirty}
           className={`p-1 rounded hover:bg-surfaceHover transition-colors ${isDirty ? 'text-emerald-400 hover:text-emerald-300 font-bold' : 'text-textMuted/40 cursor-default'}`}
@@ -147,7 +168,7 @@ export const FormulaBar = () => {
         </button>
 
         {/* Function Helper Icon */}
-        <div className="relative">
+        <div className="relative" ref={functionMenuRef}>
           <button
             onClick={() => setShowFunctionMenu(!showFunctionMenu)}
             className="px-1.5 py-1 rounded hover:bg-surfaceHover text-accent font-serif italic font-bold text-sm leading-none flex items-center gap-0.5 transition-colors"

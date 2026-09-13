@@ -75,6 +75,18 @@ export type FindReplaceState = {
 
 export type RibbonTab = 'home' | 'insert' | 'formulas' | 'data' | 'view' | 'ai';
 
+export type SheetTab = {
+  id: string;
+  name: string;
+  data: SheetData;
+  columnWidths?: Record<number, number>;
+  rowHeights?: Record<number, number>;
+  mergedCells?: Record<string, string>;
+  hiddenRows?: Set<number>;
+  freezeRow?: number;
+  freezeCol?: number;
+};
+
 interface SheetState {
   data: SheetData;
   activeCell: string | null; // e.g. "r_0_c_0"
@@ -93,13 +105,13 @@ interface SheetState {
   setClipboardData: (data: { grid: Array<Array<CellData | undefined>>; text: string } | null) => void;
   pasteSpecial: (type: 'values' | 'formulas' | 'formats' | 'transpose' | 'add' | 'subtract') => void;
   
-  sheets: Array<{ id: string; name: string; data: SheetData }>;
+  sheets: SheetTab[];
   activeSheetId: string;
   addSheetTab: (name?: string, id?: string, remote?: boolean) => void;
   renameSheetTab: (id: string, newName: string, remote?: boolean) => void;
   deleteSheetTab: (id: string, remote?: boolean) => void;
   switchSheetTab: (id: string) => void;
-  importWorkbook: (sheets: Array<{ id: string; name: string; data: SheetData }>, workbookName?: string) => void;
+  importWorkbook: (sheets: SheetTab[], workbookName?: string) => void;
 
   cursors: Record<string, CursorMoveEvent>;
   lockedCells: Record<string, string>;
@@ -219,6 +231,68 @@ const parseRef = (ref: string) => {
   const match = ref.match(/r_(\d+)_c_(\d+)/);
   if (!match) return { r: 0, c: 0 };
   return { r: parseInt(match[1]), c: parseInt(match[2]) };
+};
+
+const shiftMergedCellsRow = (mergedCells: Record<string, string>, target: number, delta: number): Record<string, string> => {
+  const result: Record<string, string> = {};
+  Object.entries(mergedCells).forEach(([_topKey, bounds]) => {
+    const [startRef, endRef] = bounds.split(':');
+    if (!startRef || !endRef) return;
+    const start = parseRef(startRef);
+    const end = parseRef(endRef);
+
+    if (delta < 0 && target >= start.r && target <= end.r && start.r === end.r) {
+      return;
+    }
+
+    let newStartR = start.r;
+    let newEndR = end.r;
+
+    if (delta > 0) {
+      if (start.r >= target) newStartR += delta;
+      if (end.r >= target) newEndR += delta;
+    } else {
+      if (start.r > target) newStartR += delta;
+      if (end.r >= target) newEndR += delta;
+    }
+
+    if (newStartR <= newEndR) {
+      const newTopKey = `r_${newStartR}_c_${start.c}`;
+      result[newTopKey] = `r_${newStartR}_c_${start.c}:r_${newEndR}_c_${end.c}`;
+    }
+  });
+  return result;
+};
+
+const shiftMergedCellsCol = (mergedCells: Record<string, string>, target: number, delta: number): Record<string, string> => {
+  const result: Record<string, string> = {};
+  Object.entries(mergedCells).forEach(([_topKey, bounds]) => {
+    const [startRef, endRef] = bounds.split(':');
+    if (!startRef || !endRef) return;
+    const start = parseRef(startRef);
+    const end = parseRef(endRef);
+
+    if (delta < 0 && target >= start.c && target <= end.c && start.c === end.c) {
+      return;
+    }
+
+    let newStartC = start.c;
+    let newEndC = end.c;
+
+    if (delta > 0) {
+      if (start.c > target) newStartC += delta;
+      if (end.c > target) newEndC += delta;
+    } else {
+      if (start.c > target) newStartC += delta;
+      if (end.c >= target) newEndC += delta;
+    }
+
+    if (newStartC <= newEndC) {
+      const newTopKey = `r_${start.r}_c_${newStartC}`;
+      result[newTopKey] = `r_${start.r}_c_${newStartC}:r_${end.r}_c_${newEndC}`;
+    }
+  });
+  return result;
 };
 
 /**
@@ -486,7 +560,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
     const updatedSheets = store.sheets.map(s => {
       if (s.id === store.activeSheetId) {
-        return { ...s, data: store.data };
+        return {
+          ...s,
+          data: store.data,
+          columnWidths: store.columnWidths,
+          rowHeights: store.rowHeights,
+          mergedCells: store.mergedCells,
+          hiddenRows: store.hiddenRows,
+          freezeRow: store.freezeRow,
+          freezeCol: store.freezeCol,
+        };
       }
       return s;
     });
@@ -498,9 +581,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       sheets: updatedSheets,
       activeSheetId: id,
       data: targetSheet.data,
+      columnWidths: targetSheet.columnWidths || {},
+      rowHeights: targetSheet.rowHeights || {},
+      mergedCells: targetSheet.mergedCells || {},
+      hiddenRows: targetSheet.hiddenRows || new Set<number>(),
+      freezeRow: targetSheet.freezeRow ?? 0,
+      freezeCol: targetSheet.freezeCol ?? 0,
       activeCell: 'r_0_c_0',
       editingCell: null,
       selectionRange: null,
+      selectedRanges: [],
       history: [],
       future: [],
       lockedCells: {}
@@ -529,6 +619,12 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       sheets: newSheets,
       activeSheetId: firstSheet.id,
       data: firstSheet.data,
+      columnWidths: firstSheet.columnWidths || {},
+      rowHeights: firstSheet.rowHeights || {},
+      mergedCells: firstSheet.mergedCells || {},
+      hiddenRows: firstSheet.hiddenRows || new Set<number>(),
+      freezeRow: firstSheet.freezeRow ?? 0,
+      freezeCol: firstSheet.freezeCol ?? 0,
       rowCount: Math.max(100, maxR),
       colCount: Math.max(26, maxC),
       activeCell: 'r_0_c_0',
@@ -635,8 +731,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   // --- ACTIONS: LAYOUT & SEARCH ---
   setIsLightMode: (val) => set({ isLightMode: val }),
-  setColumnWidth: (idx, w) => set(state => ({ columnWidths: { ...state.columnWidths, [idx]: w } })),
-  setRowHeight: (idx, h) => set(state => ({ rowHeights: { ...state.rowHeights, [idx]: h } })),
+  setColumnWidth: (idx, w) => set(state => {
+    const columnWidths = { ...state.columnWidths, [idx]: w };
+    const sheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, columnWidths } : s);
+    return { columnWidths, sheets };
+  }),
+  setRowHeight: (idx, h) => set(state => {
+    const rowHeights = { ...state.rowHeights, [idx]: h };
+    const sheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, rowHeights } : s);
+    return { rowHeights, sheets };
+  }),
   
   autoFitColumn: (colIndex) => set(state => {
     const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
@@ -746,7 +850,37 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       const { r, c } = parseRef(ref);
       newData[r >= target ? `r_${r + 1}_c_${c}` : ref] = cell;
     });
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+
+    const newRowHeights: Record<number, number> = {};
+    Object.entries(state.rowHeights).forEach(([k, h]) => {
+      const r = Number(k);
+      newRowHeights[r >= target ? r + 1 : r] = h;
+    });
+
+    const newHiddenRows = new Set<number>();
+    state.hiddenRows.forEach(r => {
+      newHiddenRows.add(r >= target ? r + 1 : r);
+    });
+
+    const newMergedCells = shiftMergedCellsRow(state.mergedCells, target, 1);
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+      ...s,
+      data: newData,
+      rowHeights: newRowHeights,
+      hiddenRows: newHiddenRows,
+      mergedCells: newMergedCells
+    } : s);
+
+    return {
+      data: newData,
+      rowHeights: newRowHeights,
+      hiddenRows: newHiddenRows,
+      mergedCells: newMergedCells,
+      sheets: updatedSheets,
+      history: [...state.history, state.data].slice(-50),
+      future: []
+    };
   }),
 
   insertColumnRight: (colIndex) => set(state => {
@@ -756,7 +890,30 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       const { r, c } = parseRef(ref);
       newData[c > target ? `r_${r}_c_${c + 1}` : ref] = cell;
     });
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+
+    const newColumnWidths: Record<number, number> = {};
+    Object.entries(state.columnWidths).forEach(([k, w]) => {
+      const c = Number(k);
+      newColumnWidths[c > target ? c + 1 : c] = w;
+    });
+
+    const newMergedCells = shiftMergedCellsCol(state.mergedCells, target, 1);
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+      ...s,
+      data: newData,
+      columnWidths: newColumnWidths,
+      mergedCells: newMergedCells
+    } : s);
+
+    return {
+      data: newData,
+      columnWidths: newColumnWidths,
+      mergedCells: newMergedCells,
+      sheets: updatedSheets,
+      history: [...state.history, state.data].slice(-50),
+      future: []
+    };
   }),
 
   deleteRow: (rowIndex) => set(state => {
@@ -768,7 +925,39 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       if (r === target) return;
       newData[r > target ? `r_${r - 1}_c_${c}` : ref] = cell;
     });
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+
+    const newRowHeights: Record<number, number> = {};
+    Object.entries(state.rowHeights).forEach(([k, h]) => {
+      const r = Number(k);
+      if (r === target) return;
+      newRowHeights[r > target ? r - 1 : r] = h;
+    });
+
+    const newHiddenRows = new Set<number>();
+    state.hiddenRows.forEach(r => {
+      if (r === target) return;
+      newHiddenRows.add(r > target ? r - 1 : r);
+    });
+
+    const newMergedCells = shiftMergedCellsRow(state.mergedCells, target, -1);
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+      ...s,
+      data: newData,
+      rowHeights: newRowHeights,
+      hiddenRows: newHiddenRows,
+      mergedCells: newMergedCells
+    } : s);
+
+    return {
+      data: newData,
+      rowHeights: newRowHeights,
+      hiddenRows: newHiddenRows,
+      mergedCells: newMergedCells,
+      sheets: updatedSheets,
+      history: [...state.history, state.data].slice(-50),
+      future: []
+    };
   }),
 
   deleteColumn: (colIndex) => set(state => {
@@ -780,7 +969,31 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       if (c === target) return;
       newData[c > target ? `r_${r}_c_${c - 1}` : ref] = cell;
     });
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+
+    const newColumnWidths: Record<number, number> = {};
+    Object.entries(state.columnWidths).forEach(([k, w]) => {
+      const c = Number(k);
+      if (c === target) return;
+      newColumnWidths[c > target ? c - 1 : c] = w;
+    });
+
+    const newMergedCells = shiftMergedCellsCol(state.mergedCells, target, -1);
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+      ...s,
+      data: newData,
+      columnWidths: newColumnWidths,
+      mergedCells: newMergedCells
+    } : s);
+
+    return {
+      data: newData,
+      columnWidths: newColumnWidths,
+      mergedCells: newMergedCells,
+      sheets: updatedSheets,
+      history: [...state.history, state.data].slice(-50),
+      future: []
+    };
   }),
 
   sortAZ: (colIndex) => set(state => {
@@ -793,15 +1006,26 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     });
     const totalR = Math.max(maxR + 1, 100);
 
-    const rows = Array.from({ length: totalR }, (_, r) => 
-      Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
-    ).filter(row => row.some(cell => !!cell));
+    const rows = Array.from({ length: totalR }, (_, r) => ({
+      originalR: r,
+      cells: Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
+    })).filter(row => row.cells.some(cell => !!cell));
 
-    rows.sort((a, b) => String(a[targetC]?.v || '').localeCompare(String(b[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
+    rows.sort((a, b) => String(a.cells[targetC]?.v || '').localeCompare(String(b.cells[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
 
     const newData: SheetData = {};
-    rows.forEach((row, r) => row.forEach((cell, c) => { if (cell) newData[`r_${r}_c_${c}`] = cell; }));
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+    const newRowHeights: Record<number, number> = { ...state.rowHeights };
+    rows.forEach((row, r) => {
+      row.cells.forEach((cell, c) => {
+        if (cell) newData[`r_${r}_c_${c}`] = cell;
+      });
+      if (state.rowHeights[row.originalR] !== undefined) {
+        newRowHeights[r] = state.rowHeights[row.originalR];
+      }
+    });
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, rowHeights: newRowHeights } : s);
+    return { data: newData, rowHeights: newRowHeights, sheets: updatedSheets, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
   clearCellFormats: (ref) => set(state => {
@@ -845,15 +1069,26 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     });
     const totalR = Math.max(maxR + 1, 100);
 
-    const rows = Array.from({ length: totalR }, (_, r) => 
-      Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
-    ).filter(row => row.some(cell => !!cell));
+    const rows = Array.from({ length: totalR }, (_, r) => ({
+      originalR: r,
+      cells: Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
+    })).filter(row => row.cells.some(cell => !!cell));
 
-    rows.sort((a, b) => String(b[targetC]?.v || '').localeCompare(String(a[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
+    rows.sort((a, b) => String(b.cells[targetC]?.v || '').localeCompare(String(a.cells[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
 
     const newData: SheetData = {};
-    rows.forEach((row, r) => row.forEach((cell, c) => { if (cell) newData[`r_${r}_c_${c}`] = cell; }));
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
+    const newRowHeights: Record<number, number> = { ...state.rowHeights };
+    rows.forEach((row, r) => {
+      row.cells.forEach((cell, c) => {
+        if (cell) newData[`r_${r}_c_${c}`] = cell;
+      });
+      if (state.rowHeights[row.originalR] !== undefined) {
+        newRowHeights[r] = state.rowHeights[row.originalR];
+      }
+    });
+
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, rowHeights: newRowHeights } : s);
+    return { data: newData, rowHeights: newRowHeights, sheets: updatedSheets, history: [...state.history, state.data].slice(-50), future: [] };
   }),
 
   pasteSpecial: (type) => {
