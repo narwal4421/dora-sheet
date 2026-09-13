@@ -325,8 +325,14 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   mergedCells: {},
   freezeRow: 0,
   freezeCol: 0,
-  setFreezeRow: (r) => set({ freezeRow: r }),
-  setFreezeCol: (c) => set({ freezeCol: c }),
+  setFreezeRow: (r) => set(state => {
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, freezeRow: r } : s);
+    return { freezeRow: r, sheets: updatedSheets };
+  }),
+  setFreezeCol: (c) => set(state => {
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, freezeCol: c } : s);
+    return { freezeCol: c, sheets: updatedSheets };
+  }),
   
   // --- COLLABORATION DOMAIN ---
   cursors: {},
@@ -414,29 +420,36 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   // --- ACTIONS: REMOTE UPDATES (HIGH FREQUENCY) ---
   applyRemoteUpdate: (event) => set(state => {
-    const mergeCellData = (prevCell: CellData | undefined, update: Partial<CellData>): CellData => {
+    const mergeCellData = (prevCell: CellData | undefined, update: Partial<CellData>): CellData | undefined => {
+      // null v and f means a clear operation — delete the cell
+      if (update.v === null && update.f === null) return undefined;
       const merged = { ...prevCell, ...update };
+      // Clean up null/undefined fields
+      if (merged.v === null || merged.v === undefined) delete merged.v;
+      if (merged.f === null || merged.f === undefined) delete merged.f;
       if (update.v !== undefined && update.f === undefined) {
         delete merged.f;
       }
-      return merged;
+      return merged as CellData;
     };
 
     const updatedSheets = state.sheets.map(s => {
       if (s.id === event.sheetId) {
-        return {
-          ...s,
-          data: { ...s.data, [event.cellKey]: mergeCellData(s.data[event.cellKey], event.cell) }
-        };
+        const newData = { ...s.data };
+        const result = mergeCellData(s.data[event.cellKey], event.cell);
+        if (result === undefined) delete newData[event.cellKey];
+        else newData[event.cellKey] = result;
+        return { ...s, data: newData };
       }
       return s;
     });
 
     if (event.sheetId === state.activeSheetId) {
-      return {
-        sheets: updatedSheets,
-        data: { ...state.data, [event.cellKey]: mergeCellData(state.data[event.cellKey], event.cell) }
-      };
+      const newData = { ...state.data };
+      const result = mergeCellData(state.data[event.cellKey], event.cell);
+      if (result === undefined) delete newData[event.cellKey];
+      else newData[event.cellKey] = result;
+      return { sheets: updatedSheets, data: newData };
     }
 
     return { sheets: updatedSheets };
@@ -444,19 +457,31 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   applyRemoteBulkUpdate: (updates, sheetId) => set(state => {
     const targetSheetId = sheetId || state.activeSheetId;
+    const applyUpdates = (existingData: SheetData): SheetData => {
+      const newData = { ...existingData };
+      Object.entries(updates).forEach(([key, update]) => {
+        // null v and null f means a clear — delete the cell
+        if (update.v === null && update.f === null) {
+          delete newData[key];
+        } else {
+          const merged = { ...newData[key], ...update };
+          if (merged.v === null || merged.v === undefined) delete merged.v;
+          if (merged.f === null || merged.f === undefined) delete merged.f;
+          newData[key] = merged;
+        }
+      });
+      return newData;
+    };
+
     const updatedSheets = state.sheets.map(s => {
       if (s.id === targetSheetId) {
-        const newData = { ...s.data };
-        Object.assign(newData, updates);
-        return { ...s, data: newData };
+        return { ...s, data: applyUpdates(s.data) };
       }
       return s;
     });
 
     if (targetSheetId === state.activeSheetId) {
-      const newData = { ...state.data };
-      Object.assign(newData, updates);
-      return { sheets: updatedSheets, data: newData };
+      return { sheets: updatedSheets, data: applyUpdates(state.data) };
     }
 
     return { sheets: updatedSheets };
@@ -730,7 +755,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
       return { data: newData, sheets: updatedSheets, history, future: [] };
     });
-    socketService.emitCellUpdate(get().activeSheetId, ref, { v: undefined, f: undefined });
+    // Use null instead of undefined so JSON serialization preserves the clear signal
+    socketService.emitCellUpdate(get().activeSheetId, ref, { v: null, f: null });
   },
 
   clearSheet: () => set(state => {
@@ -747,8 +773,9 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
       return { data: newData, sheets: updatedSheets, history, future: [] };
     });
+    // Use null instead of undefined so JSON serialization preserves the clear signal
     const updates: Record<string, Partial<CellData>> = {};
-    refs.forEach(ref => { updates[ref] = { v: undefined, f: undefined }; });
+    refs.forEach(ref => { updates[ref] = { v: null, f: null }; });
     socketService.emitBulkCellUpdate(get().activeSheetId, updates);
   },
 
@@ -819,7 +846,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       });
     });
     const finalW = Math.min(600, Math.max(50, Math.ceil(maxPx)));
-    return { columnWidths: { ...state.columnWidths, [targetC]: finalW } };
+    const columnWidths = { ...state.columnWidths, [targetC]: finalW };
+    // Persist into sheets[] so column width survives tab switches
+    const sheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, columnWidths } : s);
+    return { columnWidths, sheets };
   }),
 
   autoFitRow: (rowIndex) => set(state => {
@@ -851,7 +881,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       }
     });
     const finalH = Math.min(300, Math.max(24, maxH));
-    return { rowHeights: { ...state.rowHeights, [targetR]: finalH } };
+    const rowHeights = { ...state.rowHeights, [targetR]: finalH };
+    // Persist into sheets[] so row height survives tab switches
+    const sheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, rowHeights } : s);
+    return { rowHeights, sheets };
   }),
 
   setFindReplace: (partial) => set(state => ({ findReplace: { ...state.findReplace, ...partial } })),
@@ -1175,8 +1208,9 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
       return { data: newData, sheets: updatedSheets, history, future: [] };
     });
+    // Use null instead of undefined so JSON serialization preserves the clear signal
     const updates: Record<string, Partial<CellData>> = {};
-    refs.forEach(ref => { updates[ref] = { v: undefined, f: undefined }; });
+    refs.forEach(ref => { updates[ref] = { v: null, f: null }; });
     socketService.emitBulkCellUpdate(get().activeSheetId, updates);
   },
 
@@ -1288,6 +1322,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     }
 
     store.bulkSetCellData(updates);
+    // Emit socket update so collaborators see the paste-special result
+    if (Object.keys(updates).length > 0) {
+      socketService.emitBulkCellUpdate(get().activeSheetId, updates);
+    }
     toast(`Paste Special: ${type.toUpperCase()}`, 'success');
   },
 
@@ -1346,13 +1384,17 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   toggleFilter: (colIndex, remote = false) => {
     const targetC = colIndex ?? (get().activeCell ? parseRef(get().activeCell!).c : 0);
     set(state => {
-      if (state.hiddenRows.size > 0) return { hiddenRows: new Set() };
+      if (state.hiddenRows.size > 0) {
+        const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, hiddenRows: new Set<number>() } : s);
+        return { hiddenRows: new Set<number>(), sheets: updatedSheets };
+      }
       const newHidden = new Set<number>();
       Object.entries(state.data).forEach(([ref, cell]) => {
         const { r, c } = parseRef(ref);
         if (c === targetC && (!cell.v && !cell.f)) newHidden.add(r);
       });
-      return { hiddenRows: newHidden };
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, hiddenRows: newHidden } : s);
+      return { hiddenRows: newHidden, sheets: updatedSheets };
     });
 
     if (!remote) {
@@ -1383,7 +1425,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
         fmt: { ...topLeftCell.fmt, align: topLeftCell.fmt?.align || 'center' }
       }
     };
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+    // Persist mergedCells into sheets[] so switching tabs and back preserves merges
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, mergedCells: newMerged } : s);
     toast('Cells merged & centered', 'success');
     return { mergedCells: newMerged, data: newData, sheets: updatedSheets, history, future: [] };
   }),
@@ -1403,8 +1446,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       }
     });
     if (found) {
+      // Persist unmerged state into sheets[] so switching tabs and back preserves the change
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, mergedCells: newMerged } : s);
       toast('Cells unmerged', 'info');
-      return { mergedCells: newMerged };
+      return { mergedCells: newMerged, sheets: updatedSheets };
     }
     return {};
   }),

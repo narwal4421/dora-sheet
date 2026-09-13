@@ -209,9 +209,11 @@ export const Ribbon: FC<RibbonProps> = ({
 
   const handleCut = async () => {
     await handleCopy();
-    applyToSelection((ref) => {
-      setCellData(ref, { v: undefined, f: undefined });
-    });
+    const refs = getSelectedRefs();
+    if (refs.length > 0) {
+      // Use clearRange for single history entry + socket broadcast
+      useSheetStore.getState().clearRange(refs);
+    }
     toast('Cut to clipboard', 'info');
   };
 
