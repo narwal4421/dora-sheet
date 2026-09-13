@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx';
-import { useSheetStore, type SheetData, type CellFormat } from '../store/useSheetStore';
+import { useSheetStore, type SheetData, type CellFormat, type SheetTab } from '../store/useSheetStore';
 import { toast } from '../store/useToastStore';
 
 export interface ImportResult {
-  sheets: Array<{ id: string; name: string; data: SheetData }>;
+  sheets: SheetTab[];
   workbookName: string;
   totalCells: number;
 }
@@ -25,7 +25,7 @@ export async function parseExcelFile(file: File): Promise<ImportResult> {
     throw new Error('No worksheets found in this file.');
   }
 
-  const sheets: Array<{ id: string; name: string; data: SheetData }> = [];
+  const sheets: SheetTab[] = [];
   let totalCells = 0;
 
   for (let idx = 0; idx < wb.SheetNames.length; idx++) {
@@ -84,10 +84,31 @@ export async function parseExcelFile(file: File): Promise<ImportResult> {
       }
     }
 
+    const mergedCells: Record<string, string> = {};
+    if (ws && ws['!merges']) {
+      ws['!merges'].forEach((m: XLSX.Range) => {
+        const topLeft = `r_${m.s.r}_c_${m.s.c}`;
+        const bounds = `r_${m.s.r}_c_${m.s.c}:r_${m.e.r}_c_${m.e.c}`;
+        mergedCells[topLeft] = bounds;
+      });
+    }
+
+    const columnWidths: Record<number, number> = {};
+    if (ws && ws['!cols']) {
+      ws['!cols'].forEach((col: any, colIdx: number) => {
+        if (col && (col.wpx || col.wch)) {
+          const width = col.wpx ? Math.round(col.wpx) : Math.round((col.wch || 10) * 8);
+          columnWidths[colIdx] = Math.max(40, Math.min(600, width));
+        }
+      });
+    }
+
     sheets.push({
       id: `sheet-${Date.now()}-${idx}`,
       name: sheetName,
-      data: sheetData
+      data: sheetData,
+      mergedCells: Object.keys(mergedCells).length > 0 ? mergedCells : undefined,
+      columnWidths: Object.keys(columnWidths).length > 0 ? columnWidths : undefined
     });
   }
 

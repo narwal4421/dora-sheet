@@ -301,11 +301,13 @@ class SocketService {
   }
 
   public emitSheetAction(sheetId: string, action: string, payload: unknown) {
+    const data = typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>) : { data: payload };
     this.socket?.emit(SocketEvent.SHEET_ACTION, { 
       workbookId: this.getWorkbookId(), 
       sheetId, 
       action, 
-      payload 
+      ...data,
+      payload: data 
     });
   }
 

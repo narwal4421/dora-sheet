@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { socketService } from '../services/socket.service';
-import { getWorkbookIdFromUrl } from '../utils/workbookUrl';
 import { toast } from './useToastStore';
 
 export type CellFormat = {
@@ -111,7 +110,7 @@ interface SheetState {
   renameSheetTab: (id: string, newName: string, remote?: boolean) => void;
   deleteSheetTab: (id: string, remote?: boolean) => void;
   switchSheetTab: (id: string) => void;
-  importWorkbook: (sheets: SheetTab[], workbookName?: string) => void;
+  importWorkbook: (sheets: SheetTab[], workbookName?: string, remote?: boolean) => void;
 
   cursors: Record<string, CursorMoveEvent>;
   lockedCells: Record<string, string>;
@@ -153,13 +152,13 @@ interface SheetState {
   expandCols: (count?: number) => void;
   ensureDimensions: (r: number, c: number) => void;
   
-  insertRowAbove: (rowIndex?: number) => void;
-  insertColumnRight: (colIndex?: number) => void;
-  deleteRow: (rowIndex?: number) => void;
-  deleteColumn: (colIndex?: number) => void;
-  sortAZ: (colIndex?: number) => void;
-  sortZA: (colIndex?: number) => void;
-  toggleFilter: (colIndex?: number) => void;
+  insertRowAbove: (rowIndex?: number, remote?: boolean) => void;
+  insertColumnRight: (colIndex?: number, remote?: boolean) => void;
+  deleteRow: (rowIndex?: number, remote?: boolean) => void;
+  deleteColumn: (colIndex?: number, remote?: boolean) => void;
+  sortAZ: (colIndex?: number, remote?: boolean) => void;
+  sortZA: (colIndex?: number, remote?: boolean) => void;
+  toggleFilter: (colIndex?: number, remote?: boolean) => void;
   jumpToCell: (coord: string) => boolean;
   
   setColumnWidth: (index: number, width: number) => void;
@@ -172,6 +171,7 @@ interface SheetState {
   setEditingCell: (ref: string | null) => void;
   setCellData: (ref: string, data: Partial<CellData>) => void;
   setCellFormat: (ref: string, format: Partial<CellFormat>) => void;
+  setRangeFormat: (refs: string[], formatPatch: Partial<CellFormat>) => void;
   bulkSetCellData: (updates: Record<string, Partial<CellData>>) => void;
   clearCell: (ref: string) => void;
   clearCellFormats: (ref: string) => void;
@@ -414,11 +414,19 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   // --- ACTIONS: REMOTE UPDATES (HIGH FREQUENCY) ---
   applyRemoteUpdate: (event) => set(state => {
+    const mergeCellData = (prevCell: CellData | undefined, update: Partial<CellData>): CellData => {
+      const merged = { ...prevCell, ...update };
+      if (update.v !== undefined && update.f === undefined) {
+        delete merged.f;
+      }
+      return merged;
+    };
+
     const updatedSheets = state.sheets.map(s => {
       if (s.id === event.sheetId) {
         return {
           ...s,
-          data: { ...s.data, [event.cellKey]: { ...s.data[event.cellKey], ...event.cell } }
+          data: { ...s.data, [event.cellKey]: mergeCellData(s.data[event.cellKey], event.cell) }
         };
       }
       return s;
@@ -427,7 +435,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     if (event.sheetId === state.activeSheetId) {
       return {
         sheets: updatedSheets,
-        data: { ...state.data, [event.cellKey]: { ...state.data[event.cellKey], ...event.cell } }
+        data: { ...state.data, [event.cellKey]: mergeCellData(state.data[event.cellKey], event.cell) }
       };
     }
 
@@ -475,32 +483,44 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return { lockedCells: newLocks };
   }),
 
-  applyRemoteSheetAction: (payload) => {
-    const { action, index, colIndex } = payload;
+  applyRemoteSheetAction: (rawPayload: any) => {
+    const action = rawPayload.action;
+    const subPayload = rawPayload.payload || {};
+    const index = rawPayload.index ?? subPayload.index;
+    const colIndex = rawPayload.colIndex ?? subPayload.colIndex ?? rawPayload.columnIndex ?? subPayload.columnIndex;
+    const name = rawPayload.name ?? subPayload.name;
+    const data = rawPayload.data ?? subPayload.data ?? rawPayload.payload;
+    const sender = rawPayload.sender ?? subPayload.sender;
+
     const store = get();
-    if (action === 'insertRow') store.insertRowAbove(index);
-    else if (action === 'insertCol') store.insertColumnRight(colIndex);
-    else if (action === 'deleteRow') store.deleteRow(index);
-    else if (action === 'deleteCol') store.deleteColumn(colIndex);
-    else if (action === 'sort') store.sortAZ(colIndex);
-    else if (action === 'toggleFilter') store.toggleFilter(colIndex);
+    if (action === 'insertRow') store.insertRowAbove(index, true);
+    else if (action === 'insertCol') store.insertColumnRight(colIndex, true);
+    else if (action === 'deleteRow') store.deleteRow(index, true);
+    else if (action === 'deleteCol') store.deleteColumn(colIndex, true);
+    else if (action === 'sort') store.sortAZ(colIndex, true);
+    else if (action === 'sortZA') store.sortZA(colIndex, true);
+    else if (action === 'toggleFilter') store.toggleFilter(colIndex, true);
     else if (action === 'clearSheet') store.clearSheet();
-    else if (action === 'rename_sheet') store.renameWorkbook(payload.name || 'Untitled Workbook');
+    else if (action === 'rename_sheet') store.renameWorkbook(name || 'Untitled Workbook');
+    else if (action === 'import_workbook') {
+      const p = data as { sheets: SheetTab[]; workbookName?: string };
+      if (p?.sheets) store.importWorkbook(p.sheets, p.workbookName, true);
+    }
     else if (action === 'share_dashboard') {
-      window.dispatchEvent(new CustomEvent('show-dashboard', { detail: payload.data }));
-      toast(`${payload.sender || 'A collaborator'} shared a Cinematic Dashboard!`, 'success');
+      window.dispatchEvent(new CustomEvent('show-dashboard', { detail: data }));
+      toast(`${sender || 'A collaborator'} shared a Cinematic Dashboard!`, 'success');
     }
     else if (action === 'add_sheet_tab') {
-      const p = payload.data as { id: string; name: string };
-      if (p) store.addSheetTab(p.name, p.id, true);
+      const p = (data || subPayload) as { id: string; name: string };
+      if (p?.id) store.addSheetTab(p.name, p.id, true);
     }
     else if (action === 'rename_sheet_tab') {
-      const p = payload.data as { id: string; name: string };
-      if (p) store.renameSheetTab(p.id, p.name, true);
+      const p = (data || subPayload) as { id: string; name: string };
+      if (p?.id) store.renameSheetTab(p.id, p.name, true);
     }
     else if (action === 'delete_sheet_tab') {
-      const p = payload.data as { id: string };
-      if (p) store.deleteSheetTab(p.id, true);
+      const p = (data || subPayload) as { id: string };
+      if (p?.id) store.deleteSheetTab(p.id, true);
     }
   },
 
@@ -600,7 +620,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     socketService.emitCursorMove(store.localUserName, id, r, c, '#6366f1');
   },
 
-  importWorkbook: (newSheets, name) => {
+  importWorkbook: (newSheets, name, remote = false) => {
     if (!newSheets || newSheets.length === 0) return;
     const firstSheet = newSheets[0];
 
@@ -635,6 +655,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       future: [],
       workbookName: name || 'Imported Workbook'
     });
+
+    if (!remote) {
+      socketService.emitSheetAction('default', 'import_workbook', { sheets: newSheets, workbookName: name });
+    }
   },
 
   // --- ACTIONS: GRID OPERATIONS ---
@@ -665,8 +689,30 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     // Emit formatting update to other users
     const currentFmt = get().data[ref]?.fmt;
     if (currentFmt) {
-      socketService.emitCellUpdate(getWorkbookIdFromUrl(), ref, { fmt: currentFmt });
+      socketService.emitCellUpdate(get().activeSheetId, ref, { fmt: currentFmt });
     }
+  },
+
+  setRangeFormat: (refs, formatPatch) => {
+    if (refs.length === 0) return;
+    const updatesForSocket: Record<string, Partial<CellData>> = {};
+
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+
+      refs.forEach(ref => {
+        const existing = newData[ref]?.fmt || {};
+        const newFmt = { ...existing, ...formatPatch };
+        newData[ref] = { ...newData[ref], fmt: newFmt };
+        updatesForSocket[ref] = { fmt: newFmt };
+      });
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+
+    socketService.emitBulkCellUpdate(get().activeSheetId, updatesForSocket);
   },
 
   bulkSetCellData: (updates) => set(state => {
@@ -676,13 +722,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return { data: newData, sheets: updatedSheets, history, future: [] };
   }),
 
-  clearCell: (ref) => set(state => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    delete newData[ref];
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
-    return { data: newData, sheets: updatedSheets, history, future: [] };
-  }),
+  clearCell: (ref) => {
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+      delete newData[ref];
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+    socketService.emitCellUpdate(get().activeSheetId, ref, { v: undefined, f: undefined });
+  },
 
   clearSheet: () => set(state => {
     const history = [...state.history, state.data].slice(-50);
@@ -690,20 +739,27 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return { data: {}, sheets: updatedSheets, history, future: [] };
   }),
 
-  clearRange: (refs) => set(state => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    refs.forEach(ref => delete newData[ref]);
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
-    return { data: newData, sheets: updatedSheets, history, future: [] };
-  }),
+  clearRange: (refs) => {
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+      refs.forEach(ref => delete newData[ref]);
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+    const updates: Record<string, Partial<CellData>> = {};
+    refs.forEach(ref => { updates[ref] = { v: undefined, f: undefined }; });
+    socketService.emitBulkCellUpdate(get().activeSheetId, updates);
+  },
 
   // --- ACTIONS: HISTORY & SNAPSHOTS ---
   undo: () => set(state => {
     if (state.history.length === 0) return {};
     const previous = state.history[state.history.length - 1];
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: previous } : s);
     return {
       data: previous,
+      sheets: updatedSheets,
       history: state.history.slice(0, -1),
       future: [state.data, ...state.future]
     };
@@ -712,8 +768,10 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   redo: () => set(state => {
     if (state.future.length === 0) return {};
     const next = state.future[0];
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: next } : s);
     return {
       data: next,
+      sheets: updatedSheets,
       history: [...state.history, state.data],
       future: state.future.slice(1)
     };
@@ -726,7 +784,8 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   restoreSnapshot: (id) => set(state => {
     const snap = state.snapshots.find(s => s.id === id);
     if (!snap) return {};
-    return { data: snap.data, history: [...state.history, state.data], future: [] };
+    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: snap.data } : s);
+    return { data: snap.data, sheets: updatedSheets, history: [...state.history, state.data], future: [] };
   }),
 
   // --- ACTIONS: LAYOUT & SEARCH ---
@@ -824,209 +883,265 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return { findReplace: { ...state.findReplace, currentIndex: prevIdx }, activeCell: results[prevIdx] };
   }),
 
-  replaceCurrent: () => set(state => {
-    const { results, currentIndex, replaceText } = state.findReplace;
-    if (results.length === 0) return {};
+  replaceCurrent: () => {
+    const { results, currentIndex, replaceText } = get().findReplace;
+    if (results.length === 0) return;
     const ref = results[currentIndex];
-    return {
-      data: { ...state.data, [ref]: { ...state.data[ref], v: replaceText, f: undefined } },
-      history: [...state.history, state.data].slice(-50), future: []
-    };
-  }),
+    const isFormula = replaceText.startsWith('=');
+    const isNum = !isFormula && !isNaN(Number(replaceText)) && replaceText.trim() !== '';
+    const newCell: Partial<CellData> = isFormula
+      ? { f: replaceText }
+      : { v: isNum ? Number(replaceText) : replaceText, f: undefined };
 
-  replaceAll: () => set(state => {
-    const { results, replaceText } = state.findReplace;
-    if (results.length === 0) return {};
-    const newData = { ...state.data };
-    results.forEach(ref => { newData[ref] = { ...newData[ref], v: replaceText, f: undefined }; });
-    return { data: newData, history: [...state.history, state.data].slice(-50), future: [] };
-  }),
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data, [ref]: { ...state.data[ref], ...newCell } };
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+
+    socketService.emitCellUpdate(get().activeSheetId, ref, newCell);
+  },
+
+  replaceAll: () => {
+    const { results, replaceText } = get().findReplace;
+    if (results.length === 0) return;
+    const isFormula = replaceText.startsWith('=');
+    const isNum = !isFormula && !isNaN(Number(replaceText)) && replaceText.trim() !== '';
+    const newCell: Partial<CellData> = isFormula
+      ? { f: replaceText }
+      : { v: isNum ? Number(replaceText) : replaceText, f: undefined };
+
+    const updatesForSocket: Record<string, Partial<CellData>> = {};
+
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+      results.forEach(ref => {
+        newData[ref] = { ...newData[ref], ...newCell };
+        updatesForSocket[ref] = newCell;
+      });
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+
+    socketService.emitBulkCellUpdate(get().activeSheetId, updatesForSocket);
+  },
 
   // --- ACTIONS: COMPLEX SHEET MUTATIONS ---
-  insertRowAbove: (rowIndex) => set(state => {
-    const target = rowIndex ?? (state.activeCell ? parseRef(state.activeCell).r : 0);
-    const newData: SheetData = {};
-    Object.entries(state.data).forEach(([ref, cell]) => {
-      const { r, c } = parseRef(ref);
-      newData[r >= target ? `r_${r + 1}_c_${c}` : ref] = cell;
-    });
-
-    const newRowHeights: Record<number, number> = {};
-    Object.entries(state.rowHeights).forEach(([k, h]) => {
-      const r = Number(k);
-      newRowHeights[r >= target ? r + 1 : r] = h;
-    });
-
-    const newHiddenRows = new Set<number>();
-    state.hiddenRows.forEach(r => {
-      newHiddenRows.add(r >= target ? r + 1 : r);
-    });
-
-    const newMergedCells = shiftMergedCellsRow(state.mergedCells, target, 1);
-
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
-      ...s,
-      data: newData,
-      rowHeights: newRowHeights,
-      hiddenRows: newHiddenRows,
-      mergedCells: newMergedCells
-    } : s);
-
-    return {
-      data: newData,
-      rowHeights: newRowHeights,
-      hiddenRows: newHiddenRows,
-      mergedCells: newMergedCells,
-      sheets: updatedSheets,
-      history: [...state.history, state.data].slice(-50),
-      future: []
-    };
-  }),
-
-  insertColumnRight: (colIndex) => set(state => {
-    const target = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
-    const newData: SheetData = {};
-    Object.entries(state.data).forEach(([ref, cell]) => {
-      const { r, c } = parseRef(ref);
-      newData[c > target ? `r_${r}_c_${c + 1}` : ref] = cell;
-    });
-
-    const newColumnWidths: Record<number, number> = {};
-    Object.entries(state.columnWidths).forEach(([k, w]) => {
-      const c = Number(k);
-      newColumnWidths[c > target ? c + 1 : c] = w;
-    });
-
-    const newMergedCells = shiftMergedCellsCol(state.mergedCells, target, 1);
-
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
-      ...s,
-      data: newData,
-      columnWidths: newColumnWidths,
-      mergedCells: newMergedCells
-    } : s);
-
-    return {
-      data: newData,
-      columnWidths: newColumnWidths,
-      mergedCells: newMergedCells,
-      sheets: updatedSheets,
-      history: [...state.history, state.data].slice(-50),
-      future: []
-    };
-  }),
-
-  deleteRow: (rowIndex) => set(state => {
-    const target = rowIndex ?? (state.activeCell ? parseRef(state.activeCell).r : -1);
-    if (target === -1) return {};
-    const newData: SheetData = {};
-    Object.entries(state.data).forEach(([ref, cell]) => {
-      const { r, c } = parseRef(ref);
-      if (r === target) return;
-      newData[r > target ? `r_${r - 1}_c_${c}` : ref] = cell;
-    });
-
-    const newRowHeights: Record<number, number> = {};
-    Object.entries(state.rowHeights).forEach(([k, h]) => {
-      const r = Number(k);
-      if (r === target) return;
-      newRowHeights[r > target ? r - 1 : r] = h;
-    });
-
-    const newHiddenRows = new Set<number>();
-    state.hiddenRows.forEach(r => {
-      if (r === target) return;
-      newHiddenRows.add(r > target ? r - 1 : r);
-    });
-
-    const newMergedCells = shiftMergedCellsRow(state.mergedCells, target, -1);
-
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
-      ...s,
-      data: newData,
-      rowHeights: newRowHeights,
-      hiddenRows: newHiddenRows,
-      mergedCells: newMergedCells
-    } : s);
-
-    return {
-      data: newData,
-      rowHeights: newRowHeights,
-      hiddenRows: newHiddenRows,
-      mergedCells: newMergedCells,
-      sheets: updatedSheets,
-      history: [...state.history, state.data].slice(-50),
-      future: []
-    };
-  }),
-
-  deleteColumn: (colIndex) => set(state => {
-    const target = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : -1);
-    if (target === -1) return {};
-    const newData: SheetData = {};
-    Object.entries(state.data).forEach(([ref, cell]) => {
-      const { r, c } = parseRef(ref);
-      if (c === target) return;
-      newData[c > target ? `r_${r}_c_${c - 1}` : ref] = cell;
-    });
-
-    const newColumnWidths: Record<number, number> = {};
-    Object.entries(state.columnWidths).forEach(([k, w]) => {
-      const c = Number(k);
-      if (c === target) return;
-      newColumnWidths[c > target ? c - 1 : c] = w;
-    });
-
-    const newMergedCells = shiftMergedCellsCol(state.mergedCells, target, -1);
-
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
-      ...s,
-      data: newData,
-      columnWidths: newColumnWidths,
-      mergedCells: newMergedCells
-    } : s);
-
-    return {
-      data: newData,
-      columnWidths: newColumnWidths,
-      mergedCells: newMergedCells,
-      sheets: updatedSheets,
-      history: [...state.history, state.data].slice(-50),
-      future: []
-    };
-  }),
-
-  sortAZ: (colIndex) => set(state => {
-    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
-    // Find max row currently with data
-    let maxR = 0;
-    Object.keys(state.data).forEach(ref => {
-      const match = ref.match(/r_(\d+)_c_(\d+)/);
-      if (match) maxR = Math.max(maxR, parseInt(match[1], 10));
-    });
-    const totalR = Math.max(maxR + 1, 100);
-
-    const rows = Array.from({ length: totalR }, (_, r) => ({
-      originalR: r,
-      cells: Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
-    })).filter(row => row.cells.some(cell => !!cell));
-
-    rows.sort((a, b) => String(a.cells[targetC]?.v || '').localeCompare(String(b.cells[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
-
-    const newData: SheetData = {};
-    const newRowHeights: Record<number, number> = { ...state.rowHeights };
-    rows.forEach((row, r) => {
-      row.cells.forEach((cell, c) => {
-        if (cell) newData[`r_${r}_c_${c}`] = cell;
+  insertRowAbove: (rowIndex, remote = false) => {
+    const target = rowIndex ?? (get().activeCell ? parseRef(get().activeCell!).r : 0);
+    set(state => {
+      const newData: SheetData = {};
+      Object.entries(state.data).forEach(([ref, cell]) => {
+        const { r, c } = parseRef(ref);
+        newData[r >= target ? `r_${r + 1}_c_${c}` : ref] = cell;
       });
-      if (state.rowHeights[row.originalR] !== undefined) {
-        newRowHeights[r] = state.rowHeights[row.originalR];
-      }
+
+      const newRowHeights: Record<number, number> = {};
+      Object.entries(state.rowHeights).forEach(([k, h]) => {
+        const r = Number(k);
+        newRowHeights[r >= target ? r + 1 : r] = h;
+      });
+
+      const newHiddenRows = new Set<number>();
+      state.hiddenRows.forEach(r => {
+        newHiddenRows.add(r >= target ? r + 1 : r);
+      });
+
+      const newMergedCells = shiftMergedCellsRow(state.mergedCells, target, 1);
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+        ...s,
+        data: newData,
+        rowHeights: newRowHeights,
+        hiddenRows: newHiddenRows,
+        mergedCells: newMergedCells
+      } : s);
+
+      return {
+        data: newData,
+        rowHeights: newRowHeights,
+        hiddenRows: newHiddenRows,
+        mergedCells: newMergedCells,
+        sheets: updatedSheets,
+        history: [...state.history, state.data].slice(-50),
+        future: []
+      };
     });
 
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, rowHeights: newRowHeights } : s);
-    return { data: newData, rowHeights: newRowHeights, sheets: updatedSheets, history: [...state.history, state.data].slice(-50), future: [] };
-  }),
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'insertRow', { index: target });
+    }
+  },
+
+  insertColumnRight: (colIndex, remote = false) => {
+    const target = colIndex ?? (get().activeCell ? parseRef(get().activeCell!).c : 0);
+    set(state => {
+      const newData: SheetData = {};
+      Object.entries(state.data).forEach(([ref, cell]) => {
+        const { r, c } = parseRef(ref);
+        newData[c > target ? `r_${r}_c_${c + 1}` : ref] = cell;
+      });
+
+      const newColumnWidths: Record<number, number> = {};
+      Object.entries(state.columnWidths).forEach(([k, w]) => {
+        const c = Number(k);
+        newColumnWidths[c > target ? c + 1 : c] = w;
+      });
+
+      const newMergedCells = shiftMergedCellsCol(state.mergedCells, target, 1);
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+        ...s,
+        data: newData,
+        columnWidths: newColumnWidths,
+        mergedCells: newMergedCells
+      } : s);
+
+      return {
+        data: newData,
+        columnWidths: newColumnWidths,
+        mergedCells: newMergedCells,
+        sheets: updatedSheets,
+        history: [...state.history, state.data].slice(-50),
+        future: []
+      };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'insertCol', { colIndex: target });
+    }
+  },
+
+  deleteRow: (rowIndex, remote = false) => {
+    const target = rowIndex ?? (get().activeCell ? parseRef(get().activeCell!).r : -1);
+    if (target === -1) return;
+    set(state => {
+      const newData: SheetData = {};
+      Object.entries(state.data).forEach(([ref, cell]) => {
+        const { r, c } = parseRef(ref);
+        if (r === target) return;
+        newData[r > target ? `r_${r - 1}_c_${c}` : ref] = cell;
+      });
+
+      const newRowHeights: Record<number, number> = {};
+      Object.entries(state.rowHeights).forEach(([k, h]) => {
+        const r = Number(k);
+        if (r === target) return;
+        newRowHeights[r > target ? r - 1 : r] = h;
+      });
+
+      const newHiddenRows = new Set<number>();
+      state.hiddenRows.forEach(r => {
+        if (r === target) return;
+        newHiddenRows.add(r > target ? r - 1 : r);
+      });
+
+      const newMergedCells = shiftMergedCellsRow(state.mergedCells, target, -1);
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+        ...s,
+        data: newData,
+        rowHeights: newRowHeights,
+        hiddenRows: newHiddenRows,
+        mergedCells: newMergedCells
+      } : s);
+
+      return {
+        data: newData,
+        rowHeights: newRowHeights,
+        hiddenRows: newHiddenRows,
+        mergedCells: newMergedCells,
+        sheets: updatedSheets,
+        history: [...state.history, state.data].slice(-50),
+        future: []
+      };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'deleteRow', { index: target });
+    }
+  },
+
+  deleteColumn: (colIndex, remote = false) => {
+    const target = colIndex ?? (get().activeCell ? parseRef(get().activeCell!).c : -1);
+    if (target === -1) return;
+    set(state => {
+      const newData: SheetData = {};
+      Object.entries(state.data).forEach(([ref, cell]) => {
+        const { r, c } = parseRef(ref);
+        if (c === target) return;
+        newData[c > target ? `r_${r}_c_${c - 1}` : ref] = cell;
+      });
+
+      const newColumnWidths: Record<number, number> = {};
+      Object.entries(state.columnWidths).forEach(([k, w]) => {
+        const c = Number(k);
+        if (c === target) return;
+        newColumnWidths[c > target ? c - 1 : c] = w;
+      });
+
+      const newMergedCells = shiftMergedCellsCol(state.mergedCells, target, -1);
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? {
+        ...s,
+        data: newData,
+        columnWidths: newColumnWidths,
+        mergedCells: newMergedCells
+      } : s);
+
+      return {
+        data: newData,
+        columnWidths: newColumnWidths,
+        mergedCells: newMergedCells,
+        sheets: updatedSheets,
+        history: [...state.history, state.data].slice(-50),
+        future: []
+      };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'deleteCol', { colIndex: target });
+    }
+  },
+
+  sortAZ: (colIndex, remote = false) => {
+    const targetC = colIndex ?? (get().activeCell ? parseRef(get().activeCell!).c : 0);
+    set(state => {
+      let maxR = 0;
+      Object.keys(state.data).forEach(ref => {
+        const match = ref.match(/r_(\d+)_c_(\d+)/);
+        if (match) maxR = Math.max(maxR, parseInt(match[1], 10));
+      });
+      const totalR = Math.max(maxR + 1, 100);
+
+      const rows = Array.from({ length: totalR }, (_, r) => ({
+        originalR: r,
+        cells: Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
+      })).filter(row => row.cells.some(cell => !!cell));
+
+      rows.sort((a, b) => String(a.cells[targetC]?.v || '').localeCompare(String(b.cells[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
+
+      const newData: SheetData = {};
+      const newRowHeights: Record<number, number> = { ...state.rowHeights };
+      rows.forEach((row, r) => {
+        row.cells.forEach((cell, c) => {
+          if (cell) newData[`r_${r}_c_${c}`] = cell;
+        });
+        if (state.rowHeights[row.originalR] !== undefined) {
+          newRowHeights[r] = state.rowHeights[row.originalR];
+        }
+      });
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, rowHeights: newRowHeights } : s);
+      return { data: newData, rowHeights: newRowHeights, sheets: updatedSheets, history: [...state.history, state.data].slice(-50), future: [] };
+    });
+
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'sort', { colIndex: targetC });
+    }
+  },
 
   clearCellFormats: (ref) => set(state => {
     if (!state.data[ref]) return {};
@@ -1048,48 +1163,59 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return { data: newData, sheets: updatedSheets, history, future: [] };
   }),
 
-  clearRangeContents: (refs) => set(state => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    refs.forEach(ref => {
-      if (newData[ref]) {
-        newData[ref] = { ...newData[ref], v: undefined, f: undefined };
-      }
-    });
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
-    return { data: newData, sheets: updatedSheets, history, future: [] };
-  }),
-
-  sortZA: (colIndex) => set(state => {
-    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
-    let maxR = 0;
-    Object.keys(state.data).forEach(ref => {
-      const match = ref.match(/r_(\d+)_c_(\d+)/);
-      if (match) maxR = Math.max(maxR, parseInt(match[1], 10));
-    });
-    const totalR = Math.max(maxR + 1, 100);
-
-    const rows = Array.from({ length: totalR }, (_, r) => ({
-      originalR: r,
-      cells: Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
-    })).filter(row => row.cells.some(cell => !!cell));
-
-    rows.sort((a, b) => String(b.cells[targetC]?.v || '').localeCompare(String(a.cells[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
-
-    const newData: SheetData = {};
-    const newRowHeights: Record<number, number> = { ...state.rowHeights };
-    rows.forEach((row, r) => {
-      row.cells.forEach((cell, c) => {
-        if (cell) newData[`r_${r}_c_${c}`] = cell;
+  clearRangeContents: (refs) => {
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+      refs.forEach(ref => {
+        if (newData[ref]) {
+          newData[ref] = { ...newData[ref], v: undefined, f: undefined };
+        }
       });
-      if (state.rowHeights[row.originalR] !== undefined) {
-        newRowHeights[r] = state.rowHeights[row.originalR];
-      }
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+    const updates: Record<string, Partial<CellData>> = {};
+    refs.forEach(ref => { updates[ref] = { v: undefined, f: undefined }; });
+    socketService.emitBulkCellUpdate(get().activeSheetId, updates);
+  },
+
+  sortZA: (colIndex, remote = false) => {
+    const targetC = colIndex ?? (get().activeCell ? parseRef(get().activeCell!).c : 0);
+    set(state => {
+      let maxR = 0;
+      Object.keys(state.data).forEach(ref => {
+        const match = ref.match(/r_(\d+)_c_(\d+)/);
+        if (match) maxR = Math.max(maxR, parseInt(match[1], 10));
+      });
+      const totalR = Math.max(maxR + 1, 100);
+
+      const rows = Array.from({ length: totalR }, (_, r) => ({
+        originalR: r,
+        cells: Array.from({ length: state.colCount }, (_, c) => state.data[`r_${r}_c_${c}`])
+      })).filter(row => row.cells.some(cell => !!cell));
+
+      rows.sort((a, b) => String(b.cells[targetC]?.v || '').localeCompare(String(a.cells[targetC]?.v || ''), undefined, { sensitivity: 'base' }));
+
+      const newData: SheetData = {};
+      const newRowHeights: Record<number, number> = { ...state.rowHeights };
+      rows.forEach((row, r) => {
+        row.cells.forEach((cell, c) => {
+          if (cell) newData[`r_${r}_c_${c}`] = cell;
+        });
+        if (state.rowHeights[row.originalR] !== undefined) {
+          newRowHeights[r] = state.rowHeights[row.originalR];
+        }
+      });
+
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, rowHeights: newRowHeights } : s);
+      return { data: newData, rowHeights: newRowHeights, sheets: updatedSheets, history: [...state.history, state.data].slice(-50), future: [] };
     });
 
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData, rowHeights: newRowHeights } : s);
-    return { data: newData, rowHeights: newRowHeights, sheets: updatedSheets, history: [...state.history, state.data].slice(-50), future: [] };
-  }),
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'sortZA', { colIndex: targetC });
+    }
+  },
 
   pasteSpecial: (type) => {
     const store = get();
@@ -1217,16 +1343,22 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return true;
   },
 
-  toggleFilter: (colIndex) => set(state => {
-    const targetC = colIndex ?? (state.activeCell ? parseRef(state.activeCell).c : 0);
-    if (state.hiddenRows.size > 0) return { hiddenRows: new Set() };
-    const newHidden = new Set<number>();
-    Object.entries(state.data).forEach(([ref, cell]) => {
-      const { r, c } = parseRef(ref);
-      if (c === targetC && (!cell.v && !cell.f)) newHidden.add(r);
+  toggleFilter: (colIndex, remote = false) => {
+    const targetC = colIndex ?? (get().activeCell ? parseRef(get().activeCell!).c : 0);
+    set(state => {
+      if (state.hiddenRows.size > 0) return { hiddenRows: new Set() };
+      const newHidden = new Set<number>();
+      Object.entries(state.data).forEach(([ref, cell]) => {
+        const { r, c } = parseRef(ref);
+        if (c === targetC && (!cell.v && !cell.f)) newHidden.add(r);
+      });
+      return { hiddenRows: newHidden };
     });
-    return { hiddenRows: newHidden };
-  }),
+
+    if (!remote) {
+      socketService.emitSheetAction(get().activeSheetId, 'toggleFilter', { colIndex: targetC });
+    }
+  },
 
   mergeCell: (refs) => set(state => {
     if (!refs || refs.length < 2) return {};
@@ -1277,89 +1409,131 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     return {};
   }),
 
-  fillDown: () => set(state => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    if (state.selectionRange) {
-      const s = parseRef(state.selectionRange.start);
-      const e = parseRef(state.selectionRange.end);
-      const minR = Math.min(s.r, e.r);
-      const maxR = Math.max(s.r, e.r);
-      const minC = Math.min(s.c, e.c);
-      const maxC = Math.max(s.c, e.c);
-      if (minR === maxR) {
-        if (minR > 0) {
+  fillDown: () => {
+    const updatesForSocket: Record<string, Partial<CellData>> = {};
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+      if (state.selectionRange) {
+        const s = parseRef(state.selectionRange.start);
+        const e = parseRef(state.selectionRange.end);
+        const minR = Math.min(s.r, e.r);
+        const maxR = Math.max(s.r, e.r);
+        const minC = Math.min(s.c, e.c);
+        const maxC = Math.max(s.c, e.c);
+        if (minR === maxR) {
+          if (minR > 0) {
+            for (let c = minC; c <= maxC; c++) {
+              const src = state.data[`r_${minR - 1}_c_${c}`];
+              const cellKey = `r_${minR}_c_${c}`;
+              if (src) {
+                newData[cellKey] = JSON.parse(JSON.stringify(src));
+                updatesForSocket[cellKey] = newData[cellKey];
+              } else {
+                delete newData[cellKey];
+                updatesForSocket[cellKey] = { v: undefined, f: undefined };
+              }
+            }
+          }
+        } else {
           for (let c = minC; c <= maxC; c++) {
-            const src = state.data[`r_${minR - 1}_c_${c}`];
-            if (src) newData[`r_${minR}_c_${c}`] = JSON.parse(JSON.stringify(src));
-            else delete newData[`r_${minR}_c_${c}`];
+            const src = state.data[`r_${minR}_c_${c}`];
+            for (let r = minR + 1; r <= maxR; r++) {
+              const cellKey = `r_${r}_c_${c}`;
+              if (src) {
+                newData[cellKey] = JSON.parse(JSON.stringify(src));
+                updatesForSocket[cellKey] = newData[cellKey];
+              } else {
+                delete newData[cellKey];
+                updatesForSocket[cellKey] = { v: undefined, f: undefined };
+              }
+            }
           }
         }
-      } else {
-        for (let c = minC; c <= maxC; c++) {
-          const src = state.data[`r_${minR}_c_${c}`];
-          for (let r = minR + 1; r <= maxR; r++) {
-            if (src) newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
-            else delete newData[`r_${r}_c_${c}`];
+        toast('Filled down', 'success');
+      } else if (state.activeCell) {
+        const { r, c } = parseRef(state.activeCell);
+        if (r > 0) {
+          const src = state.data[`r_${r - 1}_c_${c}`];
+          const cellKey = `r_${r}_c_${c}`;
+          if (src) {
+            newData[cellKey] = JSON.parse(JSON.stringify(src));
+            updatesForSocket[cellKey] = newData[cellKey];
+            toast('Filled down from cell above', 'success');
           }
         }
       }
-      toast('Filled down', 'success');
-    } else if (state.activeCell) {
-      const { r, c } = parseRef(state.activeCell);
-      if (r > 0) {
-        const src = state.data[`r_${r - 1}_c_${c}`];
-        if (src) {
-          newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
-          toast('Filled down from cell above', 'success');
-        }
-      }
-    }
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
-    return { data: newData, sheets: updatedSheets, history, future: [] };
-  }),
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
 
-  fillRight: () => set(state => {
-    const history = [...state.history, state.data].slice(-50);
-    const newData = { ...state.data };
-    if (state.selectionRange) {
-      const s = parseRef(state.selectionRange.start);
-      const e = parseRef(state.selectionRange.end);
-      const minR = Math.min(s.r, e.r);
-      const maxR = Math.max(s.r, e.r);
-      const minC = Math.min(s.c, e.c);
-      const maxC = Math.max(s.c, e.c);
-      if (minC === maxC) {
-        if (minC > 0) {
-          for (let r = minR; r <= maxR; r++) {
-            const src = state.data[`r_${r}_c_${minC - 1}`];
-            if (src) newData[`r_${r}_c_${minC}`] = JSON.parse(JSON.stringify(src));
-            else delete newData[`r_${r}_c_${minC}`];
-          }
-        }
-      } else {
-        for (let r = minR; r <= maxR; r++) {
-          const src = state.data[`r_${r}_c_${minC}`];
-          for (let c = minC + 1; c <= maxC; c++) {
-            if (src) newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
-            else delete newData[`r_${r}_c_${c}`];
-          }
-        }
-      }
-      toast('Filled right', 'success');
-    } else if (state.activeCell) {
-      const { r, c } = parseRef(state.activeCell);
-      if (c > 0) {
-        const src = state.data[`r_${r}_c_${c - 1}`];
-        if (src) {
-          newData[`r_${r}_c_${c}`] = JSON.parse(JSON.stringify(src));
-          toast('Filled right from cell left', 'success');
-        }
-      }
+    if (Object.keys(updatesForSocket).length > 0) {
+      socketService.emitBulkCellUpdate(get().activeSheetId, updatesForSocket);
     }
-    const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
-    return { data: newData, sheets: updatedSheets, history, future: [] };
-  }),
+  },
+
+  fillRight: () => {
+    const updatesForSocket: Record<string, Partial<CellData>> = {};
+    set(state => {
+      const history = [...state.history, state.data].slice(-50);
+      const newData = { ...state.data };
+      if (state.selectionRange) {
+        const s = parseRef(state.selectionRange.start);
+        const e = parseRef(state.selectionRange.end);
+        const minR = Math.min(s.r, e.r);
+        const maxR = Math.max(s.r, e.r);
+        const minC = Math.min(s.c, e.c);
+        const maxC = Math.max(s.c, e.c);
+        if (minC === maxC) {
+          if (minC > 0) {
+            for (let r = minR; r <= maxR; r++) {
+              const src = state.data[`r_${r}_c_${minC - 1}`];
+              const cellKey = `r_${r}_c_${minC}`;
+              if (src) {
+                newData[cellKey] = JSON.parse(JSON.stringify(src));
+                updatesForSocket[cellKey] = newData[cellKey];
+              } else {
+                delete newData[cellKey];
+                updatesForSocket[cellKey] = { v: undefined, f: undefined };
+              }
+            }
+          }
+        } else {
+          for (let r = minR; r <= maxR; r++) {
+            const src = state.data[`r_${r}_c_${minC}`];
+            for (let c = minC + 1; c <= maxC; c++) {
+              const cellKey = `r_${r}_c_${c}`;
+              if (src) {
+                newData[cellKey] = JSON.parse(JSON.stringify(src));
+                updatesForSocket[cellKey] = newData[cellKey];
+              } else {
+                delete newData[cellKey];
+                updatesForSocket[cellKey] = { v: undefined, f: undefined };
+              }
+            }
+          }
+        }
+        toast('Filled right', 'success');
+      } else if (state.activeCell) {
+        const { r, c } = parseRef(state.activeCell);
+        if (c > 0) {
+          const src = state.data[`r_${r}_c_${c - 1}`];
+          const cellKey = `r_${r}_c_${c}`;
+          if (src) {
+            newData[cellKey] = JSON.parse(JSON.stringify(src));
+            updatesForSocket[cellKey] = newData[cellKey];
+            toast('Filled right from cell left', 'success');
+          }
+        }
+      }
+      const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: newData } : s);
+      return { data: newData, sheets: updatedSheets, history, future: [] };
+    });
+
+    if (Object.keys(updatesForSocket).length > 0) {
+      socketService.emitBulkCellUpdate(get().activeSheetId, updatesForSocket);
+    }
+  },
 
   removeDuplicates: () => set(state => {
     const history = [...state.history, state.data].slice(-50);

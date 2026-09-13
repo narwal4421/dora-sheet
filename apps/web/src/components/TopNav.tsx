@@ -61,34 +61,103 @@ export const TopNav = ({
 
 
   const handleExport = () => {
-    const { data: cells } = useSheetStore.getState();
-    const data: (string | number | boolean)[][] = [];
-    
-    let maxR = 0;
-    let maxC = 0;
-    for (const key of Object.keys(cells)) {
-       const match = key.match(/r_(\d+)_c_(\d+)/);
-       if (match) {
-         maxR = Math.max(maxR, parseInt(match[1], 10));
-         maxC = Math.max(maxC, parseInt(match[2], 10));
-       }
-    }
-    
-    for (let r = 0; r <= maxR; r++) {
-      const rowData = [];
-      for (let c = 0; c <= maxC; c++) {
-        const cell = cells[`r_${r}_c_${c}`];
-        rowData.push(cell?.v || "");
-      }
-      data.push(rowData);
-    }
-    
-    if (data.length === 0) data.push([""]);
-
-    const ws = XLSX.utils.aoa_to_sheet(data);
+    const { sheets, activeSheetId, data: activeData, columnWidths, mergedCells, workbookName } = useSheetStore.getState();
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, "DoraAI_Export.xlsx");
+
+    const sheetsToExport = sheets && sheets.length > 0
+      ? sheets
+      : [{ id: activeSheetId, name: 'Sheet1', data: activeData, columnWidths, mergedCells }];
+
+    sheetsToExport.forEach(sheetTab => {
+      const sheetData = sheetTab.id === activeSheetId ? activeData : (sheetTab.data || {});
+      const colWidths = sheetTab.id === activeSheetId ? columnWidths : (sheetTab.columnWidths || {});
+      const merges = sheetTab.id === activeSheetId ? mergedCells : (sheetTab.mergedCells || {});
+
+      let maxR = 0;
+      let maxC = 0;
+      for (const key of Object.keys(sheetData)) {
+        const match = key.match(/r_(\d+)_c_(\d+)/);
+        if (match) {
+          maxR = Math.max(maxR, parseInt(match[1], 10));
+          maxC = Math.max(maxC, parseInt(match[2], 10));
+        }
+      }
+
+      const rows: any[][] = [];
+      for (let r = 0; r <= maxR; r++) {
+        const rowData = [];
+        for (let c = 0; c <= maxC; c++) {
+          const cell = sheetData[`r_${r}_c_${c}`];
+          if (!cell) {
+            rowData.push("");
+          } else if (cell.v !== undefined && cell.v !== null) {
+            rowData.push(cell.v);
+          } else if (cell.f) {
+            rowData.push(cell.f);
+          } else {
+            rowData.push("");
+          }
+        }
+        rows.push(rowData);
+      }
+
+      if (rows.length === 0) rows.push([""]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      // Export formulas properly if cell has .f
+      for (let r = 0; r <= maxR; r++) {
+        for (let c = 0; c <= maxC; c++) {
+          const cell = sheetData[`r_${r}_c_${c}`];
+          if (cell?.f) {
+            const cellAddr = XLSX.utils.encode_cell({ r, c });
+            if (ws[cellAddr]) {
+              ws[cellAddr].f = cell.f.startsWith('=') ? cell.f.substring(1) : cell.f;
+            }
+          }
+        }
+      }
+
+      // Export column widths if present
+      if (colWidths && Object.keys(colWidths).length > 0) {
+        const cols: { wpx?: number }[] = [];
+        for (let c = 0; c <= maxC; c++) {
+          cols.push({ wpx: colWidths[c] || 100 });
+        }
+        ws['!cols'] = cols;
+      }
+
+      // Export merges if present
+      if (merges && Object.keys(merges).length > 0) {
+        const wsMerges: XLSX.Range[] = [];
+        Object.values(merges).forEach(rangeStr => {
+          const [startStr, endStr] = rangeStr.split(':');
+          if (startStr && endStr) {
+            const matchS = startStr.match(/r_(\d+)_c_(\d+)/);
+            const matchE = endStr.match(/r_(\d+)_c_(\d+)/);
+            if (matchS && matchE) {
+              const sr = parseInt(matchS[1], 10);
+              const sc = parseInt(matchS[2], 10);
+              const er = parseInt(matchE[1], 10);
+              const ec = parseInt(matchE[2], 10);
+              wsMerges.push({
+                s: { r: Math.min(sr, er), c: Math.min(sc, ec) },
+                e: { r: Math.max(sr, er), c: Math.max(sc, ec) }
+              });
+            }
+          }
+        });
+        if (wsMerges.length > 0) {
+          ws['!merges'] = wsMerges;
+        }
+      }
+
+      const safeName = (sheetTab.name || 'Sheet').replace(/[:\\/?*[\]]/g, '_').slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, safeName);
+    });
+
+    const exportFileName = `${(workbookName || 'DoraAI_Export').replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
+    XLSX.writeFile(wb, exportFileName);
   };
 
   const fileMenu: MenuItem[] = [
@@ -129,16 +198,18 @@ export const TopNav = ({
       label: 'Paste', 
       shortcut: 'Ctrl+V', 
       onClick: async () => {
-        const { activeCell, setCellData } = useSheetStore.getState();
+        const { activeCell, setCellData, activeSheetId } = useSheetStore.getState();
         if (!activeCell) return;
         try {
           const text = await navigator.clipboard.readText();
           if (!text) return;
           const isFormula = text.startsWith('=');
-          const update: { v?: string; f?: string } = isFormula 
-            ? { f: text } 
-            : { v: text, f: undefined };
+          const isNum = !isFormula && !isNaN(Number(text)) && text.trim() !== '';
+          const update: { v?: string | number; f?: string } = isFormula 
+            ? { f: text, v: undefined } 
+            : { v: isNum ? Number(text) : text, f: undefined };
           setCellData(activeCell, update);
+          socketService.emitCellUpdate(activeSheetId, activeCell, update);
         } catch {
           toast("Please use keyboard Ctrl+V to paste", "warning");
         }

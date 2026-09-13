@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { useSheetStore } from '../../store/useSheetStore';
 import { socketService } from '../../services/socket.service';
-import { getWorkbookIdFromUrl } from '../../utils/workbookUrl';
 import { toast } from '../../store/useToastStore';
 
 interface HistoryItem {
@@ -358,7 +357,7 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     const finalVal = isNaN(val) ? display : val;
     
     useSheetStore.getState().setCellData(activeCell, { v: finalVal });
-    const sheetId = getWorkbookIdFromUrl();
+    const sheetId = useSheetStore.getState().activeSheetId;
     socketService.emitCellUpdate(sheetId, activeCell, { v: finalVal });
 
     setInserted(true);

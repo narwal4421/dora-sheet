@@ -23,6 +23,19 @@ export const FindReplace = () => {
     return () => clearTimeout(timeoutId);
   }, [findText, executeFind]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setFindReplace({ isOpen: false });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, setFindReplace]);
+
   if (!isOpen) return null;
 
   return (

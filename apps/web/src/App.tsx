@@ -12,7 +12,7 @@ import { ShareModal } from './components/Modals/ShareModal';
 import { AboutPage } from './components/AboutPage';
 import { FindReplace } from './components/FindReplace';
 import { ToastContainer } from './components/ToastContainer';
-import { Sparkles, X as CloseIcon, Upload } from 'lucide-react';
+import { Sparkles, Upload } from 'lucide-react';
 import { useSheetStore } from './store/useSheetStore';
 import { DashboardOverlay, type DashboardData } from './components/DashboardOverlay';
 import { JoinRequestStack } from './components/Collaboration/JoinRequestStack';
@@ -356,12 +356,6 @@ function App() {
         {showVersionHistory && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-8">
             <div className="w-full max-w-4xl h-full bg-surface border border-border shadow-2xl rounded-xl overflow-hidden flex flex-col relative">
-               <button 
-                 onClick={() => setShowVersionHistory(false)} 
-                 className="absolute top-4 right-4 bg-surfaceHover p-2 rounded-full hover:bg-border transition-colors z-10 text-textMuted"
-               >
-                 <CloseIcon size={20} />
-               </button>
                <VersionHistory workbookId={workbookId} onClose={() => setShowVersionHistory(false)} />
             </div>
           </div>

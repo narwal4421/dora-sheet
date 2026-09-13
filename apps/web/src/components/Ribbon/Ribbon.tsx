@@ -20,6 +20,7 @@ import {
   ArrowDown, ArrowRight, Layers
 } from 'lucide-react';
 import { toast } from '../../store/useToastStore';
+import { socketService } from '../../services/socket.service';
 
 interface RibbonProps {
   onToggleAI: () => void;
@@ -136,17 +137,38 @@ export const Ribbon: FC<RibbonProps> = ({
     }
   }, [selectionBounds, activeCell]);
 
+  const getSelectedRefs = useCallback((): string[] => {
+    if (!selectionBounds) {
+      return activeCell ? [activeCell] : [];
+    }
+    const refs: string[] = [];
+    for (let r = selectionBounds.minR; r <= selectionBounds.maxR; r++) {
+      for (let c = selectionBounds.minC; c <= selectionBounds.maxC; c++) {
+        refs.push(`r_${r}_c_${c}`);
+      }
+    }
+    return refs;
+  }, [selectionBounds, activeCell]);
+
   const toggleFormat = <K extends keyof CellFormat>(key: K, val: CellFormat[K] = true as CellFormat[K]) => {
     const isSet = currentFmt[key] === val;
-    applyToSelection((ref) => {
-      setCellFormat(ref, { [key]: isSet ? undefined : val });
-    });
+    const patch = { [key]: isSet ? undefined : val };
+    const refs = getSelectedRefs();
+    if (refs.length === 1) {
+      setCellFormat(refs[0], patch);
+    } else if (refs.length > 1) {
+      useSheetStore.getState().setRangeFormat(refs, patch);
+    }
   };
 
   const setFormat = <K extends keyof CellFormat>(key: K, val: CellFormat[K]) => {
-    applyToSelection((ref) => {
-      setCellFormat(ref, { [key]: val });
-    });
+    const patch = { [key]: val };
+    const refs = getSelectedRefs();
+    if (refs.length === 1) {
+      setCellFormat(refs[0], patch);
+    } else if (refs.length > 1) {
+      useSheetStore.getState().setRangeFormat(refs, patch);
+    }
   };
 
   // Get active cell coordinate string e.g. "A1" or range "A1:B5"
@@ -200,17 +222,25 @@ export const Ribbon: FC<RibbonProps> = ({
       const start = activeCell ? parseRef(activeCell) : { r: 0, c: 0 };
 
       const rows = text.replace(/\r\n/g, '\n').split('\n');
+      const updates: Record<string, Partial<import('../../store/useSheetStore').CellData>> = {};
+      let maxCols = 0;
+
       rows.forEach((rowStr, rOffset) => {
         if (!rowStr && rOffset === rows.length - 1) return;
         const cols = rowStr.split('\t');
+        if (cols.length > maxCols) maxCols = cols.length;
         cols.forEach((val, cOffset) => {
           const targetRef = `r_${start.r + rOffset}_c_${start.c + cOffset}`;
           const isF = val.startsWith('=');
           const isNum = !isF && val.trim() !== '' && !isNaN(Number(val));
           const parsedVal = isNum ? Number(val) : val;
-          setCellData(targetRef, isF ? { f: val, v: undefined } : { v: parsedVal, f: undefined });
+          updates[targetRef] = isF ? { f: val, v: undefined } : { v: parsedVal, f: undefined };
         });
       });
+
+      useSheetStore.getState().ensureDimensions(start.r + rows.length, start.c + Math.max(maxCols, 30));
+      useSheetStore.getState().bulkSetCellData(updates);
+      socketService.emitBulkCellUpdate(useSheetStore.getState().activeSheetId, updates);
       toast('Pasted from clipboard', 'info');
     } catch {
       toast('Please use keyboard Ctrl+V to paste', 'warning');

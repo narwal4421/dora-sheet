@@ -681,20 +681,26 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
       const start = activeCell ? parseRef(activeCell) : { r: 0, c: 0 };
       const rows = text.replace(/\r\n/g, '\n').split('\n');
 
-      // Ensure grid dimensions are large enough to fit pasted data
-      useSheetStore.getState().ensureDimensions(start.r + rows.length, start.c + 30);
+      const updates: Record<string, Partial<import('../store/useSheetStore').CellData>> = {};
+      let maxCols = 0;
 
       rows.forEach((rowStr, rOffset) => {
         if (!rowStr && rOffset === rows.length - 1) return;
         const cols = rowStr.split('\t');
+        if (cols.length > maxCols) maxCols = cols.length;
         cols.forEach((val, cOffset) => {
           const targetRef = `r_${start.r + rOffset}_c_${start.c + cOffset}`;
           const isF = val.startsWith('=');
           const isNum = !isF && val.trim() !== '' && !isNaN(Number(val));
           const parsedVal = isNum ? Number(val) : val;
-          useSheetStore.getState().setCellData(targetRef, isF ? { f: val, v: undefined } : { v: parsedVal, f: undefined });
+          updates[targetRef] = isF ? { f: val, v: undefined } : { v: parsedVal, f: undefined };
         });
       });
+
+      // Ensure grid dimensions are large enough to fit pasted data
+      useSheetStore.getState().ensureDimensions(start.r + rows.length, start.c + Math.max(maxCols, 30));
+      useSheetStore.getState().bulkSetCellData(updates);
+      socketService.emitBulkCellUpdate(useSheetStore.getState().activeSheetId, updates);
       toast('Pasted', 'info');
     } catch {
       toast('Please use keyboard Ctrl+V to paste', 'warning');
@@ -750,6 +756,20 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
       e.preventDefault();
       handlePaste();
+      return;
+    }
+
+    // Fill Down: Ctrl + D
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      useSheetStore.getState().fillDown();
+      return;
+    }
+
+    // Fill Right: Ctrl + R
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'r') {
+      e.preventDefault();
+      useSheetStore.getState().fillRight();
       return;
     }
 
@@ -880,7 +900,6 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
           onClick: () => {
             const index = activeCell ? parseRef(activeCell).r : 0;
             useSheetStore.getState().insertRowAbove(index);
-            socketService.emitSheetAction(activeSheetId, 'insertRow', { index });
           }
         },
         {
@@ -889,7 +908,6 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
           onClick: () => {
             const colIndex = activeCell ? parseRef(activeCell).c : 0;
             useSheetStore.getState().insertColumnRight(colIndex);
-            socketService.emitSheetAction(activeSheetId, 'insertCol', { colIndex });
           }
         },
         {
@@ -900,7 +918,6 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
             const index = activeCell ? parseRef(activeCell).r : -1;
             if (index !== -1) {
               useSheetStore.getState().deleteRow(index);
-              socketService.emitSheetAction(activeSheetId, 'deleteRow', { index });
             }
           }
         },
@@ -912,7 +929,6 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
             const colIndex = activeCell ? parseRef(activeCell).c : -1;
             if (colIndex !== -1) {
               useSheetStore.getState().deleteColumn(colIndex);
-              socketService.emitSheetAction(activeSheetId, 'deleteCol', { colIndex });
             }
           }
         },
