@@ -1009,6 +1009,28 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
           onClick: () => {
             if (activeCell) useSheetStore.getState().clearCell(activeCell);
           }
+        },
+        {
+          label: 'Clear Selected Full Row',
+          icon: '━',
+          onClick: () => {
+            useSheetStore.getState().clearSelectedRow();
+          }
+        },
+        {
+          label: 'Clear Selected Full Column',
+          icon: '┃',
+          onClick: () => {
+            useSheetStore.getState().clearSelectedColumn();
+          }
+        },
+        {
+          label: 'Clear Full Sheet',
+          icon: '🗑',
+          danger: true,
+          onClick: () => {
+            useSheetStore.getState().clearSheet();
+          }
         }
       ]
     });

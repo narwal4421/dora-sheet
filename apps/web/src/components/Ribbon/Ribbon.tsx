@@ -323,6 +323,21 @@ export const Ribbon: FC<RibbonProps> = ({
     setShowClearMenu(false);
   };
 
+  const handleClearRow = () => {
+    useSheetStore.getState().clearSelectedRow();
+    setShowClearMenu(false);
+  };
+
+  const handleClearColumn = () => {
+    useSheetStore.getState().clearSelectedColumn();
+    setShowClearMenu(false);
+  };
+
+  const handleClearSheet = () => {
+    useSheetStore.getState().clearSheet();
+    setShowClearMenu(false);
+  };
+
   // Merge / Unmerge Toggle
   const handleToggleMerge = () => {
     if (isCurrentMerged && activeCell) {
@@ -914,7 +929,7 @@ export const Ribbon: FC<RibbonProps> = ({
                         onClick={handleClearAll}
                         className="px-3 py-1.5 text-xs text-left hover:bg-surfaceHover text-rose-400 flex items-center gap-1.5"
                       >
-                        <Trash2 size={12} /> Clear All
+                        <Trash2 size={12} /> Clear Selection All
                       </button>
                       <button 
                         onClick={handleClearFormats}
@@ -927,6 +942,30 @@ export const Ribbon: FC<RibbonProps> = ({
                         className="px-3 py-1.5 text-xs text-left hover:bg-surfaceHover text-textMain flex items-center gap-1.5"
                       >
                         <Eraser size={12} /> Clear Contents Only
+                      </button>
+                      
+                      <div className="border-t border-border/60 my-1" />
+
+                      <button 
+                        onClick={handleClearRow}
+                        className="px-3 py-1.5 text-xs text-left hover:bg-surfaceHover text-textMain flex items-center gap-1.5"
+                        title="Clear all contents from the selected row(s)"
+                      >
+                        <ArrowRight size={12} className="text-amber-400" /> Clear Selected Full Row
+                      </button>
+                      <button 
+                        onClick={handleClearColumn}
+                        className="px-3 py-1.5 text-xs text-left hover:bg-surfaceHover text-textMain flex items-center gap-1.5"
+                        title="Clear all contents from the selected column(s)"
+                      >
+                        <ArrowDown size={12} className="text-amber-400" /> Clear Selected Full Column
+                      </button>
+                      <button 
+                        onClick={handleClearSheet}
+                        className="px-3 py-1.5 text-xs text-left hover:bg-red-500/10 text-rose-500 font-semibold flex items-center gap-1.5"
+                        title="Clear all cells in the current active sheet"
+                      >
+                        <Trash2 size={12} className="text-rose-500" /> Clear Full Sheet
                       </button>
                     </div>
                   )}

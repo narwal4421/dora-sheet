@@ -194,6 +194,8 @@ interface SheetState {
   clearCell: (ref: string) => void;
   clearCellFormats: (ref: string) => void;
   clearSheet: () => void;
+  clearSelectedRow: (rowIndex?: number) => void;
+  clearSelectedColumn: (colIndex?: number) => void;
   clearRange: (refs: string[]) => void;
   clearRangeFormats: (refs: string[]) => void;
   clearRangeContents: (refs: string[]) => void;
@@ -799,11 +801,83 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     socketService.emitCellUpdate(get().activeSheetId, ref, { v: null, f: null });
   },
 
-  clearSheet: () => set(state => {
+  clearSheet: () => {
+    const state = get();
     const history = [...state.history, state.data].slice(-50);
     const updatedSheets = state.sheets.map(s => s.id === state.activeSheetId ? { ...s, data: {} } : s);
-    return { data: {}, sheets: updatedSheets, history, future: [] };
-  }),
+    set({ data: {}, sheets: updatedSheets, history, future: [] });
+
+    socketService.emitSheetAction(state.activeSheetId, 'clearSheet', {});
+    toast('Cleared full sheet', 'info');
+  },
+
+  clearSelectedRow: (rowIndex?: number) => {
+    const state = get();
+    let minR = 0;
+    let maxR = 0;
+    if (rowIndex !== undefined) {
+      minR = rowIndex;
+      maxR = rowIndex;
+    } else if (state.selectionRange) {
+      const s = parseRef(state.selectionRange.start);
+      const e = parseRef(state.selectionRange.end);
+      minR = Math.min(s.r, e.r);
+      maxR = Math.max(s.r, e.r);
+    } else if (state.activeCell) {
+      const cur = parseRef(state.activeCell);
+      minR = cur.r;
+      maxR = cur.r;
+    }
+
+    const refsToClear: string[] = [];
+    Object.keys(state.data).forEach(ref => {
+      const parsed = parseRef(ref);
+      if (parsed.r >= minR && parsed.r <= maxR) {
+        refsToClear.push(ref);
+      }
+    });
+
+    if (refsToClear.length > 0) {
+      state.clearRange(refsToClear);
+    }
+    const label = minR === maxR ? `Row ${minR + 1}` : `Rows ${minR + 1}–${maxR + 1}`;
+    toast(`Cleared full ${label}`, 'info');
+  },
+
+  clearSelectedColumn: (colIndex?: number) => {
+    const state = get();
+    let minC = 0;
+    let maxC = 0;
+    if (colIndex !== undefined) {
+      minC = colIndex;
+      maxC = colIndex;
+    } else if (state.selectionRange) {
+      const s = parseRef(state.selectionRange.start);
+      const e = parseRef(state.selectionRange.end);
+      minC = Math.min(s.c, e.c);
+      maxC = Math.max(s.c, e.c);
+    } else if (state.activeCell) {
+      const cur = parseRef(state.activeCell);
+      minC = cur.c;
+      maxC = cur.c;
+    }
+
+    const refsToClear: string[] = [];
+    Object.keys(state.data).forEach(ref => {
+      const parsed = parseRef(ref);
+      if (parsed.c >= minC && parsed.c <= maxC) {
+        refsToClear.push(ref);
+      }
+    });
+
+    if (refsToClear.length > 0) {
+      state.clearRange(refsToClear);
+    }
+    const colName1 = String.fromCharCode(65 + (minC % 26));
+    const colName2 = String.fromCharCode(65 + (maxC % 26));
+    const label = minC === maxC ? `Column ${colName1}` : `Columns ${colName1}–${colName2}`;
+    toast(`Cleared full ${label}`, 'info');
+  },
 
   clearRange: (refs) => {
     set(state => {

@@ -25,6 +25,26 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
   const [waitingForOperand, setWaitingForOperand] = useState<boolean>(false);
   const [lastOperator, setLastOperator] = useState<string | null>(null);
   const [prevValue, setPrevValue] = useState<number | null>(null);
+  const [wasdEnabled, setWasdEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('dora_calc_wasd') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleWasd = useCallback(() => {
+    setWasdEnabled(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('dora_calc_wasd', String(next));
+      } catch {
+        // ignore
+      }
+      toast(`WASD Navigation: ${next ? 'ON' : 'OFF'}`, 'info');
+      return next;
+    });
+  }, []);
 
   // 120 FPS Zero-Latency Hardware-Accelerated Dragging
   const posRef = useRef<{ x: number; y: number }>({ x: 80, y: 100 });
@@ -453,22 +473,23 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     // 1. WASD & Arrow Key Sheet Navigation: Move the active box
     if (!e.ctrlKey && !e.altKey && !e.metaKey) {
       const key = e.key.toLowerCase();
-      if (key === 'w' || e.key === 'ArrowUp') {
+      // Arrow keys always work; WASD keys work when wasdEnabled is true
+      if ((wasdEnabled && key === 'w') || e.key === 'ArrowUp') {
         e.preventDefault();
         moveActiveCell(-1, 0, e.shiftKey);
         return;
       }
-      if (key === 's' || e.key === 'ArrowDown') {
+      if ((wasdEnabled && key === 's') || e.key === 'ArrowDown') {
         e.preventDefault();
         moveActiveCell(1, 0, e.shiftKey);
         return;
       }
-      if (key === 'a' || e.key === 'ArrowLeft') {
+      if ((wasdEnabled && key === 'a') || e.key === 'ArrowLeft') {
         e.preventDefault();
         moveActiveCell(0, -1, e.shiftKey);
         return;
       }
-      if (key === 'd' || e.key === 'ArrowRight') {
+      if ((wasdEnabled && key === 'd') || e.key === 'ArrowRight') {
         e.preventDefault();
         moveActiveCell(0, 1, e.shiftKey);
         return;
@@ -501,7 +522,7 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     } else if (e.key === 'Escape') {
       clearAll();
     }
-  }, [isOpen, moveActiveCell, handleCalculateAndInsert, inputDigit, inputDecimal, performOperation, calculateEquals, backspace, clearAll]);
+  }, [isOpen, wasdEnabled, moveActiveCell, handleCalculateAndInsert, inputDigit, inputDecimal, performOperation, calculateEquals, backspace, clearAll]);
 
   useEffect(() => {
     if (isOpen) {
@@ -583,9 +604,22 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
         {/* Cell Destination Bar */}
         <div className="mt-2 pt-2 border-t border-border/30 flex flex-col gap-1.5 text-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 text-textMuted text-[11px]">
+            <div className="flex items-center gap-1.5 text-textMuted text-[11px]">
               <span>Active:</span>
               <span className="font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded">{activeCellA1}</span>
+              <button
+                onClick={toggleWasd}
+                className={`ml-1 flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold transition-all active:scale-95 ${
+                  wasdEnabled
+                    ? 'bg-accent/20 text-accent border border-accent/40 shadow-sm'
+                    : 'bg-surfaceHover text-textMuted border border-border/40 hover:text-textMain'
+                }`}
+                title={`Click to ${wasdEnabled ? 'turn OFF' : 'turn ON'} WASD sheet navigation`}
+              >
+                <span>WASD</span>
+                <span className={`w-1.5 h-1.5 rounded-full ${wasdEnabled ? 'bg-emerald-400' : 'bg-textMuted/40'}`} />
+                <span className="text-[9px] uppercase font-bold">{wasdEnabled ? 'ON' : 'OFF'}</span>
+              </button>
             </div>
 
           <div className="flex items-center gap-1.5">
@@ -617,10 +651,18 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
           </div>
           {/* Keyboard shortcut hint */}
           <div className="flex items-center flex-wrap gap-2 text-[10px] text-textMuted font-mono pt-0.5">
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded bg-accent/15 border border-accent/30 text-accent font-bold text-[9px]">WASD</kbd>
-              <span className="text-[10px]">Move Box</span>
-            </span>
+            <button
+              onClick={toggleWasd}
+              className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+              title={`Click to ${wasdEnabled ? 'turn OFF' : 'turn ON'} WASD`}
+            >
+              <kbd className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${wasdEnabled ? 'bg-accent/15 border-accent/30 text-accent' : 'bg-surfaceHover border-border/60 text-textMuted/60 line-through'}`}>
+                WASD
+              </kbd>
+              <span className={`text-[10px] ${wasdEnabled ? 'text-accent' : 'text-textMuted/60'}`}>
+                {wasdEnabled ? 'Move Box' : 'WASD Off'}
+              </span>
+            </button>
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 rounded bg-surfaceHover border border-border/60 text-[9px]">NumPad</kbd>
               <span className="text-[10px]">Calculate</span>
