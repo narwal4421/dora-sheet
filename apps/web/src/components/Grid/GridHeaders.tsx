@@ -76,7 +76,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
             
             {/* Column Resize Handle */}
             <div 
-              className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-50 group flex items-center justify-end" 
+              className="absolute -right-1.5 top-0 w-3 h-full cursor-col-resize z-50 group flex items-center justify-center hover:bg-accent/20 transition-colors" 
               onMouseDown={(e) => {
                 e.stopPropagation();
                 onColResizeStart(e, virtualCol.index, virtualCol.size);
@@ -85,7 +85,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
                 e.stopPropagation();
                 onAutoFit(virtualCol.index);
               }}
-              title="Drag to resize, double-click to AutoFit Column Width"
+              title="Drag border to resize column, double-click to AutoFit"
             >
               <div className="w-[2px] h-full bg-border/60 group-hover:bg-accent transition-colors" />
             </div>
@@ -118,7 +118,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
 
               {/* Row Resize Handle */}
               <div 
-                className="absolute left-0 bottom-0 w-full h-2 cursor-row-resize z-50 group flex items-end justify-center" 
+                className="absolute left-0 -bottom-1.5 w-full h-3 cursor-row-resize z-50 group flex items-center justify-center hover:bg-accent/20 transition-colors" 
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   onRowResizeStart(e, virtualRow.index, virtualRow.size);
@@ -127,7 +127,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
                   e.stopPropagation();
                   onAutoFitRow?.(rowIndex);
                 }}
-                title="Drag to resize, double-click to AutoFit Row Height"
+                title="Drag border to resize row, double-click to AutoFit"
               >
                 <div className="w-full h-[2px] bg-border/60 group-hover:bg-accent transition-colors" />
               </div>

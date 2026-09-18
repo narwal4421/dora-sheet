@@ -140,9 +140,24 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
 
   // --- INTERACTION HANDLERS ---
   const handleCellSelect = useCallback((ref: string) => {
-    useSheetStore.getState().setActiveCell(ref);
-    useSheetStore.getState().setSelectionRange({ start: ref, end: ref });
+    let targetStart = ref;
+    let targetEnd = ref;
     const { r, c } = parseRef(ref);
+    const mergedObj = useSheetStore.getState().mergedCells;
+    for (const bounds of Object.values(mergedObj)) {
+      const [st, en] = bounds.split(':');
+      if (!st || !en) continue;
+      const s = parseRef(st);
+      const e = parseRef(en);
+      if (r >= Math.min(s.r, e.r) && r <= Math.max(s.r, e.r) &&
+          c >= Math.min(s.c, e.c) && c <= Math.max(s.c, e.c)) {
+        targetStart = `r_${Math.min(s.r, e.r)}_c_${Math.min(s.c, e.c)}`;
+        targetEnd = `r_${Math.max(s.r, e.r)}_c_${Math.max(s.c, e.c)}`;
+        break;
+      }
+    }
+    useSheetStore.getState().setActiveCell(targetStart);
+    useSheetStore.getState().setSelectionRange({ start: targetStart, end: targetEnd });
     socketService.emitCursorMove(localUserName, activeSheetId, r, c, '#6366f1');
   }, [localUserName, activeSheetId]);
 
@@ -156,6 +171,18 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     }
     colVirtualizer.scrollToIndex(c, { align: 'auto' });
   }, [activeCell, visibleRowIndices, rowVirtualizer, colVirtualizer]);
+
+  // Force virtualizer to re-measure when column widths change (drag resize / autoFit)
+  useEffect(() => {
+    colVirtualizer.measure();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnWidths]);
+
+  // Force virtualizer to re-measure when row heights change (drag resize / autoFit / wrap text)
+  useEffect(() => {
+    rowVirtualizer.measure();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowHeights, visibleRowIndices]);
 
   // Excel Mouse Power: Format Painter apply, Shift+Click expand, Ctrl+Click multi-select, Standard Click
   const handleCellMouseDown = useCallback((ref: string, e?: React.MouseEvent) => {
@@ -193,8 +220,24 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     clearMultiSelection();
     setSmartTag(null);
     setIsSelecting(true);
-    useSheetStore.getState().setActiveCell(ref);
-    useSheetStore.getState().setSelectionRange({ start: ref, end: ref });
+    let targetStart = ref;
+    let targetEnd = ref;
+    const { r, c } = parseRef(ref);
+    const mergedObj = useSheetStore.getState().mergedCells;
+    for (const bounds of Object.values(mergedObj)) {
+      const [st, en] = bounds.split(':');
+      if (!st || !en) continue;
+      const s = parseRef(st);
+      const e = parseRef(en);
+      if (r >= Math.min(s.r, e.r) && r <= Math.max(s.r, e.r) &&
+          c >= Math.min(s.c, e.c) && c <= Math.max(s.c, e.c)) {
+        targetStart = `r_${Math.min(s.r, e.r)}_c_${Math.min(s.c, e.c)}`;
+        targetEnd = `r_${Math.max(s.r, e.r)}_c_${Math.max(s.c, e.c)}`;
+        break;
+      }
+    }
+    useSheetStore.getState().setActiveCell(targetStart);
+    useSheetStore.getState().setSelectionRange({ start: targetStart, end: targetEnd });
   }, [isDashboard, activeCell, formatPainter, deactivateFormatPainter, addSelectionRange, clearMultiSelection]);
 
   // Excel Mouse Power: Double-click border to jump to data boundary (like Ctrl+Arrow)
@@ -345,6 +388,51 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
         }
       }
       useSheetStore.getState().setSelectionRange({ start: `r_${minR}_c_${minC}`, end: `r_${maxR}_c_${t.c}` });
+    }
+    // Filling Up
+    else if (t.r < minR) {
+      const srcRowCount = maxR - minR + 1;
+      for (let r = minR - 1; r >= t.r; r--) {
+        for (let c = minC; c <= maxC; c++) {
+          const srcR = maxR - ((minR - 1 - r) % srcRowCount);
+          const srcCell = data[`r_${srcR}_c_${c}`];
+          const targetRef = `r_${r}_c_${c}`;
+
+          if (srcCell?.v !== undefined && !isNaN(Number(srcCell.v))) {
+            const val1 = Number(srcCell.v);
+            const step = srcRowCount > 1 && data[`r_${minR + 1}_c_${c}`]?.v !== undefined 
+              ? Number(data[`r_${minR + 1}_c_${c}`]?.v) - Number(data[`r_${minR}_c_${c}`]?.v)
+              : 1;
+            const multiplier = Math.floor((minR - r) / srcRowCount) + 1;
+            useSheetStore.getState().setCellData(targetRef, { v: val1 - step * multiplier, fmt: srcCell.fmt });
+          } else if (srcCell?.f) {
+            useSheetStore.getState().setCellData(targetRef, { f: srcCell.f, fmt: srcCell.fmt });
+          } else if (srcCell) {
+            useSheetStore.getState().setCellData(targetRef, { v: srcCell.v, fmt: srcCell.fmt });
+          }
+        }
+      }
+      useSheetStore.getState().setSelectionRange({ start: `r_${t.r}_c_${minC}`, end: `r_${maxR}_c_${maxC}` });
+    }
+    // Filling Left
+    else if (t.c < minC) {
+      const srcColCount = maxC - minC + 1;
+      for (let c = minC - 1; c >= t.c; c--) {
+        for (let r = minR; r <= maxR; r++) {
+          const srcC = maxC - ((minC - 1 - c) % srcColCount);
+          const srcCell = data[`r_${r}_c_${srcC}`];
+          const targetRef = `r_${r}_c_${c}`;
+
+          if (srcCell?.v !== undefined && !isNaN(Number(srcCell.v))) {
+            const val1 = Number(srcCell.v);
+            const multiplier = Math.floor((minC - c) / srcColCount) + 1;
+            useSheetStore.getState().setCellData(targetRef, { v: val1 - multiplier, fmt: srcCell.fmt });
+          } else if (srcCell) {
+            useSheetStore.getState().setCellData(targetRef, { v: srcCell.v, f: srcCell.f, fmt: srcCell.fmt });
+          }
+        }
+      }
+      useSheetStore.getState().setSelectionRange({ start: `r_${minR}_c_${t.c}`, end: `r_${maxR}_c_${maxC}` });
     }
   }, [selectionRange, autoFillTarget, data]);
 
@@ -511,10 +599,28 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     const start = parseRef(selectionRange.start);
     const end = parseRef(selectionRange.end);
     
-    const minR = Math.min(start.r, end.r);
-    const maxR = Math.max(start.r, end.r);
-    const minC = Math.min(start.c, end.c);
-    const maxC = Math.max(start.c, end.c);
+    let minR = Math.min(start.r, end.r);
+    let maxR = Math.max(start.r, end.r);
+    let minC = Math.min(start.c, end.c);
+    let maxC = Math.max(start.c, end.c);
+
+    // Expand bounding box to encompass any intersecting merged cells
+    Object.values(mergedCells).forEach(bounds => {
+      const [st, en] = bounds.split(':');
+      if (!st || !en) return;
+      const s = parseRef(st);
+      const e = parseRef(en);
+      const mMinR = Math.min(s.r, e.r);
+      const mMaxR = Math.max(s.r, e.r);
+      const mMinC = Math.min(s.c, e.c);
+      const mMaxC = Math.max(s.c, e.c);
+      if (minR <= mMaxR && maxR >= mMinR && minC <= mMaxC && maxC >= mMinC) {
+        minR = Math.min(minR, mMinR);
+        maxR = Math.max(maxR, mMaxR);
+        minC = Math.min(minC, mMinC);
+        maxC = Math.max(maxC, mMaxC);
+      }
+    });
 
     // Find the first and last visible row indices within the selection range
     let vStart = -1;
@@ -547,7 +653,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     for (let i = minC; i <= maxC; i++) width += columnWidths[i] || 100;
 
     return { top: top + finalHeaderH, left: left + finalIndexW, width, height };
-  }, [selectionRange, rowHeights, columnWidths, visibleRowIndices, finalHeaderH, finalIndexW]);
+  }, [selectionRange, mergedCells, rowHeights, columnWidths, visibleRowIndices, finalHeaderH, finalIndexW]);
 
   // --- AUTO-FILL GHOST PREVIEW STYLE ---
   const autoFillPreviewStyle = useMemo(() => {
@@ -1004,6 +1110,78 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
         },
         { divider: true },
         {
+          label: (() => {
+            if (!activeCell) return 'Merge Cells';
+            const { r, c } = parseRef(activeCell);
+            const isMerged = Object.values(useSheetStore.getState().mergedCells).some(bounds => {
+              const [st, en] = bounds.split(':');
+              const s = parseRef(st); const e = parseRef(en);
+              return r >= Math.min(s.r, e.r) && r <= Math.max(s.r, e.r) && c >= Math.min(s.c, e.c) && c <= Math.max(s.c, e.c);
+            });
+            return isMerged ? 'Unmerge Cells' : 'Merge & Center';
+          })(),
+          icon: '⊞',
+          onClick: () => {
+            if (!activeCell) return;
+            const { r, c } = parseRef(activeCell);
+            const isMerged = Object.values(useSheetStore.getState().mergedCells).some(bounds => {
+              const [st, en] = bounds.split(':');
+              const s = parseRef(st); const e = parseRef(en);
+              return r >= Math.min(s.r, e.r) && r <= Math.max(s.r, e.r) && c >= Math.min(s.c, e.c) && c <= Math.max(s.c, e.c);
+            });
+            if (isMerged) {
+              useSheetStore.getState().unmergeCell(activeCell);
+            } else if (selectionRange) {
+              const s = parseRef(selectionRange.start);
+              const e = parseRef(selectionRange.end);
+              const refs: string[] = [];
+              for (let row = Math.min(s.r, e.r); row <= Math.max(s.r, e.r); row++)
+                for (let col = Math.min(s.c, e.c); col <= Math.max(s.c, e.c); col++)
+                  refs.push(`r_${row}_c_${col}`);
+              if (refs.length >= 2) useSheetStore.getState().mergeCell(refs);
+            }
+          }
+        },
+        { divider: true },
+        {
+          label: 'AutoFit Column Width',
+          icon: '↔',
+          onClick: () => {
+            if (activeCell) useSheetStore.getState().autoFitColumn(parseRef(activeCell).c);
+          }
+        },
+        {
+          label: 'AutoFit Row Height',
+          icon: '↕',
+          onClick: () => {
+            if (activeCell) useSheetStore.getState().autoFitRow(parseRef(activeCell).r);
+          }
+        },
+        { divider: true },
+        {
+          label: 'Stretch Column Width (+20px)',
+          icon: '↔+',
+          onClick: () => {
+            if (activeCell) {
+              const c = parseRef(activeCell).c;
+              const cur = useSheetStore.getState().columnWidths[c] || 100;
+              useSheetStore.getState().setColumnWidth(c, cur + 20);
+            }
+          }
+        },
+        {
+          label: 'Stretch Row Height (+10px)',
+          icon: '↕+',
+          onClick: () => {
+            if (activeCell) {
+              const r = parseRef(activeCell).r;
+              const cur = useSheetStore.getState().rowHeights[r] || 24;
+              useSheetStore.getState().setRowHeight(r, cur + 10);
+            }
+          }
+        },
+        { divider: true },
+        {
           label: 'Clear Contents',
           icon: '⌫',
           onClick: () => {
@@ -1179,15 +1357,43 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
             }}
             onColResizeStart={(e, idx, w) => {
               const startX = e.clientX;
-              const onMove = (me: MouseEvent) => useSheetStore.getState().setColumnWidth(idx, Math.max(40, w + me.clientX - startX));
-              const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+              const prevCursor = document.body.style.cursor;
+              const prevUserSelect = document.body.style.userSelect;
+              document.body.style.cursor = 'col-resize';
+              document.body.style.userSelect = 'none';
+
+              const onMove = (me: MouseEvent) => {
+                useSheetStore.getState().setColumnWidth(idx, Math.max(40, w + me.clientX - startX));
+                colVirtualizer.measure();
+              };
+              const onUp = () => {
+                document.body.style.cursor = prevCursor;
+                document.body.style.userSelect = prevUserSelect;
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+                colVirtualizer.measure();
+              };
               window.addEventListener('mousemove', onMove);
               window.addEventListener('mouseup', onUp);
             }}
             onRowResizeStart={(e, idx, h) => {
               const startY = e.clientY;
-              const onMove = (me: MouseEvent) => useSheetStore.getState().setRowHeight(visibleRowIndices[idx], Math.max(20, h + me.clientY - startY));
-              const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+              const prevCursor = document.body.style.cursor;
+              const prevUserSelect = document.body.style.userSelect;
+              document.body.style.cursor = 'row-resize';
+              document.body.style.userSelect = 'none';
+
+              const onMove = (me: MouseEvent) => {
+                useSheetStore.getState().setRowHeight(visibleRowIndices[idx], Math.max(20, h + me.clientY - startY));
+                rowVirtualizer.measure();
+              };
+              const onUp = () => {
+                document.body.style.cursor = prevCursor;
+                document.body.style.userSelect = prevUserSelect;
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+                rowVirtualizer.measure();
+              };
               window.addEventListener('mousemove', onMove);
               window.addEventListener('mouseup', onUp);
             }}

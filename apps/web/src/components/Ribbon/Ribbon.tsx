@@ -84,6 +84,8 @@ export const Ribbon: FC<RibbonProps> = ({
   const freezeCol = useSheetStore(state => state.freezeCol);
   const setFreezeRow = useSheetStore(state => state.setFreezeRow);
   const setFreezeCol = useSheetStore(state => state.setFreezeCol);
+  const columnWidths = useSheetStore(state => state.columnWidths);
+  const rowHeights = useSheetStore(state => state.rowHeights);
 
   const [showPasteSpecialMenu, setShowPasteSpecialMenu] = useState(false);
   const [showClearMenu, setShowClearMenu] = useState(false);
@@ -836,7 +838,7 @@ export const Ribbon: FC<RibbonProps> = ({
 
               <div className="w-[1px] h-6 bg-border/70 mx-0.5" />
 
-              {/* AutoFit Commands */}
+              {/* AutoFit + Stretch Commands */}
               <div className="flex flex-col gap-0.5">
                 <button
                   onClick={() => {
@@ -872,6 +874,97 @@ export const Ribbon: FC<RibbonProps> = ({
                 >
                   <span>↕ AutoFit Row</span>
                 </button>
+              </div>
+
+              <div className="w-[1px] h-6 bg-border/70 mx-0.5" />
+
+              {/* Stretch & Shrink (manual size adjustment) */}
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      const step = 20;
+                      if (selectionBounds) {
+                        for (let c = selectionBounds.minC; c <= selectionBounds.maxC; c++) {
+                          const cur = columnWidths[c] || 100;
+                          useSheetStore.getState().setColumnWidth(c, cur + step);
+                        }
+                      } else if (activeCell) {
+                        const c = parseInt(activeCell.split('_')[3], 10);
+                        const cur = columnWidths[c] || 100;
+                        useSheetStore.getState().setColumnWidth(c, cur + step);
+                      }
+                      toast('Column width increased (+20px)', 'info');
+                    }}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-medium text-textMuted hover:bg-surfaceHover hover:text-sky-400 flex items-center gap-0.5"
+                    title="Stretch Column Width: Increase selected column(s) width by 20px"
+                  >
+                    <span>↔+ Stretch Col</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const step = 20;
+                      if (selectionBounds) {
+                        for (let c = selectionBounds.minC; c <= selectionBounds.maxC; c++) {
+                          const cur = columnWidths[c] || 100;
+                          useSheetStore.getState().setColumnWidth(c, Math.max(40, cur - step));
+                        }
+                      } else if (activeCell) {
+                        const c = parseInt(activeCell.split('_')[3], 10);
+                        const cur = columnWidths[c] || 100;
+                        useSheetStore.getState().setColumnWidth(c, Math.max(40, cur - step));
+                      }
+                      toast('Column width decreased (-20px)', 'info');
+                    }}
+                    className="px-1 py-0.5 rounded text-[10px] font-medium text-textMuted hover:bg-surfaceHover hover:text-sky-400 flex items-center"
+                    title="Shrink Column Width: Decrease selected column(s) width by 20px"
+                  >
+                    <span>↔-</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      const step = 10;
+                      if (selectionBounds) {
+                        for (let r = selectionBounds.minR; r <= selectionBounds.maxR; r++) {
+                          const cur = rowHeights[r] || 24;
+                          useSheetStore.getState().setRowHeight(r, cur + step);
+                        }
+                      } else if (activeCell) {
+                        const r = parseInt(activeCell.split('_')[1], 10);
+                        const cur = rowHeights[r] || 24;
+                        useSheetStore.getState().setRowHeight(r, cur + step);
+                      }
+                      toast('Row height increased (+10px)', 'info');
+                    }}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-medium text-textMuted hover:bg-surfaceHover hover:text-sky-400 flex items-center gap-0.5"
+                    title="Stretch Row Height: Increase selected row(s) height by 10px"
+                  >
+                    <span>↕+ Stretch Row</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const step = 10;
+                      if (selectionBounds) {
+                        for (let r = selectionBounds.minR; r <= selectionBounds.maxR; r++) {
+                          const cur = rowHeights[r] || 24;
+                          useSheetStore.getState().setRowHeight(r, Math.max(20, cur - step));
+                        }
+                      } else if (activeCell) {
+                        const r = parseInt(activeCell.split('_')[1], 10);
+                        const cur = rowHeights[r] || 24;
+                        useSheetStore.getState().setRowHeight(r, Math.max(20, cur - step));
+                      }
+                      toast('Row height decreased (-10px)', 'info');
+                    }}
+                    className="px-1 py-0.5 rounded text-[10px] font-medium text-textMuted hover:bg-surfaceHover hover:text-sky-400 flex items-center"
+                    title="Shrink Row Height: Decrease selected row(s) height by 10px"
+                  >
+                    <span>↕-</span>
+                  </button>
+                </div>
               </div>
             </div>
 
