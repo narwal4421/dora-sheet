@@ -43,6 +43,7 @@ export type CursorMoveEvent = {
   col: number;
   color: string;
   timestamp: number;
+  selectionRange?: { start: string; end: string } | null;
 };
 
 export type CellLockEvent = {
@@ -208,6 +209,7 @@ interface SheetState {
   applyRemoteUpdate: (event: CellUpdateEvent) => void;
   applyRemoteBulkUpdate: (updates: Record<string, Partial<CellData>>, sheetId?: string) => void;
   updateRemoteCursor: (event: CursorMoveEvent) => void;
+  removeRemoteCursor: (userId: string) => void;
   cleanupStaleCursors: () => void;
   updateCellLock: (event: CellLockEvent) => void;
   applyRemoteSheetAction: (payload: RemoteSheetActionPayload) => void;
@@ -218,6 +220,8 @@ interface SheetState {
   setLocalUserName: (name: string) => void;
   localUserId: string | null;
   setLocalUserId: (id: string) => void;
+  localUserColor: string;
+  setLocalUserColor: (color: string) => void;
   workbookName: string;
   renameWorkbook: (name: string) => void;
   isLocked: boolean;
@@ -361,6 +365,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   isHost: true,
   localUserName: localStorage.getItem('userName') || 'Guest User',
   localUserId: null,
+  localUserColor: '#107c41',
   workbookName: 'Untitled Workbook',
   isLocked: false,
   roomLockError: false,
@@ -416,6 +421,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     set({ localUserName: name });
   },
   setLocalUserId: (id) => set({ localUserId: id }),
+  setLocalUserColor: (color) => set({ localUserColor: color }),
   renameWorkbook: (name) => set({ workbookName: name }),
   setConnectedUsers: (users) => set({ connectedUsers: users }),
   addTeamMessage: (msg) => set(state => {
@@ -510,6 +516,13 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   updateRemoteCursor: (event) => set(state => ({
     cursors: { ...state.cursors, [event.userId]: { ...event, timestamp: Date.now() } }
   })),
+
+  removeRemoteCursor: (userId: string) => set(state => {
+    if (!state.cursors[userId]) return {};
+    const newCursors = { ...state.cursors };
+    delete newCursors[userId];
+    return { cursors: newCursors };
+  }),
 
   cleanupStaleCursors: () => set(state => {
     const now = Date.now();

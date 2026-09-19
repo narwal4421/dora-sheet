@@ -7,9 +7,9 @@ exports.redis = void 0;
 const ioredis_1 = __importDefault(require("ioredis"));
 const env_1 = require("./env");
 /**
- * GOD LEVEL REDIS CONFIGURATION
+ * Redis Client Configuration
  * Handles Production (ioredis), Local (ioredis with fallback), and Mock environments.
- * Implements sophisticated retry logic and atomic command support.
+ * Implements retry logic and atomic command support.
  */
 class RedisManager {
     static instance;

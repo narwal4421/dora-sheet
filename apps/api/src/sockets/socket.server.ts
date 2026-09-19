@@ -253,7 +253,11 @@ export const initSockets = (httpServer: Server) => {
 
     socket.on('cursor_move', (payload: any) => {
       if (!activeWorkbookId) return;
-      socket.to(`workbook:${activeWorkbookId}`).emit('cursor_moved', { ...payload, userId });
+      socket.to(`workbook:${activeWorkbookId}`).emit('cursor_moved', { 
+        ...payload, 
+        userId,
+        color: socket.data.color || payload.color 
+      });
     });
 
     // --- DOMAIN: CHAT & UTILS ---

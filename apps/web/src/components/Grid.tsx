@@ -36,14 +36,11 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
   const parentRef = useRef<HTMLDivElement>(null);
   
   // --- STATE SELECTORS ---
-  const data = useSheetStore(state => state.data);
   const rowCount = useSheetStore(state => state.rowCount);
   const colCount = useSheetStore(state => state.colCount);
   const activeCell = useSheetStore(state => state.activeCell);
   const editingCell = useSheetStore(state => state.editingCell);
   const selectionRange = useSheetStore(state => state.selectionRange);
-  const remoteCursors = useSheetStore(state => state.cursors);
-  const connectedUsers = useSheetStore(state => state.connectedUsers);
   const localUserName = useSheetStore(state => state.localUserName);
   const hiddenRows = useSheetStore(state => state.hiddenRows);
   const columnWidths = useSheetStore(state => state.columnWidths);
@@ -157,7 +154,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     }
     useSheetStore.getState().setActiveCell(targetStart);
     useSheetStore.getState().setSelectionRange({ start: targetStart, end: targetEnd });
-    socketService.emitCursorMove(localUserName, activeSheetId, r, c, '#107c41');
+    socketService.emitCursorMove(localUserName, activeSheetId, r, c);
   }, [localUserName, activeSheetId]);
 
   // Keep active cell scrolled into view during keyboard / WASD navigation
@@ -242,6 +239,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
   // Excel Mouse Power: Double-click border to jump to data boundary (like Ctrl+Arrow)
   const handleBorderDoubleClick = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
     if (!activeCell) return;
+    const data = useSheetStore.getState().data;
     const { r, c } = parseRef(activeCell);
     let targetR = r;
     let targetC = c;
@@ -310,7 +308,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
 
     const targetRef = `r_${targetR}_c_${targetC}`;
     handleCellSelect(targetRef);
-  }, [activeCell, data, rowCount, colCount, handleCellSelect]);
+  }, [activeCell, rowCount, colCount, handleCellSelect]);
 
   const handleCellMouseEnter = useCallback((ref: string) => {
     if (isDashboard) return;
@@ -326,12 +324,15 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     const start = useSheetStore.getState().activeCell;
     if (start) {
       useSheetStore.getState().setSelectionRange({ start, end: ref });
+      const { r, c } = parseRef(ref);
+      socketService.emitCursorMove(localUserName, activeSheetId, r, c, undefined, { start, end: ref });
     }
-  }, [isSelecting, isAutoFilling, isMovingSelection, isDashboard]);
+  }, [isSelecting, isAutoFilling, isMovingSelection, isDashboard, localUserName, activeSheetId]);
 
   // Execute AutoFill when drag release occurs
   const executeAutoFill = useCallback(() => {
     if (!selectionRange || !autoFillTarget) return;
+    const data = useSheetStore.getState().data;
     const s = parseRef(selectionRange.start);
     const e = parseRef(selectionRange.end);
     const t = parseRef(autoFillTarget);
@@ -433,11 +434,12 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
       }
       useSheetStore.getState().setSelectionRange({ start: `r_${minR}_c_${t.c}`, end: `r_${maxR}_c_${maxC}` });
     }
-  }, [selectionRange, autoFillTarget, data]);
+  }, [selectionRange, autoFillTarget]);
 
   // Double-Click Flash Fill Down to adjacent column boundary
   const handleAutoFillDoubleClick = useCallback(() => {
     if (!selectionRange) return;
+    const data = useSheetStore.getState().data;
     const s = parseRef(selectionRange.start);
     const e = parseRef(selectionRange.end);
     const minR = Math.min(s.r, e.r);
@@ -486,11 +488,12 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
       useSheetStore.getState().setSelectionRange({ start: `r_${minR}_c_${minC}`, end: `r_${targetBottomRow}_c_${maxC}` });
       toast(`Auto-filled to row ${targetBottomRow + 1}`, 'success');
     }
-  }, [selectionRange, colCount, rowCount, data]);
+  }, [selectionRange, colCount, rowCount]);
 
   // Execute Move or Copy Selection via mouse drag
   const executeMoveSelection = useCallback(() => {
     if (!selectionRange || !moveTarget) return;
+    const data = useSheetStore.getState().data;
     const s = parseRef(selectionRange.start);
     const e = parseRef(selectionRange.end);
     const t = parseRef(moveTarget);
@@ -531,7 +534,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     useSheetStore.getState().setActiveCell(newStart);
     useSheetStore.getState().setSelectionRange({ start: newStart, end: newEnd });
     toast(isCopyMove ? 'Copied selection' : 'Moved selection', 'info');
-  }, [selectionRange, moveTarget, data, isCopyMove]);
+  }, [selectionRange, moveTarget, isCopyMove]);
 
   const handleGlobalMouseUp = useCallback(() => {
     if (isAutoFilling) {
@@ -701,6 +704,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
   // --- LIVE QUICK STATS PILL ON MOUSE SELECTION (Aggregates Single + Disjoint Multi-Selection) ---
   const quickStats = useMemo(() => {
     if (allSelectedRefs.size < 2) return null;
+    const data = useSheetStore.getState().data;
 
     let sum = 0;
     let numericCount = 0;
@@ -731,7 +735,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
       min: numericCount > 0 ? min : null,
       max: numericCount > 0 ? max : null
     };
-  }, [allSelectedRefs, data]);
+  }, [allSelectedRefs]);
 
   // --- ENGINE LIFECYCLE ---
   useEffect(() => {
@@ -741,6 +745,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
   // --- CLIPBOARD ACTIONS ---
   const handleCopy = useCallback(async () => {
     if (!activeCell && !selectionRange) return;
+    const data = useSheetStore.getState().data;
     const s = selectionRange ? parseRef(selectionRange.start) : parseRef(activeCell!);
     const e = selectionRange ? parseRef(selectionRange.end) : parseRef(activeCell!);
     const minR = Math.min(s.r, e.r);
@@ -765,7 +770,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     useSheetStore.getState().setClipboardData({ grid, text });
     await navigator.clipboard.writeText(text);
     toast('Copied', 'info');
-  }, [activeCell, selectionRange, data]);
+  }, [activeCell, selectionRange]);
 
   const handleCut = useCallback(async () => {
     await handleCopy();
@@ -1059,7 +1064,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
           label: 'Format Painter', 
           icon: '🖌️', 
           onClick: () => {
-            const srcCell = activeCell ? data[activeCell] : null;
+            const srcCell = activeCell ? useSheetStore.getState().data[activeCell] : null;
             const fmt = srcCell?.fmt || {};
             useSheetStore.getState().activateFormatPainter(fmt, false);
             toast('Format Painter active (Click target cell)', 'info');
@@ -1470,8 +1475,6 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
 
         {!isDashboard && (
           <RemoteCursorsLayer 
-            remoteCursors={remoteCursors}
-            connectedUsers={connectedUsers}
             rowVirtualizer={rowVirtualizer}
             colVirtualizer={colVirtualizer}
             visibleRowIndices={visibleRowIndices}

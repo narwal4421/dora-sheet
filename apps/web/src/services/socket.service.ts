@@ -44,6 +44,10 @@ class SocketService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private eventBuffer: { event: string, payload: unknown, callback?: (res: any) => void }[] = [];
   private isConnecting: boolean = false;
+  private lastCursorEmitTime = 0;
+  private lastCursorPosition = { sheetId: '', row: -1, col: -1, selStart: '', selEnd: '' };
+  private cursorThrottleTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingCursorPayload: { userName: string; sheetId: string; row: number; col: number; color?: string; selectionRange?: { start: string; end: string } | null } | null = null;
 
   private constructor() {
     // Start health check
@@ -86,7 +90,7 @@ class SocketService {
           guestId: localStorage.getItem('guestId')
         });
       },
-      transports: ['polling', 'websocket'], // polling first for max Render compatibility
+      transports: ['websocket', 'polling'], // websocket first for instant zero-latency connection
       upgrade: true,
       reconnection: true,
       reconnectionAttempts: 20,
@@ -150,6 +154,7 @@ class SocketService {
     this.socket.on('user_left', (payload: { userId: string }) => {
       const state = useSheetStore.getState();
       state.setConnectedUsers(state.connectedUsers.filter(u => u.userId !== payload.userId));
+      state.removeRemoteCursor(payload.userId);
     });
 
     this.socket.on('join_request_accepted', () => {
@@ -219,6 +224,7 @@ class SocketService {
       const isHost = !!res.isHost || members.length <= 1;
       state.setIsHost(isHost);
       if (res.userId) state.setLocalUserId(res.userId);
+      if (res.color) state.setLocalUserColor(res.color);
       if (res.workbookName) state.renameWorkbook(res.workbookName);
       if (res.members) state.setConnectedUsers(res.members);
       state.setRoomLockError(false);
@@ -243,15 +249,69 @@ class SocketService {
     });
   }
 
-  public emitCursorMove(userName: string, sheetId: string, row: number, col: number, color: string) {
-    this.socket?.emit(SocketEvent.CURSOR_MOVE, { 
-      workbookId: this.getWorkbookId(), 
-      userName, 
-      sheetId, 
-      row, 
-      col, 
-      color 
-    });
+  public emitCursorMove(
+    userName: string, 
+    sheetId: string, 
+    row: number, 
+    col: number, 
+    color?: string,
+    selectionRange?: { start: string; end: string } | null
+  ) {
+    const selStart = selectionRange?.start || '';
+    const selEnd = selectionRange?.end || '';
+
+    // Deduplication: if coordinates and selection haven't changed, suppress emit
+    if (
+      this.lastCursorPosition.sheetId === sheetId &&
+      this.lastCursorPosition.row === row &&
+      this.lastCursorPosition.col === col &&
+      this.lastCursorPosition.selStart === selStart &&
+      this.lastCursorPosition.selEnd === selEnd
+    ) {
+      return;
+    }
+
+    const resolvedColor = color || useSheetStore.getState().localUserColor || '#107c41';
+    const now = performance.now();
+    const elapsed = now - this.lastCursorEmitTime;
+
+    this.pendingCursorPayload = { userName, sheetId, row, col, color: resolvedColor, selectionRange };
+
+    const dispatch = () => {
+      if (!this.pendingCursorPayload || !this.socket?.connected) return;
+      const p = this.pendingCursorPayload;
+      this.lastCursorPosition = {
+        sheetId: p.sheetId,
+        row: p.row,
+        col: p.col,
+        selStart: p.selectionRange?.start || '',
+        selEnd: p.selectionRange?.end || '',
+      };
+      this.lastCursorEmitTime = performance.now();
+      this.socket.emit(SocketEvent.CURSOR_MOVE, {
+        workbookId: this.getWorkbookId(),
+        userName: p.userName,
+        sheetId: p.sheetId,
+        row: p.row,
+        col: p.col,
+        color: p.color,
+        selectionRange: p.selectionRange || undefined,
+      });
+      this.pendingCursorPayload = null;
+      this.cursorThrottleTimer = null;
+    };
+
+    // Leading-edge instant emit (0ms latency for clicks and new moves)
+    // Micro-throttle subsequent rapid movements at 16ms (~60 updates/sec display refresh rate)
+    if (elapsed >= 16) {
+      if (this.cursorThrottleTimer) {
+        clearTimeout(this.cursorThrottleTimer);
+        this.cursorThrottleTimer = null;
+      }
+      dispatch();
+    } else if (!this.cursorThrottleTimer) {
+      this.cursorThrottleTimer = setTimeout(dispatch, 16 - elapsed);
+    }
   }
 
   public emitCellLock(cellKey: string, action: 'lock' | 'unlock') {

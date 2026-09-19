@@ -14,6 +14,7 @@ export interface CursorMoveEvent {
   row: number;
   col: number;
   color: string; // user's cursor color
+  selectionRange?: { start: string; end: string } | null;
 }
 
 export interface CellLockEvent {

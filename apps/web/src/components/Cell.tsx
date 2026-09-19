@@ -41,18 +41,6 @@ export const Cell = memo(({
     }
   }, [isEditing, cellData]);
 
-  // Only subscribe to the relevant remote cursor
-  const remoteCursor = useSheetStore(state => {
-    const cursors = state.cursors;
-    for (const userId in cursors) {
-      const cur = cursors[userId];
-      if (cur.row === r && cur.col === c && (Date.now() - cur.timestamp < 30000)) {
-        return cur;
-      }
-    }
-    return null;
-  });
-
   const borderClass = showGridlines ? "border-b border-r border-[#e1dfdd]" : "border-b border-r border-transparent";
   
   const cellClassName = [
@@ -115,8 +103,6 @@ export const Cell = memo(({
       style={{
         ...style,
         backgroundColor: cellData?.fmt?.backgroundColor || undefined,
-        outline: remoteCursor && !isActive ? `2px solid ${remoteCursor.color}` : undefined,
-        outlineOffset: '-2px',
         contain: 'layout paint style',
       }}
       onMouseDown={(e) => { if (e.button === 0) onMouseDown?.(e); }}
@@ -137,19 +123,6 @@ export const Cell = memo(({
         }
       }}
     >
-      {remoteCursor && !isActive && (
-        <div 
-          className="absolute top-0 left-0 w-full h-full pointer-events-none z-10" 
-          style={{ boxShadow: `inset 0 0 0 2px ${remoteCursor.color}` }}
-        >
-          <div 
-            className="absolute top-[-18px] left-[-2px] text-[9px] text-white px-1 py-0.5 rounded-t shadow-sm whitespace-nowrap font-bold"
-            style={{ backgroundColor: remoteCursor.color }}
-          >
-            {remoteCursor.userName}
-          </div>
-        </div>
-      )}
 
       {lockedBy && !isEditing && (
         <div className="absolute top-0 right-0 p-[2px] opacity-40 text-accent z-10">
