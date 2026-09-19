@@ -38,14 +38,10 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
   const applyToSelection = useCallback((fn: (ref: string) => void) => {
     if (!selectionBounds) {
       if (activeCell) {
-        console.log(`[TOOLBAR] Applying to activeCell: ${activeCell}`);
         fn(activeCell);
-      } else {
-        console.warn('[TOOLBAR] No active cell or selection to apply format');
       }
       return;
     }
-    console.log(`[TOOLBAR] Applying to selection bounds:`, selectionBounds);
     for (let r = selectionBounds.minR; r <= selectionBounds.maxR; r++) {
       for (let c = selectionBounds.minC; c <= selectionBounds.maxC; c++) {
         fn(`r_${r}_c_${c}`);
@@ -54,7 +50,6 @@ export const Toolbar = ({ onToggleAI }: { onToggleAI: () => void }) => {
   }, [selectionBounds, activeCell]);
 
   const toggleFormat = (key: string, value: string | boolean | number = true) => {
-    console.log(`[TOOLBAR] Toggle format: ${key} = ${value}`);
     const isCurrentlySet = currentFmt[key] === value;
     applyToSelection((ref) => {
       setCellFormat(ref, { [key]: isCurrentlySet ? undefined : value });

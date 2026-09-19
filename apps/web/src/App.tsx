@@ -38,9 +38,9 @@ const getWorkbookIdFromUrl = () => {
 };
 
 /**
- * GOD LEVEL APPLICATION ORCHESTRATOR
+ * Application Orchestrator
  * Orchestrates real-time state, high-performance UI layers, 
- * and ultra-fluid GSAP animations.
+ * and animations.
  */
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);

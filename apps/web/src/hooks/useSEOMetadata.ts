@@ -8,9 +8,9 @@ interface SEOPage {
 }
 
 /**
- * GOD-LEVEL SEO page configurations.
- * Each page targets the most commonly searched terms on the internet
- * with exact-match high-volume phrases people actually type into Google.
+ * Comprehensive SEO page configurations.
+ * Each page targets standard search queries
+ * with exact-match high-volume phrases for optimal indexing.
  */
 const SEO_PAGES: Record<string, SEOPage> = {
   home: {
@@ -46,7 +46,7 @@ const SEO_PAGES: Record<string, SEOPage> = {
 };
 
 /**
- * GOD-LEVEL Dynamic DOM SEO Meta Injector.
+ * Dynamic DOM SEO Meta Injector.
  * Rewrites title, description, keywords, canonical, OG, and Twitter tags
  * based on active application state — enabling multi-page indexation from a SPA.
  */

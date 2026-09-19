@@ -316,7 +316,7 @@ const shiftMergedCellsCol = (mergedCells: Record<string, string>, target: number
 };
 
 /**
- * GOD LEVEL SHEET STORE
+ * Sheet State Store
  * High-performance state machine for complex spreadsheet orchestration.
  * Features optimized domain splitting, intelligent history snapshots, 
  * and ultra-low-latency collaboration handlers.

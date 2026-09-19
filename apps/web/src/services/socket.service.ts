@@ -4,9 +4,9 @@ import type { CellUpdateEvent, CursorMoveEvent, CellLockEvent } from '../store/u
 import { useCallStore } from '../store/useCallStore';
 
 /**
- * GOD LEVEL SOCKET SERVICE
- * High-resiliency communication layer with Promise-based orchestration,
- * automated event buffering, and real-time telemetry.
+ * Realtime Collaboration Socket Service
+ * Enterprise-grade communication layer with Promise-based orchestration,
+ * automated event buffering, and real-time state synchronization.
  */
 
 export const SocketEvent = {
@@ -69,8 +69,6 @@ class SocketService {
     const apiUrl = import.meta.env.VITE_API_URL || 
       (isLocalhost ? 'http://localhost:3002' : 'https://dora-sheet-api.onrender.com');
 
-    console.log(`[GOD_SOCKET] Connecting to API: ${apiUrl}`);
-
     // Immediately ping the health endpoint to wake Render from sleep
     if (!isLocalhost) {
       fetch(apiUrl + '/api/v1/health').catch(() => {});
@@ -99,27 +97,23 @@ class SocketService {
 
     this.socket.on('connect', () => {
       this.isConnecting = false;
-      console.log('🚀 [GOD_SOCKET] Connected | ID:', this.socket?.id);
       useSheetStore.getState().setSocketConnected(true);
       
       const hasBufferedJoin = this.eventBuffer.some(e => e.event === SocketEvent.JOIN_WORKBOOK);
       this.flushBuffer();
       
       const workbookId = this.getWorkbookId();
-      console.log('📦 [GOD_SOCKET] Auto-joining room:', workbookId);
       if (!hasBufferedJoin && workbookId && workbookId !== 'default-workbook-id') {
         this.joinWorkbook();
       }
     });
 
     this.socket.on('disconnect', () => {
-      console.warn('🔌 [GOD_SOCKET] Disconnected');
       useSheetStore.getState().setSocketConnected(false);
     });
 
-    this.socket.on('connect_error', (err) => {
+    this.socket.on('connect_error', () => {
       this.isConnecting = false;
-      console.warn('⚠️ [GOD_SOCKET] Connection failed:', err.message);
     });
 
     // Keep Render backend alive — ping every 8 minutes
@@ -196,7 +190,6 @@ class SocketService {
   }
 
   private flushBuffer() {
-    console.log(`📦 [GOD_SOCKET] Flushing ${this.eventBuffer.length} buffered events`);
     while (this.eventBuffer.length > 0) {
       const { event, payload, callback } = this.eventBuffer.shift()!;
       if (callback) {
@@ -213,7 +206,7 @@ class SocketService {
     return match ? match[2] : 'default-workbook-id';
   }
 
-  // --- GOD LEVEL API ---
+  // --- REALTIME COLLABORATION API ---
 
   public async joinWorkbook() {
     const name = localStorage.getItem('userName') || 'Guest User';
@@ -229,7 +222,6 @@ class SocketService {
       if (res.workbookName) state.renameWorkbook(res.workbookName);
       if (res.members) state.setConnectedUsers(res.members);
       state.setRoomLockError(false);
-      console.log(`[GOD_SOCKET] Host status: ${isHost} | Members: ${members.length} | UserId: ${res.userId}`);
     }
     return res;
   }
@@ -287,8 +279,6 @@ class SocketService {
     // Try to sync with server if connected
     if (this.socket?.connected) {
       this.socket.emit(SocketEvent.TOGGLE_LOCK, { workbookId, locked });
-    } else {
-      console.warn('[GOD_SOCKET] Lock toggled offline — will sync when reconnected');
     }
   }
 

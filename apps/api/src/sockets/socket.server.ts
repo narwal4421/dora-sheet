@@ -38,7 +38,7 @@ interface SocketData {
 }
 
 /**
- * GOD LEVEL SOCKET SERVER
+ * Realtime WebSocket Server
  * Mission-critical real-time synchronization engine with multi-layered security.
  */
 
@@ -143,7 +143,7 @@ export const initSockets = (httpServer: Server) => {
           const workbook = await prisma.workbook.findUnique({ where: { id: workbookId }, select: { name: true } });
           if (workbook?.name) workbookName = workbook.name;
         } catch (dbErr) {
-          console.warn(`[GOD_SOCKET] DB unreachable for workbook name, using fallback for ${workbookId}`);
+          console.warn(`[Realtime] DB unreachable for workbook name, using fallback for ${workbookId}`);
         }
 
         callback?.({ success: true, isHost, members, color: socket.data.color, userId, workbookName });

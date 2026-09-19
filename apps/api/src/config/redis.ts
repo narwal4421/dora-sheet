@@ -2,9 +2,9 @@ import Redis, { RedisOptions } from 'ioredis';
 import { env } from './env';
 
 /**
- * GOD LEVEL REDIS CONFIGURATION
+ * Redis Client Configuration
  * Handles Production (ioredis), Local (ioredis with fallback), and Mock environments.
- * Implements sophisticated retry logic and atomic command support.
+ * Implements retry logic and atomic command support.
  */
 
 class RedisManager {

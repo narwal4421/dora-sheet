@@ -12,9 +12,9 @@ interface ShareModalProps {
 }
 
 /**
- * GOD LEVEL SHARE MODAL
+ * Share & Collaboration Modal
  * High-end collaboration center with real-time lock controls, 
- * member tracking, join-by-code, and cinematic feedback loops.
+ * member tracking, join-by-code, and access control.
  */
 export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) => {
   const [copied, setCopied] = useState(false);
