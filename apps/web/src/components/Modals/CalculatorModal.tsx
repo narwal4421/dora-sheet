@@ -389,7 +389,7 @@ export const CalculatorModal: React.FC<{ isOpen: boolean; onClose: () => void }>
     } else {
       store.setActiveCell(targetRef);
       store.setSelectionRange({ start: targetRef, end: targetRef });
-      socketService.emitCursorMove(store.localUserName, store.activeSheetId, nextR, nextC, '#6366f1');
+      socketService.emitCursorMove(store.localUserName, store.activeSheetId, nextR, nextC, '#10b981');
     }
   }, []);
 

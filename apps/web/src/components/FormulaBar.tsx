@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSheetStore } from '../store/useSheetStore';
-import { socketService } from '../services/socket.service';
+import { formulaService } from '../services/formulaService';
 import { Check, X, FunctionSquare } from 'lucide-react';
 import { toast } from '../store/useToastStore';
 
@@ -23,8 +23,6 @@ const parseRef = (ref: string) => {
 export const FormulaBar = () => {
   const activeCell = useSheetStore(state => state.activeCell);
   const data = useSheetStore(state => state.data);
-  const setCellData = useSheetStore(state => state.setCellData);
-  const activeSheetId = useSheetStore(state => state.activeSheetId);
   const showFormulaBar = useSheetStore(state => state.showFormulaBar);
   const jumpToCell = useSheetStore(state => state.jumpToCell);
 
@@ -67,21 +65,13 @@ export const FormulaBar = () => {
   const displayValue = editingValue !== null ? editingValue : storeValue;
   const isDirty = editingValue !== null && editingValue !== storeValue;
 
-  const handleCommit = useCallback(() => {
+  const handleCommit = useCallback(async () => {
     if (!activeCell || editingValue === null) return;
     const val = editingValue.trim();
-    const isFormula = val.startsWith('=');
-    const isNumber = !isFormula && val !== '' && !isNaN(Number(val));
-    
-    const finalVal = isNumber ? Number(val) : val;
-    const update = isFormula 
-      ? { f: val, v: undefined } 
-      : { v: finalVal, f: undefined };
-
-    setCellData(activeCell, update);
-    socketService.emitCellUpdate(activeSheetId, activeCell, update);
+    const { r, c } = parseRef(activeCell);
     setEditingValue(null);
-  }, [activeCell, editingValue, setCellData, activeSheetId]);
+    await formulaService.commitCellChange(r, c, val);
+  }, [activeCell, editingValue]);
 
   const handleCancel = () => {
     setEditingValue(null);
@@ -113,7 +103,7 @@ export const FormulaBar = () => {
   if (!showFormulaBar) return null;
 
   return (
-    <div className="flex items-center border-b border-border bg-surface px-2 py-1 gap-1 text-xs select-none relative z-10">
+    <div className="flex items-center border-b px-2 py-1 gap-1 text-xs select-none relative z-10" style={{ backgroundColor: '#1e1e1e', borderColor: '#3d3d3d' }}>
       {/* --- NAME BOX --- */}
       <div className="relative">
         <input
@@ -123,8 +113,10 @@ export const FormulaBar = () => {
             setNameBoxInput(e.target.value);
             setIsEditingNameBox(true);
           }}
-          onFocus={() => setIsEditingNameBox(true)}
-          onBlur={handleNameBoxSubmit}
+          className="w-16 md:w-20 text-center font-mono font-bold bg-[#2d2d2d] border rounded px-1.5 py-1 text-xs outline-none transition-all uppercase"
+          style={{ color: '#107c41', borderColor: '#3d3d3d' }}
+          onFocus={e => { setIsEditingNameBox(true); e.currentTarget.style.borderColor = '#107c41'; }}
+          onBlur={e => { handleNameBoxSubmit(); e.currentTarget.style.borderColor = '#3d3d3d'; }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleNameBoxSubmit();
             else if (e.key === 'Escape') {
@@ -132,13 +124,12 @@ export const FormulaBar = () => {
               setIsEditingNameBox(false);
             }
           }}
-          className="w-16 md:w-20 text-center font-mono font-bold text-accent bg-background border border-border/80 rounded-md px-1.5 py-1 text-xs outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all uppercase"
           placeholder="A1"
           title="Name Box (Type cell like B5 and press Enter)"
         />
       </div>
 
-      <div className="w-[1px] h-5 bg-border mx-1" />
+      <div className="w-[1px] h-5 mx-1" style={{ backgroundColor: '#3d3d3d' }} />
 
       {/* --- FORMULA COMMIT / CANCEL BUTTONS --- */}
       <div className="flex items-center gap-0.5">
@@ -198,11 +189,12 @@ export const FormulaBar = () => {
       </div>
 
       {/* --- FORMULA INPUT --- */}
-      <div className="flex-1 flex items-center bg-background border border-border/70 rounded-md px-2.5 py-1 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent transition-all">
+      <div className="flex-1 flex items-center border rounded px-2.5 py-1 transition-all" style={{ backgroundColor: '#ffffff', borderColor: '#ababab' }}>
         <input
           ref={inputRef}
           type="text"
-          className="w-full bg-transparent outline-none font-mono text-xs text-textMain placeholder-textMuted/40"
+          className="w-full bg-transparent outline-none font-mono text-xs placeholder-gray-400"
+          style={{ color: '#111827' }}
           value={displayValue}
           onChange={(e) => setEditingValue(e.target.value)}
           onKeyDown={(e) => {

@@ -37,9 +37,9 @@ export const DashboardOverlay = ({ data, onClose }: { data: DashboardData; onClo
       },
       tooltip: {
         trigger: isPie ? 'item' : 'axis',
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        borderColor: 'rgba(99, 102, 241, 0.2)',
-        textStyle: { color: '#f8fafc' }
+        backgroundColor: 'rgba(22, 32, 29, 0.95)',
+        borderColor: 'rgba(16, 185, 129, 0.2)',
+        textStyle: { color: '#edf3f0' }
       },
       grid: {
         left: '3%',
@@ -65,14 +65,14 @@ export const DashboardOverlay = ({ data, onClose }: { data: DashboardData; onClo
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [{ offset: 0, color: 'rgba(99, 102, 241, 0.3)' }, { offset: 1, color: 'rgba(99, 102, 241, 0)' }]
+            colorStops: [{ offset: 0, color: 'rgba(16, 185, 129, 0.35)' }, { offset: 1, color: 'rgba(16, 185, 129, 0)' }]
           }
         } : undefined,
         data: isPie 
           ? chart.data.map(d => ({ name: d.name || d.label || d.category, value: d[key] }))
           : chart.data.map(d => d[key]),
         itemStyle: {
-          color: isPie ? undefined : '#6366f1',
+          color: isPie ? undefined : '#10b981',
           borderRadius: chart.type === 'bar' ? [4, 4, 0, 0] : 0
         },
         smooth: true,
@@ -88,7 +88,7 @@ export const DashboardOverlay = ({ data, onClose }: { data: DashboardData; onClo
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between px-4 md:px-8 py-4 md:py-6 border-b border-white/5 bg-surface/50 gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-[0_0_15px_rgba(99,102,241,0.3)] shrink-0">
+            <div className="p-2 bg-accent/20 rounded-xl text-accent shadow-[0_0_15px_rgba(16,185,129,0.3)] shrink-0">
               <LayoutDashboard size={24} />
             </div>
             <div>

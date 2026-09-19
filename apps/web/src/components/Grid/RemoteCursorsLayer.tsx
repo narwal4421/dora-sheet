@@ -28,7 +28,7 @@ export const RemoteCursorsLayer: React.FC<RemoteCursorsLayerProps> = ({
       {Object.entries(remoteCursors).map(([userId, cursor]) => {
         if (cursor.sheetId !== activeSheetId) return null;
         const user = connectedUsers.find(u => u.userId === userId);
-        const color = user?.color || '#6366f1';
+        const color = user?.color || '#10b981';
         
         const rowItem = rowVirtualizer.getVirtualItems().find((v: VirtualItem) => visibleRowIndices[v.index] === cursor.row);
         const colItem = colVirtualizer.getVirtualItems().find((v: VirtualItem) => v.index === cursor.col);

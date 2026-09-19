@@ -128,7 +128,7 @@ export const ChartModal: FC<ChartModalProps> = ({ type: initialType, onClose }) 
     const isArea = currentType === 'area';
     const chartKind = currentType === 'area' ? 'line' : currentType;
 
-    const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
+    const colors = ['#10b981', '#14b8a6', '#f59e0b', '#06b6d4', '#3b82f6', '#ec4899'];
 
     if (isPie) {
       const pieData = chartData.categories.map((cat, idx) => ({
@@ -145,9 +145,9 @@ export const ChartModal: FC<ChartModalProps> = ({ type: initialType, onClose }) 
         },
         tooltip: {
           trigger: 'item',
-          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-          borderColor: 'rgba(99, 102, 241, 0.3)',
-          textStyle: { color: '#f8fafc' },
+          backgroundColor: 'rgba(22, 32, 29, 0.95)',
+          borderColor: 'rgba(16, 185, 129, 0.3)',
+          textStyle: { color: '#edf3f0' },
           formatter: '{b}: {c} ({d}%)'
         },
         legend: {
@@ -208,15 +208,15 @@ export const ChartModal: FC<ChartModalProps> = ({ type: initialType, onClose }) 
           type: chartKind,
           smooth: true,
           data: chartData.values,
-          itemStyle: { color: '#6366f1' },
+          itemStyle: { color: '#10b981' },
           ...(isArea ? {
             areaStyle: {
               color: {
                 type: 'linear',
                 x: 0, y: 0, x2: 0, y2: 1,
                 colorStops: [
-                  { offset: 0, color: '#6366f180' },
-                  { offset: 1, color: '#6366f105' }
+                  { offset: 0, color: 'rgba(16, 185, 129, 0.5)' },
+                  { offset: 1, color: 'rgba(16, 185, 129, 0.02)' }
                 ]
               }
             }
@@ -232,9 +232,9 @@ export const ChartModal: FC<ChartModalProps> = ({ type: initialType, onClose }) 
       },
       tooltip: {
         trigger: 'axis',
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        borderColor: 'rgba(99, 102, 241, 0.3)',
-        textStyle: { color: '#f8fafc' }
+        backgroundColor: 'rgba(22, 32, 29, 0.95)',
+        borderColor: 'rgba(16, 185, 129, 0.3)',
+        textStyle: { color: '#edf3f0' }
       },
       legend: chartData.multiSeries.length > 1 ? {
         top: 30,

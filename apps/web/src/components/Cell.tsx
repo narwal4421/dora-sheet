@@ -53,17 +53,17 @@ export const Cell = memo(({
     return null;
   });
 
-  const borderClass = showGridlines ? "border-b border-r border-border/80" : "border-b border-r border-transparent";
+  const borderClass = showGridlines ? "border-b border-r border-[#e1dfdd]" : "border-b border-r border-transparent";
   
   const cellClassName = [
-    "absolute select-none overflow-hidden",
+    "absolute select-none overflow-hidden bg-white",
     formatPainterActive ? "cursor-copy" : "cursor-cell",
     borderClass,
-    cellData?.fmt?.border === 'all' ? "!border-2 !border-textMain" : "",
-    isActive && !isEditing ? "z-20 ring-2 ring-accent ring-inset shadow-[0_0_12px_rgba(99,102,241,0.3)] bg-accent/5" : "",
-    !isActive && isMultiSelected ? "z-10 bg-accent/[0.12] ring-1 ring-accent/40 ring-inset" : (!isActive ? "bg-background/50" : ""),
-    isActive && isEditing ? "z-30 shadow-2xl" : "",
-    !isActive && !isMultiSelected ? "hover:bg-surfaceHover/40" : ""
+    cellData?.fmt?.border === 'all' ? "!border-2 !border-[#111827]" : "",
+    isActive && !isEditing ? "z-20 bg-white" : "",
+    !isActive && isMultiSelected ? "z-10 bg-[#107c41]/10 ring-0" : (!isActive ? "bg-white" : ""),
+    isActive && isEditing ? "z-30" : "",
+    !isActive && !isMultiSelected ? "hover:bg-[#f3f2f1]" : ""
   ].filter(Boolean).join(" ");
 
   // Formatted value display
@@ -95,10 +95,16 @@ export const Cell = memo(({
       cellData?.fmt?.strikethrough ? 'line-through' : '',
       cellData?.fmt?.underline ? 'underline' : ''
     ].filter(Boolean).join(' ') || 'none',
-    color: cellData?.fmt?.color || 'inherit',
+    color: cellData?.fmt?.color || '#111827',
     fontFamily: cellData?.fmt?.fontFamily || undefined,
     fontSize: cellData?.fmt?.fontSize ? `${cellData.fmt.fontSize}px` : undefined,
-    justifyContent: cellData?.fmt?.align === 'center' ? 'center' : cellData?.fmt?.align === 'right' ? 'flex-end' : 'flex-start',
+    justifyContent: cellData?.fmt?.align === 'center' 
+      ? 'center' 
+      : cellData?.fmt?.align === 'right' 
+        ? 'flex-end' 
+        : (cellData?.fmt?.align === 'left' 
+          ? 'flex-start' 
+          : ((typeof cellData?.v === 'number' || (!isNaN(Number(cellData?.v)) && cellData?.v !== '' && typeof cellData?.v !== 'boolean')) ? 'flex-end' : 'flex-start')),
     alignItems: cellData?.fmt?.verticalAlign === 'top' ? 'flex-start' : cellData?.fmt?.verticalAlign === 'bottom' ? 'flex-end' : 'center',
     whiteSpace: cellData?.fmt?.wrapText ? 'pre-wrap' : 'nowrap',
   };
@@ -154,7 +160,7 @@ export const Cell = memo(({
       {isEditing ? (
         <input
           autoFocus
-          className="w-full h-full outline-none border-2 border-accent px-1 text-xs font-sans absolute top-0 left-0 bg-surface text-textMain z-40 shadow-inner"
+          className="w-full h-full outline-none border-2 border-accent px-1 text-xs font-sans absolute top-0 left-0 bg-white text-[#111827] z-40"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onBlur={() => {
@@ -173,6 +179,10 @@ export const Cell = memo(({
               cancelledRef.current = true;
               socketService.emitCellLock(ref, 'unlock');
               useSheetStore.getState().setEditingCell(null);
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+              onCommitChange(r, c, inputValue);
+              socketService.emitCellLock(ref, 'unlock');
+              onCellKeydown(e, r, c, ref);
             } else {
               onCellKeydown(e, r, c, ref);
             }

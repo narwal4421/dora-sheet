@@ -670,7 +670,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     });
 
     const { r, c } = parseRef('r_0_c_0');
-    socketService.emitCursorMove(store.localUserName, id, r, c, '#6366f1');
+    socketService.emitCursorMove(store.localUserName, id, r, c, '#10b981');
   },
 
   importWorkbook: (newSheets, name, remote = false) => {

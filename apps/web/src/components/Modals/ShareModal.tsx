@@ -80,7 +80,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ workbookId, onClose }) =
       {/* Content */}
       <div className="modal-content relative w-full max-w-lg bg-surface border border-white/10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] rounded-2xl overflow-hidden">
         {/* Header Gradient */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-indigo-400 to-accent" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent via-emerald-400 to-accent" />
         
         <div className="p-4 md:p-8">
           <div className="flex items-center justify-between mb-6">

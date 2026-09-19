@@ -21,24 +21,56 @@ self.onmessage = function(e) {
         self.postMessage({ type: 'INIT_SUCCESS', msgId });
         break;
 
-      case 'SET_DATA':
+      case 'SET_DATA': {
         if (!hfInstance || sheetId === undefined) throw new Error('Not initialized');
         // payload is { r, c, value }
-        hfInstance.setCellContents({ sheet: sheetId, col: payload.c, row: payload.r }, [[payload.value]]);
+        const rawChanges = hfInstance.setCellContents({ sheet: sheetId, col: payload.c, row: payload.r }, [[payload.value]]) || [];
+        const changedList: Array<{ r: number; c: number; v: any }> = [];
         
-        // After setting, we calculate and return all changed values (or we can just return the specific one for now)
-        // Since we want sparse updates, let's just re-evaluate all formulas (naive but works for now)
-        // HyperFormula automatically re-evaluates. We can get the newly calculated value.
+        for (const ch of rawChanges) {
+          if (ch && (ch as any).address) {
+            changedList.push({
+              r: (ch as any).address.row,
+              c: (ch as any).address.col,
+              v: (ch as any).newValue
+            });
+          }
+        }
+
         const calculatedValue = hfInstance.getCellValue({ sheet: sheetId, col: payload.c, row: payload.r });
         
         self.postMessage({ 
           type: 'SET_DATA_SUCCESS', 
           msgId, 
-          payload: { r: payload.r, c: payload.c, v: calculatedValue }
+          payload: { 
+            r: payload.r, 
+            c: payload.c, 
+            v: calculatedValue,
+            changes: changedList 
+          }
         });
         break;
+      }
 
-      case 'GET_VALUE':
+      case 'SET_SHEET_DATA': {
+        if (!hfInstance || sheetId === undefined) throw new Error('Not initialized');
+        // payload is array of { r: number, c: number, value: any }
+        if (Array.isArray(payload)) {
+          for (const item of payload) {
+            try {
+              if (item.value !== undefined && item.value !== null) {
+                hfInstance.setCellContents({ sheet: sheetId, col: item.c, row: item.r }, [[item.value]]);
+              }
+            } catch {
+              // ignore individual parsing errors in bulk init
+            }
+          }
+        }
+        self.postMessage({ type: 'SET_SHEET_DATA_SUCCESS', msgId });
+        break;
+      }
+
+      case 'GET_VALUE': {
         if (!hfInstance || sheetId === undefined) throw new Error('Not initialized');
         const v = hfInstance.getCellValue({ sheet: sheetId, col: payload.c, row: payload.r });
         self.postMessage({ 
@@ -47,6 +79,7 @@ self.onmessage = function(e) {
           payload: { r: payload.r, c: payload.c, v } 
         });
         break;
+      }
 
       default:
         console.warn('Unknown message type', type);

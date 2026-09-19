@@ -269,10 +269,10 @@ export const TopNav = ({
   ];
 
   return (
-    <div className="dark flex items-center justify-between px-2 md:px-4 py-2 border-b border-border bg-background z-20">
+    <div className="dark flex items-center justify-between px-2 md:px-4 py-2 border-b z-20" style={{ backgroundColor: '#1e1e1e', borderColor: '#3d3d3d' }}>
       <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-        <div className="flex items-center justify-center w-8 h-8 rounded bg-accent/20 text-accent flex-shrink-0">
-          <FileSpreadsheet size={20} />
+        <div className="flex items-center justify-center w-8 h-8 rounded flex-shrink-0" style={{ backgroundColor: '#107c41' }}>
+          <FileSpreadsheet size={18} className="text-white" />
         </div>
         <div className="flex flex-col min-w-0 relative">
           <input 
@@ -284,7 +284,8 @@ export const TopNav = ({
               const workbookId = getWorkbookIdFromUrl();
               socketService.emitSheetAction(workbookId, 'rename_sheet', { name: newName });
             }}
-            className="bg-transparent font-medium text-textMain text-sm outline-none border border-transparent hover:border-border px-1 rounded transition-colors focus:border-accent focus:bg-surface truncate"
+            className="bg-transparent font-medium text-sm outline-none border border-transparent hover:border-[#3d3d3d] px-1 rounded transition-colors focus:border-[#107c41] focus:bg-[#262626] truncate"
+            style={{ color: '#ffffff' }}
           />
           <div className="flex items-center gap-0.5 md:gap-1 px-1 mt-0.5 flex-wrap relative">
             {/* Desktop Menus */}
@@ -443,7 +444,10 @@ export const TopNav = ({
 
         <button 
           onClick={onShowShare}
-          className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 rounded bg-accent text-white hover:bg-accentHover transition-colors text-sm font-medium shadow-md shadow-accent/20"
+          className="flex items-center gap-1.5 px-3 md:px-4 py-1.5 rounded text-white text-sm font-semibold shadow-sm transition-colors"
+          style={{ backgroundColor: '#107c41' }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#0e6b37')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#107c41')}
           title="Share"
         >
           <Share2 size={16} />

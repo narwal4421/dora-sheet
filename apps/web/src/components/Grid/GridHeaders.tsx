@@ -46,11 +46,11 @@ export const GridHeaders: FC<GridHeadersProps> = ({
       {/* Top-Left Corner Box - Pinned both top & left */}
       <div 
         onClick={onSelectAll}
-        className="sticky top-0 left-0 border-b border-r border-border bg-surface z-50 flex items-center justify-center font-bold text-[10px] text-textMuted hover:bg-surfaceHover cursor-pointer select-none transition-colors shadow-sm" 
-        style={{ width: finalIndexW, height: finalHeaderH }}
+        className="sticky top-0 left-0 border-b border-r z-50 flex items-center justify-center cursor-pointer select-none transition-colors" 
+        style={{ width: finalIndexW, height: finalHeaderH, backgroundColor: '#262626', borderColor: '#3d3d3d' }}
         title="Select All (Ctrl+A)"
       >
-        <div className="w-2.5 h-2.5 rounded-sm bg-accent/30 hover:bg-accent transition-colors" />
+        <div className="w-2.5 h-2.5 rounded-[1px] bg-[#107c41]/40 hover:bg-[#107c41] transition-colors" />
       </div>
 
       {/* Column Headers Container - Sticky at top */}
@@ -63,12 +63,15 @@ export const GridHeaders: FC<GridHeadersProps> = ({
             key={`header-col-${virtualCol.index}`} 
             onMouseDown={(e) => onSelectColumn?.(virtualCol.index, e)}
             onMouseEnter={() => onColumnMouseEnter?.(virtualCol.index)}
-            className="absolute flex items-center justify-center border-b border-r border-border bg-surface text-[11px] text-textMuted font-bold hover:bg-surfaceHover hover:text-textMain cursor-pointer select-none transition-colors pointer-events-auto shadow-sm" 
+            className="absolute flex items-center justify-center border-b border-r text-[11px] font-semibold cursor-pointer select-none transition-colors pointer-events-auto" 
             style={{ 
               left: virtualCol.start, 
               width: virtualCol.size, 
               height: finalHeaderH, 
-              top: 0 
+              top: 0,
+              backgroundColor: '#262626',
+              borderColor: '#3d3d3d',
+              color: '#cccccc',
             }}
             title={`Column ${getColName(virtualCol.index)} (Drag to select columns, double-click border to AutoFit)`}
           >
@@ -76,7 +79,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
             
             {/* Column Resize Handle */}
             <div 
-              className="absolute -right-1.5 top-0 w-3 h-full cursor-col-resize z-50 group flex items-center justify-center hover:bg-accent/20 transition-colors" 
+              className="absolute -right-1.5 top-0 w-3 h-full cursor-col-resize z-50 group flex items-center justify-center" 
               onMouseDown={(e) => {
                 e.stopPropagation();
                 onColResizeStart(e, virtualCol.index, virtualCol.size);
@@ -87,7 +90,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
               }}
               title="Drag border to resize column, double-click to AutoFit"
             >
-              <div className="w-[2px] h-full bg-border/60 group-hover:bg-accent transition-colors" />
+              <div className="w-[2px] h-full bg-[#3d3d3d] group-hover:bg-[#107c41] transition-colors" />
             </div>
           </div>
         ))}
@@ -105,12 +108,15 @@ export const GridHeaders: FC<GridHeadersProps> = ({
               key={`header-row-${virtualRow.index}`} 
               onMouseDown={(e) => onSelectRow?.(rowIndex, e)}
               onMouseEnter={() => onRowMouseEnter?.(rowIndex)}
-              className="absolute flex items-center justify-center border-b border-r border-border bg-surface text-[10px] text-textMuted font-mono font-medium hover:bg-surfaceHover hover:text-textMain cursor-pointer select-none transition-colors pointer-events-auto shadow-sm" 
+              className="absolute flex items-center justify-center border-b border-r text-[10px] font-mono font-medium cursor-pointer select-none transition-colors pointer-events-auto" 
               style={{ 
                 top: finalHeaderH + virtualRow.start, 
                 left: 0, 
                 width: finalIndexW, 
-                height: virtualRow.size 
+                height: virtualRow.size,
+                backgroundColor: '#262626',
+                borderColor: '#3d3d3d',
+                color: '#cccccc',
               }}
               title={`Row ${rowIndex + 1} (Drag to select rows, double-click border to AutoFit)`}
             >
@@ -118,7 +124,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
 
               {/* Row Resize Handle */}
               <div 
-                className="absolute left-0 -bottom-1.5 w-full h-3 cursor-row-resize z-50 group flex items-center justify-center hover:bg-accent/20 transition-colors" 
+                className="absolute left-0 -bottom-1.5 w-full h-3 cursor-row-resize z-50 group flex items-center justify-center" 
                 onMouseDown={(e) => {
                   e.stopPropagation();
                   onRowResizeStart(e, virtualRow.index, virtualRow.size);
@@ -129,7 +135,7 @@ export const GridHeaders: FC<GridHeadersProps> = ({
                 }}
                 title="Drag border to resize row, double-click to AutoFit"
               >
-                <div className="w-full h-[2px] bg-border/60 group-hover:bg-accent transition-colors" />
+                <div className="w-full h-[2px] bg-[#3d3d3d] group-hover:bg-[#107c41] transition-colors" />
               </div>
             </div>
           );

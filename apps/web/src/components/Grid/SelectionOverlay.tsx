@@ -23,11 +23,12 @@ export const SelectionOverlay: FC<SelectionOverlayProps> = ({
     <>
       {/* Main Active Selection Box */}
       <div 
-        className="absolute z-20 border-2 border-accent bg-accent/[0.08] shadow-[0_0_15px_rgba(99,102,241,0.18)] transition-none pointer-events-none"
+        className="absolute z-20 border-2 transition-none pointer-events-none"
         style={{
           ...selectionStyle,
           willChange: 'top, left, width, height',
-          boxShadow: 'inset 0 0 0 1px rgba(99,102,241,0.5)'
+          borderColor: '#107c41',
+          backgroundColor: 'rgba(16, 124, 65, 0.06)',
         }}
       >
         {/* Edge Drag-to-Move & Double-Click to Jump Handles */}
@@ -64,9 +65,10 @@ export const SelectionOverlay: FC<SelectionOverlayProps> = ({
           </>
         )}
 
-        {/* AutoFill Drag Handle on Bottom-Right */}
+        {/* AutoFill Drag Handle on Bottom-Right - Excel square handle */}
         <div 
-          className="absolute bottom-[-4px] right-[-4px] w-2.5 h-2.5 bg-accent border-2 border-white rounded-[2px] cursor-crosshair pointer-events-auto shadow-md hover:scale-150 transition-transform active:bg-indigo-400 active:scale-125 z-30"
+          className="absolute bottom-[-4px] right-[-4px] w-[7px] h-[7px] cursor-crosshair pointer-events-auto z-30"
+          style={{ backgroundColor: '#107c41' }}
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -84,10 +86,11 @@ export const SelectionOverlay: FC<SelectionOverlayProps> = ({
       {/* AutoFill Dotted Ghost Preview Box */}
       {autoFillPreviewStyle && (
         <div 
-          className="absolute z-10 border-2 border-dashed border-accent/80 bg-accent/[0.04] pointer-events-none transition-none animate-pulse"
+          className="absolute z-10 border-2 border-dashed pointer-events-none transition-none"
           style={{
             ...autoFillPreviewStyle,
-            willChange: 'top, left, width, height'
+            willChange: 'top, left, width, height',
+            borderColor: '#107c41',
           }}
         />
       )}

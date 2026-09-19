@@ -34,15 +34,15 @@ export const TemplatesModal = ({ onClose }: { onClose: () => void }) => {
       name: 'Monthly Budget',
       description: 'Track household or personal income and expenses with automatic totals and net difference calculations.',
       icon: Wallet,
-      color: '#6366f1',
-      bgColor: 'rgba(99, 102, 241, 0.05)',
-      borderColor: 'rgba(99, 102, 241, 0.2)',
+      color: '#10b981',
+      bgColor: 'rgba(16, 185, 129, 0.05)',
+      borderColor: 'rgba(16, 185, 129, 0.2)',
       cells: {
-        'r_0_c_0': { v: 'Monthly Budget Plan', fmt: { bold: true, fontSize: 16, color: '#6366f1' } },
-        'r_2_c_0': { v: 'Category', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
-        'r_2_c_1': { v: 'Budgeted ($)', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
-        'r_2_c_2': { v: 'Actual ($)', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
-        'r_2_c_3': { v: 'Difference ($)', fmt: { bold: true, backgroundColor: '#1e1b4b', color: '#ffffff' } },
+        'r_0_c_0': { v: 'Monthly Budget Plan', fmt: { bold: true, fontSize: 16, color: '#10b981' } },
+        'r_2_c_0': { v: 'Category', fmt: { bold: true, backgroundColor: '#0f2922', color: '#ffffff' } },
+        'r_2_c_1': { v: 'Budgeted ($)', fmt: { bold: true, backgroundColor: '#0f2922', color: '#ffffff' } },
+        'r_2_c_2': { v: 'Actual ($)', fmt: { bold: true, backgroundColor: '#0f2922', color: '#ffffff' } },
+        'r_2_c_3': { v: 'Difference ($)', fmt: { bold: true, backgroundColor: '#0f2922', color: '#ffffff' } },
         'r_3_c_0': { v: 'Housing', fmt: { italic: false } },
         'r_3_c_1': { v: 1500 },
         'r_3_c_2': { v: 1450 },
@@ -67,10 +67,10 @@ export const TemplatesModal = ({ onClose }: { onClose: () => void }) => {
         'r_8_c_1': { v: 500 },
         'r_8_c_2': { v: 500 },
         'r_8_c_3': { f: '=B9-C9', v: 0 },
-        'r_10_c_0': { v: 'Total Net', fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
-        'r_10_c_1': { f: '=SUM(B4:B9)', v: 3200, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
-        'r_10_c_2': { f: '=SUM(C4:C9)', v: 3130, fmt: { bold: true, backgroundColor: '#0f172a', color: '#f8fafc' } },
-        'r_10_c_3': { f: '=SUM(D4:D9)', v: 70, fmt: { bold: true, backgroundColor: '#0f172a', color: '#6366f1' } }
+        'r_10_c_0': { v: 'Total Net', fmt: { bold: true, backgroundColor: '#16201d', color: '#edf3f0' } },
+        'r_10_c_1': { f: '=SUM(B4:B9)', v: 3200, fmt: { bold: true, backgroundColor: '#16201d', color: '#edf3f0' } },
+        'r_10_c_2': { f: '=SUM(C4:C9)', v: 3130, fmt: { bold: true, backgroundColor: '#16201d', color: '#edf3f0' } },
+        'r_10_c_3': { f: '=SUM(D4:D9)', v: 70, fmt: { bold: true, backgroundColor: '#16201d', color: '#10b981' } }
       }
     },
     {

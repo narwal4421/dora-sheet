@@ -30,7 +30,10 @@ export class EngineWrapper {
         return this.post('INIT');
     }
     async setData(r, c, value) {
-        return this.post('SET_DATA', { r, c, value });
+        return this.post('SET_DATA', { r, c, value: value ?? '' });
+    }
+    async setSheetData(items) {
+        return this.post('SET_SHEET_DATA', items);
     }
     async getValue(r, c) {
         return this.post('GET_VALUE', { r, c });

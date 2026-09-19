@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useVirtualizerWrapper } from '../hooks/useVirtualizerWrapper';
 import { useSheetStore, type CellData } from '../store/useSheetStore';
-import { EngineWrapper } from '@smartsheet-ai/formula-engine';
+import { formulaService } from '../services/formulaService';
 import { socketService } from '../services/socket.service';
 
 import { Cell } from './Cell';
@@ -93,7 +93,6 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     return { hidden, originSpans };
   }, [mergedCells]);
 
-  const [engine, setEngine] = useState<EngineWrapper | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [autoFillTarget, setAutoFillTarget] = useState<string | null>(null);
@@ -158,7 +157,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
     }
     useSheetStore.getState().setActiveCell(targetStart);
     useSheetStore.getState().setSelectionRange({ start: targetStart, end: targetEnd });
-    socketService.emitCursorMove(localUserName, activeSheetId, r, c, '#6366f1');
+    socketService.emitCursorMove(localUserName, activeSheetId, r, c, '#107c41');
   }, [localUserName, activeSheetId]);
 
   // Keep active cell scrolled into view during keyboard / WASD navigation
@@ -736,10 +735,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
 
   // --- ENGINE LIFECYCLE ---
   useEffect(() => {
-    const worker = new Worker(new URL('@smartsheet-ai/formula-engine/dist/formula.worker.js', import.meta.url), { type: 'module' });
-    const wrapper = new EngineWrapper(worker);
-    wrapper.init().then(() => setEngine(wrapper));
-    return () => worker.terminate();
+    formulaService.init();
   }, []);
 
   // --- CLIPBOARD ACTIONS ---
@@ -1276,7 +1272,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
   return (
     <div 
       ref={parentRef} 
-      className={`flex-1 overflow-auto bg-background outline-none select-none relative scrollbar-premium ${isDashboard ? 'cursor-default' : (isPanning ? 'cursor-all-scroll' : (formatPainter.active ? 'cursor-copy' : ''))}`} 
+      className={`flex-1 overflow-auto bg-white outline-none select-none relative scrollbar-premium ${isDashboard ? 'cursor-default' : (isPanning ? 'cursor-all-scroll' : (formatPainter.active ? 'cursor-copy' : ''))}`} 
       tabIndex={0}
       onScroll={handleScroll}
       onWheel={handleGridWheel}
@@ -1448,28 +1444,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
                 }}
                 onCellSelect={isDashboard ? () => {} : handleCellSelect} 
                 onCommitChange={isDashboard ? () => {} : async (r, c, val) => {
-                  const cellKey = `r_${r}_c_${c}`;
-                  const isF = val.startsWith('=');
-                  const isNum = !isF && val.trim() !== '' && !isNaN(Number(val));
-                  const parsedVal = isNum ? Number(val) : val;
-
-                  const update = isF 
-                    ? { f: val, v: undefined } 
-                    : { v: parsedVal, f: undefined };
-
-                  useSheetStore.getState().setCellData(cellKey, update);
-                  socketService.emitCellUpdate(activeSheetId, cellKey, update);
-
-                  if (engine && isF) {
-                    try {
-                      const res = await engine.setData(r, c, val);
-                      const final = { v: res.v };
-                      useSheetStore.getState().setCellData(cellKey, final);
-                      socketService.emitCellUpdate(activeSheetId, cellKey, final);
-                    } catch (err) {
-                      console.error('Formula computation error:', err);
-                    }
-                  }
+                  await formulaService.commitCellChange(r, c, val);
                 }}
                 onCellKeydown={(e, r, c) => {
                   if (e.key === 'Enter') {
@@ -1509,7 +1484,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
         {/* Freeze row indicator line */}
         {freezeRow > 0 && (
           <div 
-            className="absolute left-0 right-0 z-30 pointer-events-none border-b-2 border-accent/80 shadow-[0_2px_8px_rgba(99,102,241,0.4)]"
+            className="absolute left-0 right-0 z-30 pointer-events-none border-b-2 border-accent/80 shadow-[0_2px_8px_rgba(16,185,129,0.35)]"
             style={{ 
               top: finalHeaderH + Array.from({ length: freezeRow }).reduce<number>((acc, _, idx) => acc + (rowHeights[idx] || 24), 0)
             }}
@@ -1519,7 +1494,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
         {/* Freeze column indicator line */}
         {freezeCol > 0 && (
           <div 
-            className="absolute top-0 bottom-0 z-30 pointer-events-none border-r-2 border-accent/80 shadow-[2px_0_8px_rgba(99,102,241,0.4)]"
+            className="absolute top-0 bottom-0 z-30 pointer-events-none border-r-2 border-accent/80 shadow-[2px_0_8px_rgba(16,185,129,0.35)]"
             style={{ 
               left: finalIndexW + Array.from({ length: freezeCol }).reduce<number>((acc, _, idx) => acc + (columnWidths[idx] || 100), 0)
             }}
@@ -1604,7 +1579,7 @@ export const Grid = ({ isDashboard = false }: { isDashboard?: boolean; workbookI
 
       {/* --- LIVE MOUSE SELECTION QUICK STATS PILL --- */}
       {quickStats && (
-        <div className="fixed bottom-10 right-6 z-40 bg-surface/90 dark:bg-[#12161f]/90 backdrop-blur-xl border border-white/20 dark:border-white/10 px-3.5 py-1.5 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.35)] flex items-center gap-3 text-xs font-semibold text-textMain animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+        <div className="fixed bottom-14 right-6 z-40 bg-[#1e1e1e]/95 backdrop-blur-xl border border-[#3d3d3d] px-3.5 py-1.5 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.45)] flex items-center gap-3 text-xs font-semibold text-textMain animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
           {quickStats.sum !== null && (
             <button 
               onClick={() => {

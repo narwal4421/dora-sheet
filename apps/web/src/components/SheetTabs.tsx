@@ -65,13 +65,14 @@ export const SheetTabs: React.FC = () => {
   };
 
   return (
-    <div className="h-11 bg-surface/50 border-t border-border/80 px-4 flex items-center justify-between select-none relative z-10 backdrop-blur-xl">
+    <div className="h-10 border-t flex items-center justify-between select-none relative z-10" style={{ backgroundColor: '#1e1e1e', borderColor: '#3d3d3d' }}>
       {/* LEFT SECTION: CONTROLS & TABS */}
-      <div className="flex items-center gap-2 overflow-hidden flex-1 mr-4">
+      <div className="flex items-center gap-0 overflow-hidden flex-1 mr-4 h-full">
         {/* ADD SHEET TABS BUTTON */}
         <button
           onClick={() => addSheetTab()}
-          className="p-1.5 text-textMuted hover:text-white bg-white/5 hover:bg-accent/20 hover:border-accent border border-white/5 rounded-lg transition-all duration-200 shadow-sm flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 group"
+          className="p-1.5 transition-all duration-200 flex items-center justify-center shrink-0 hover:bg-[#333333] group"
+          style={{ color: '#a6a6a6' }}
           title="Add New Worksheet"
         >
           <Plus size={14} className="group-hover:rotate-90 transition-transform duration-300" />
@@ -101,13 +102,23 @@ export const SheetTabs: React.FC = () => {
                 ref={isActive ? activeTabRef : null}
                 onClick={() => !isActive && switchSheetTab(sheet.id)}
                 onDoubleClick={() => handleStartRename(sheet.id, sheet.name)}
-                className={`group px-3.5 py-1.5 rounded-lg border flex items-center gap-2 cursor-pointer transition-all duration-250 shrink-0 text-xs font-semibold ${
+                className={`group px-4 py-0 h-full flex items-center gap-2 cursor-pointer transition-all duration-150 shrink-0 text-xs font-medium border-r ${
                   isActive
-                    ? 'bg-accent/15 border-accent text-white shadow-[0_0_12px_rgba(99,102,241,0.12)]'
-                    : 'bg-surfaceHover/30 border-border/60 text-textMuted hover:text-textMain hover:border-border hover:bg-surfaceHover/60'
+                    ? 'border-b-0 border-t-2'
+                    : 'border-b border-t-2 border-t-transparent'
                 }`}
+                style={isActive ? {
+                  backgroundColor: '#ffffff',
+                  borderRightColor: '#3d3d3d',
+                  borderTopColor: '#107c41',
+                  color: '#111827',
+                } : {
+                  backgroundColor: 'transparent',
+                  borderRightColor: 'transparent',
+                  color: '#a6a6a6',
+                }}
               >
-                <FileSpreadsheet size={12} className={isActive ? 'text-accent' : 'text-textMuted'} />
+                <FileSpreadsheet size={12} style={{ color: isActive ? '#107c41' : '#a6a6a6' }} />
 
                 {editingTabId === sheet.id ? (
                   <input
@@ -116,7 +127,7 @@ export const SheetTabs: React.FC = () => {
                     onChange={(e) => setEditingName(e.target.value)}
                     onBlur={() => handleFinishRename(sheet.id)}
                     onKeyDown={(e) => handleKeyDown(e, sheet.id)}
-                    className="bg-surface/80 text-white border border-accent/40 rounded px-1.5 py-0.5 outline-none text-[11px] w-20 font-medium"
+                    className="bg-[#383838] text-white border border-[#107c41]/40 rounded px-1.5 py-0.5 outline-none text-[11px] w-20 font-medium"
                     autoFocus
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -154,10 +165,10 @@ export const SheetTabs: React.FC = () => {
       </div>
 
       {/* RIGHT SECTION: SHEET METRICS / STATUS */}
-      <div className="hidden sm:flex items-center gap-4 text-[10px] text-textMuted font-medium tracking-wider uppercase shrink-0 bg-surfaceHover/10 px-3 py-1 rounded-full border border-border/40 select-none">
+      <div className="hidden sm:flex items-center gap-4 text-[10px] font-medium tracking-wider uppercase shrink-0 px-3 py-1 select-none" style={{ color: '#a6a6a6' }}>
         <span>Worksheets: {sheets.length}</span>
-        <div className="h-2 w-[1px] bg-border/80" />
-        <span className="text-accent/90">Active: {sheets.find(s => s.id === activeSheetId)?.name || 'Sheet1'}</span>
+        <div className="h-2 w-[1px]" style={{ backgroundColor: '#3d3d3d' }} />
+        <span style={{ color: '#107c41' }}>Active: {sheets.find(s => s.id === activeSheetId)?.name || 'Sheet1'}</span>
       </div>
     </div>
   );

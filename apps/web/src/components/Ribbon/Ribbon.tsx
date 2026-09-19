@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from '../../store/useToastStore';
 import { socketService } from '../../services/socket.service';
+import { formulaService } from '../../services/formulaService';
 
 interface RibbonProps {
   onToggleAI: () => void;
@@ -269,7 +270,7 @@ export const Ribbon: FC<RibbonProps> = ({
       const endLetter = getColName(curC - 1);
       formula = `=${func}(${startLetter}1:${endLetter}1)`;
     }
-    setCellData(activeCell, { f: formula });
+    formulaService.commitCellChange(curR, curC, formula);
     toast(`Inserted ${func} formula`, 'success');
   };
 
@@ -987,7 +988,7 @@ export const Ribbon: FC<RibbonProps> = ({
                   className="px-1.5 py-0.5 rounded text-[10px] font-medium text-textMuted hover:bg-surfaceHover hover:text-accent flex items-center gap-1"
                   title="Fill Down (Ctrl+D) - Copies top row/cell down across selection"
                 >
-                  <ArrowDown size={11} className="text-indigo-400" />
+                  <ArrowDown size={11} className="text-accent" />
                   <span>Fill Down</span>
                 </button>
                 <button 
@@ -995,7 +996,7 @@ export const Ribbon: FC<RibbonProps> = ({
                   className="px-1.5 py-0.5 rounded text-[10px] font-medium text-textMuted hover:bg-surfaceHover hover:text-accent flex items-center gap-1"
                   title="Fill Right (Ctrl+R) - Copies leftmost col/cell right across selection"
                 >
-                  <ArrowRight size={11} className="text-indigo-400" />
+                  <ArrowRight size={11} className="text-accent" />
                   <span>Fill Right</span>
                 </button>
               </div>
@@ -1092,7 +1093,7 @@ export const Ribbon: FC<RibbonProps> = ({
                 className="flex flex-col items-center justify-center p-2 rounded hover:bg-surfaceHover text-textMuted hover:text-accent transition-all group"
                 title="Insert Interactive Bar Chart"
               >
-                <BarChart3 size={18} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+                <BarChart3 size={18} className="text-teal-400 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] mt-0.5">Bar</span>
               </button>
               <button 
@@ -1122,7 +1123,7 @@ export const Ribbon: FC<RibbonProps> = ({
                 className="flex flex-col items-center justify-center p-2 rounded hover:bg-surfaceHover text-textMuted hover:text-accent transition-all group"
                 title="Insert Interactive Area Chart"
               >
-                <AreaChart size={18} className="text-purple-400 group-hover:scale-110 transition-transform" />
+                <AreaChart size={18} className="text-emerald-300 group-hover:scale-110 transition-transform" />
                 <span className="text-[10px] mt-0.5">Area</span>
               </button>
             </div>
@@ -1408,7 +1409,7 @@ export const Ribbon: FC<RibbonProps> = ({
                 className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-surfaceHover text-textMuted hover:text-accent text-xs font-medium transition-colors"
                 title="Fill Down (Ctrl+D)"
               >
-                <ArrowDown size={13} className="text-indigo-400" />
+                <ArrowDown size={13} className="text-accent" />
                 <span>Fill Down</span>
               </button>
 
@@ -1417,7 +1418,7 @@ export const Ribbon: FC<RibbonProps> = ({
                 className="flex items-center gap-1 px-2 py-1.5 rounded hover:bg-surfaceHover text-textMuted hover:text-accent text-xs font-medium transition-colors"
                 title="Fill Right (Ctrl+R)"
               >
-                <ArrowRight size={13} className="text-indigo-400" />
+                <ArrowRight size={13} className="text-accent" />
                 <span>Fill Right</span>
               </button>
             </div>
@@ -1572,7 +1573,7 @@ export const Ribbon: FC<RibbonProps> = ({
           <div className="flex items-center gap-2">
             <button 
               onClick={onToggleAI}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-accent to-indigo-600 text-white font-semibold text-xs shadow-md shadow-accent/25 hover:shadow-accent/40 active:scale-95 transition-all"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-accent to-emerald-600 text-slate-950 font-bold text-xs shadow-md shadow-accent/25 hover:shadow-accent/40 active:scale-95 transition-all"
             >
               <Bot size={15} className="animate-pulse" />
               <span>Open Dora AI Assistant</span>

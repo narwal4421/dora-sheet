@@ -29,7 +29,7 @@ export const IncomingCallOverlay: React.FC = () => {
 
   return (
     <div className="fixed inset-x-0 top-6 z-[120] flex items-center justify-center p-4 pointer-events-none">
-      <div className="incoming-call-box pointer-events-auto flex items-center gap-4 bg-surface/90 backdrop-blur-md border border-accent/30 shadow-[0_20px_50px_rgba(99,102,241,0.3)] rounded-2xl px-6 py-4 max-w-sm w-full">
+      <div className="incoming-call-box pointer-events-auto flex items-center gap-4 bg-surface/90 backdrop-blur-md border border-accent/30 shadow-[0_20px_50px_rgba(16,185,129,0.25)] rounded-2xl px-6 py-4 max-w-sm w-full">
         <div className="p-3 bg-accent/10 text-accent rounded-full animate-pulse">
           {incomingCall.video ? <Video size={24} /> : <Phone size={24} />}
         </div>
