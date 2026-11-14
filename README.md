@@ -23,6 +23,17 @@ Video calls without leaving the sheet. All free. All open source.
 
 <br/><br/>
 
+<div align="center">
+  <small style="font-size: 13px; color: #888; letter-spacing: 0.05em;">
+    🎬 <b>AI Cinematic Dashboards</b> &nbsp;·&nbsp;
+    ⚡ <b>60 FPS Motion Physics</b> &nbsp;·&nbsp;
+    🌌 <b>Glassmorphism Ambient UI</b> &nbsp;·&nbsp;
+    🎙️ <b>LiveKit WebRTC HUD</b>
+  </small>
+</div>
+
+<br/>
+
 [![CI](https://img.shields.io/github/actions/workflow/status/narwal4421/dora-sheet/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/narwal4421/dora-sheet/actions)
 &nbsp;
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
@@ -106,6 +117,69 @@ Your team sees the same data while you talk about it. Powered by LiveKit WebRTC 
 </td>
   </tr>
 </table>
+
+---
+
+## 🎬 The Cinematic Experience
+
+Dora Sheet is designed like a high-end digital workstation — deep obsidian dark mode, ambient lighting, fluid spring physics, and floating glassmorphic overlays.
+
+### 1. AI Cinematic Dashboard
+Ask Dora AI *"Show me a dashboard"* and watch your raw spreadsheet rows transform into a full-screen executive intelligence presentation. Powered by **Apache ECharts** and **GSAP motion physics** (`power3.out`), complete with dynamic KPIs and smooth area charts:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ✦ AI CINEMATIC DASHBOARD                                          [Share]  [Export]  [ ✕ ] │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                             │
+│  ┌──────────────────────┐  ┌──────────────────────┐  ┌────────────────────────────────────┐ │
+│  │ TOTAL REVENUE        │  │ OPERATING EXPENSES   │  │ NET PROFIT MARGIN                  │ │
+│  │ $842,500             │  │ $312,180             │  │ 62.9%                              │ │
+│  │ ▲ +14.2% vs last mo  │  │ ▼ -4.1% cost down    │  │ ▲ +8.3% all-time peak              │ │
+│  └──────────────────────┘  └──────────────────────┘  └────────────────────────────────────┘ │
+│                                                                                             │
+│  ┌──────────────────────────────────────────────┐  ┌──────────────────────────────────────┐ │
+│  │ MONTHLY FINANCIAL GROWTH (AREA)              │  │ REVENUE DISTRIBUTION (PIE)           │ │
+│  │                                              │  │                                      │ │
+│  │       ▲                                      │  │               ██████ Product Sales   │ │
+│  │      / \    ▲                                │  │           ░░░ (55%)                  │ │
+│  │     /   \  / \   ▲                           │  │          ░░░░░                       │ │
+│  │    /     \/   \_/ \                          │  │           ░░░ ▒▒▒▒ Consulting        │ │
+│  │  ─┴────────────────────                      │  │               ▒▒▒▒ (30%)             │ │
+│  │  Jan   Feb   Mar   Apr   May                 │  │               ▓▓▓▓ Subscriptions     │ │
+│  │  [ Smooth Gradient Emerald Area Curve ]      │  │                    (15%)             │ │
+│  └──────────────────────────────────────────────┘  └──────────────────────────────────────┘ │
+│                                                                                             │
+│  ❝ Real-time AI synthesis derived directly from your live active sheet data. ❞              │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2. In-Grid Telepresence HUD (WebRTC Video & Voice)
+Conduct live reviews right on the canvas. A translucent, floating HUD keeps your audio/video feed active without blocking your view of the numbers:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│  Active Cell: [ C5 ]                                                                        │
+├─────┬─────────────────────┬──────────────┬──────────────┬───────────────────────────────────┤
+│     │          A          │      B       │      C       │                                   │
+├─────┼─────────────────────┼──────────────┼──────────────┤  ┌──────────────────────────────┐ │
+│  1  │ Revenue Channel     │ Target       │ Actual       │  │ 🔴 ACTIVE CALL (3 Members)   │ │
+├─────┼─────────────────────┼──────────────┼──────────────┤  ├──────────────────────────────┤ │
+│  2  │ Direct Enterprise   │ $400,000     │ $462,000  ▲  │  │ [👩‍💼 Alice]   [👨‍💻 Bob] [👩‍🔬 Carol]│ │
+├─────┼─────────────────────┼──────────────┼──────────────┤  │ [🎙️ Talking] [🔇 Mute] [📹 Cam]  │ │
+│  3  │ Self-Serve SaaS     │ $250,000     │ $289,500  ▲  │  ├──────────────────────────────┤ │
+├─────┼─────────────────────┼──────────────┼──────────────┤  │ [🎤 Mute] [📹 Video] [🔴 End] │ │
+│  4  │ Professional Svc    │ $150,000     │ $148,000  ▼  │  └──────────────────────────────┘ │
+├─────┼─────────────────────┼──────────────┼──────────────┴───────────────────────────────────┤
+│  5  │ TOTAL REVENUE       │ $800,000     │ =SUM(C2:C4) ◄ Alice is typing here (Lock Active) │
+└─────┴─────────────────────┴──────────────┴──────────────────────────────────────────────────┘
+```
+
+### 3. Glowing Drag-and-Drop Ingestion Portal
+Hover any `.xlsx`, `.csv`, `.tsv`, image, or PDF over the browser window: the entire screen responds with a pulsating emerald border and background blur (`backdrop-blur-sm`), ready to parse your data directly into rows and columns.
+
+### 4. 60 FPS Spatial Cursor Ballet
+Watch collaborators navigate the sheet in true real time. Cursors glide smoothly at 60 frames per second using 16ms micro-throttling, color-coded name tags, glowing active selection borders, and instant pessimistic edit locks.
 
 ---
 
