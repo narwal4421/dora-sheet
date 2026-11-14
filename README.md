@@ -1,250 +1,358 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/Dora_Sheet-AI_Powered_Spreadsheet-6366f1?style=for-the-badge&logo=googlesheets&logoColor=white" alt="Dora Sheet" />
-</p>
+<div align="center">
 
-<h1 align="center">📊 Dora Sheet</h1>
+# 📊 Dora Sheet
 
-<p align="center">
-  <strong>The AI-Powered Collaborative Spreadsheet Platform</strong><br/>
-  <em>Real-time multiplayer editing • AI assistant • Voice & video calls • Cinematic dashboards</em>
-</p>
+### The AI-Native Collaborative Spreadsheet Platform
 
-<p align="center">
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/React_19-61DAFB?style=flat-square&logo=react&logoColor=black" />
-  <img src="https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white" />
-  <img src="https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socketdotio&logoColor=white" />
-  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white" />
-  <img src="https://img.shields.io/badge/Prisma-2D3748?style=flat-square&logo=prisma&logoColor=white" />
-  <img src="https://img.shields.io/badge/LiveKit-FF2D55?style=flat-square&logo=webrtc&logoColor=white" />
-  <img src="https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" />
-  <img src="https://img.shields.io/badge/Swagger-85EA2D?style=flat-square&logo=swagger&logoColor=black" />
-</p>
+[![CI Pipeline](https://github.com/narwal4421/dora-sheet/actions/workflows/ci.yml/badge.svg)](https://github.com/narwal4421/dora-sheet/actions)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Prisma](https://img.shields.io/badge/Prisma-5.11-2D3748?logo=prisma&logoColor=white)](https://prisma.io)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4.7-010101?logo=socket.io&logoColor=white)](https://socket.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?logo=vercel&logoColor=white)](https://dora-sheet.vercel.app)
 
-<p align="center">
-  <a href="https://dora-sheet.vercel.app" target="_blank"><strong>🌐 Live Demo</strong></a> &nbsp;·&nbsp;
-  <a href="#-features"><strong>✨ Features</strong></a> &nbsp;·&nbsp;
-  <a href="#-architecture"><strong>🏗 Architecture</strong></a> &nbsp;·&nbsp;
-  <a href="#-getting-started"><strong>🚀 Get Started</strong></a> &nbsp;·&nbsp;
-  <a href="#-api-documentation"><strong>📚 API Docs</strong></a>
-</p>
+**Dora Sheet** is a full-stack, real-time collaborative spreadsheet application powered by an AI assistant, built-in video/voice calling, cinematic dashboards, and a professional formula engine. Think *Google Sheets meets ChatGPT* — open source and free.
+
+[🚀 Live Demo](https://dora-sheet.vercel.app) · [📖 API Docs](https://dora-sheet-api.onrender.com/api/docs) · [🐛 Report Bug](https://github.com/narwal4421/dora-sheet/issues) · [💡 Request Feature](https://github.com/narwal4421/dora-sheet/issues)
 
 ---
 
-## 🎯 What is Dora Sheet?
+<img src="apps/web/src/assets/hero.png" alt="Dora Sheet Interface" width="90%" />
 
-**Dora Sheet** is a production-grade, AI-powered collaborative spreadsheet platform built from scratch — no third-party spreadsheet libraries. It combines the familiarity of Google Sheets with the power of an embedded AI assistant, real-time multiplayer collaboration via WebSockets, in-app voice & video calling powered by LiveKit SFU, and auto-generated cinematic dashboards.
-
-Built as a **monorepo** with shared type safety across the entire stack, Dora Sheet demonstrates enterprise-level full-stack engineering with real-time systems, AI integration, and modern DevOps practices.
-
-> **💡 This is not a wrapper around an existing spreadsheet engine.** Every component — the grid renderer, formula engine, cell formatting system, selection logic, and collaboration protocol — is hand-crafted from scratch.
+</div>
 
 ---
 
-## ⚔️ How Dora Sheet Compares
+## 📋 Table of Contents
 
-| Capability | Google Sheets | Notion Tables | Airtable | **Dora Sheet** |
-|-----------|:---:|:---:|:---:|:---:|
-| Custom-built grid engine | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary | ✅ **From scratch** |
-| Embedded AI assistant | ⚠️ Gemini (limited) | ✅ Notion AI | ❌ | ✅ **10-tool function calling** |
-| Real-time multiplayer cursors | ✅ | ⚠️ Partial | ⚠️ Partial | ✅ **Color-coded live cursors** |
-| In-app voice & video calls | ❌ | ❌ | ❌ | ✅ **LiveKit SFU** |
-| AI-generated dashboards | ❌ | ❌ | ⚠️ Paid add-on | ✅ **Built-in with ECharts** |
-| Document → spreadsheet extraction | ❌ | ❌ | ❌ | ✅ **PDF/Image/Excel → Grid** |
-| Room lock & host controls | ❌ | ❌ | ❌ | ✅ **Approval-based join flow** |
-| Team chat inside spreadsheet | ❌ Comments only | ❌ Comments only | ❌ | ✅ **Real-time team messaging** |
-| Built-in starter templates | ⚠️ Gallery | ⚠️ Gallery | ✅ | ✅ **9 professional templates** |
-| Self-hostable & open architecture | ❌ | ❌ | ❌ | ✅ **Docker Compose ready** |
-| Formula engine in Web Worker | ❌ Main thread | ❌ N/A | ❌ N/A | ✅ **Off-thread computation** |
+- [✨ Features](#-features)
+- [🏗️ System Architecture](#️-system-architecture)
+- [📁 Project Structure](#-project-structure)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [⚡ Quick Start](#-quick-start)
+- [🔧 Environment Variables](#-environment-variables)
+- [🗄️ Database Schema](#️-database-schema)
+- [🔌 API Reference](#-api-reference)
+- [🌐 Real-Time Protocol](#-real-time-protocol)
+- [🤖 AI Engine](#-ai-engine)
+- [📐 Formula Engine](#-formula-engine)
+- [🧪 Testing](#-testing)
+- [🚀 Deployment](#-deployment)
+- [📊 Performance](#-performance)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ---
 
 ## ✨ Features
 
-### 📊 Spreadsheet Core
-- **Custom Grid Engine** — Virtualized 1000×26 grid with sub-millisecond render performance using `@tanstack/virtual`
-- **Formula Engine** — Dedicated Web Worker-based formula processor (`SUM`, `AVERAGE`, `IF`, `VLOOKUP`, and more)
-- **Cell Formatting** — Bold, italic, strikethrough, text color, background color, text alignment, number formatting (currency, percentage)
-- **Multi-Sheet Tabs** — Add, rename, delete, and switch between multiple sheets within a workbook
-- **Undo / Redo** — 50-level deep history stack with instant state restoration
-- **Find & Replace** — Regex-powered search across all cell values and formulas with navigate-to-match
-- **Column & Row Resizing** — Drag-to-resize with auto-fit to content
-- **Context Menu** — Right-click actions: copy, paste, insert row, delete row
-- **Selection Range** — Click-and-drag multi-cell selection with visual overlay
-- **Excel Export** — One-click `.xlsx` export via SheetJS
-
-### 🤖 AI Assistant (Dora Intelligence)
-- **Natural Language Interface** — Ask the AI anything: "Add a budget table", "Sum column B", "Make headers bold"
-- **10 AI Tools** — `apply_formula` · `fill_data` · `format_cells` · `organize_data` · `modify_structure` · `semantic_search` · `extract_to_table` · `generate_dashboard` · `analyze_data` · `clear_data`
-- **Document Intelligence** — Attach Excel, CSV, PDF, or image files and the AI extracts structured data directly into the grid
-- **Approval Workflow** — AI suggests actions, you review and approve before they're applied
-- **12-Step Decision Hierarchy** — Deterministic intent routing: greeting → formula → file extraction → data fill → formatting → search → dashboard → structure → inventory → inference
-- **Multilingual Support** — Auto-detects language, translates data to English, responds in your language
-- **Inventory Mode** — Natural commands like "add 10 apples" or "sold 3 chairs" auto-structured into tabular data
-- **Powered by GPT-4o-mini** via OpenRouter with function calling
+### 🧠 AI-Powered Intelligence
+| Feature | Description |
+|---------|-------------|
+| **Natural Language Formulas** | Ask in plain English — get precise spreadsheet formulas (SUM, VLOOKUP, IF, SUMIF, etc.) |
+| **PDF / Image Extraction** | Upload PDFs or images → structured table data extracted directly into the grid |
+| **Cinematic Dashboards** | AI generates KPI cards + interactive charts (bar, line, area, pie) from your data |
+| **Semantic Search** | Search your data using natural language queries |
+| **Data Analysis** | Deep insights, anomaly detection, and actionable suggestions |
+| **Smart Templates** | 9 built-in templates: Budget, Invoice, CRM, Payroll, Project Tracker, and more |
+| **Auto-Formatting** | AI-driven cell styling — bold, colors, alignment, number formats |
+| **Multilingual Support** | Auto-detects user language; normalizes non-English input to structured data |
 
 ### 👥 Real-Time Collaboration
-- **Multiplayer Editing** — See other users' cursors, selections, and edits in real-time via Socket.IO
-- **Live Presence** — Color-coded avatar indicators showing who's currently in the workbook
-- **Cell Locking** — Automatic pessimistic locking prevents edit conflicts (auto-released on disconnect)
-- **Room System** — Each workbook is a room with a unique 6-digit join code
-- **Host Controls** — Room creator can lock/unlock the room, approve/deny join requests
-- **Workbook Renaming** — Rename syncs instantly across all connected clients
-- **Team Chat** — Built-in real-time messaging between collaborators (separate from AI chat)
+| Feature | Description |
+|---------|-------------|
+| **Live Cursors** | See every collaborator's cursor position in real-time with colored indicators |
+| **Cell Locking** | Automatic pessimistic locking prevents editing conflicts |
+| **Presence Awareness** | Live user list showing who's online with colored avatars |
+| **Team Chat** | In-workbook chat with message deduplication and history |
+| **Room Lock & Access Control** | Host can lock rooms; join-request/approval flow for new users |
+| **Host Handover** | Automatic host reassignment when the original host disconnects |
 
-### 📞 Voice & Video Calling
-- **LiveKit SFU Integration** — Enterprise-grade WebRTC powered by LiveKit's Selective Forwarding Unit
-- **Voice & Video Calls** — One-click call initiation from the Team Chat panel
-- **Screen Sharing** — Share your screen with collaborators during calls
-- **Floating Call Overlay** — Minimizable/expandable call UI with camera/mic/screen share toggles
-- **Incoming Call Notifications** — Real-time call alerts with accept/decline actions
-- **Call Duration Timer** — Live timer displayed in both minimized and expanded states
+### 📞 Voice & Video Calls
+| Feature | Description |
+|---------|-------------|
+| **Built-in Calling** | Voice and video calls powered by LiveKit — no Zoom needed |
+| **Incoming Call UI** | Rich incoming call overlay with accept/decline actions |
+| **Active Call HUD** | Persistent call overlay during active collaboration sessions |
 
-### 📈 Cinematic Dashboards
-- **AI-Generated Dashboards** — Ask the AI to "create a dashboard" and get auto-generated KPI cards + interactive charts
-- **Chart Types** — Bar, line, area, and pie charts rendered via Apache ECharts (SVG renderer)
-- **KPI Cards** — Animated cards with trend indicators (↑↓→) and change percentages
-- **Collaborative Sharing** — Broadcast your dashboard to all connected users in real-time
-- **GSAP Animations** — Staggered entrance animations for cards and charts
-
-### 🛡️ Security Architecture
-- **Bodyguard™ Security Layer** — Multi-layer defense: rate limiting per IP (50 connections/min, 100 grid ops/min, 30 chat msgs/min), XSS sanitization on all user input, payload size caps at 5KB
-- **JWT Authentication** — Dual-token system: short-lived access tokens + long-lived refresh tokens with bcrypt password hashing (salt rounds: 10)
-- **Guest Mode** — Instant access without signup using stable `guestId` identifiers that persist across reconnections
-- **RBAC Middleware** — Role-based access control at route level (`ADMIN`, `EDITOR`, `VIEWER`) with Zod schema validation on all inputs
-- **Cell-Level Locking** — Redis-backed pessimistic locks with 30s TTL auto-expiry and bulk cleanup on disconnect
-- **Host Handover** — Automatic host reassignment when the room creator disconnects; falls back to next connected socket
-- **Auto-Snapshots** — Server-side periodic snapshots every 5 minutes for data recovery with full sheet state serialization
-- **Helmet + CORS** — HTTP security headers via Helmet.js, dynamic CORS origin reflection, trust proxy for Render deployment
-
-### 🎨 UI/UX
-- **Dark & Light Mode** — Toggle themes with smooth CSS variable transitions
-- **9 Starter Templates** — Monthly Budget, Project Planner, Invoice, Timesheet, Net Worth, Grade Calculator, Sales Pipeline, Marketing ROI, SaaS Metrics
-- **GSAP Micro-Animations** — Premium entrance animations, toast notifications, modal transitions
-- **Fully Responsive** — Mobile-optimized toolbar, navigation, and AI panel
-- **Glassmorphism Design** — Backdrop blur, gradient accents, and layered transparency
+### 📈 Spreadsheet Engine
+| Feature | Description |
+|---------|-------------|
+| **100+ Formulas** | Powered by HyperFormula — SUM, AVERAGE, VLOOKUP, INDEX/MATCH, and more |
+| **Web Worker Execution** | Formula calculations run off the main thread for zero UI blocking |
+| **Multi-Sheet Workbooks** | Add, rename, delete, and switch between multiple sheet tabs |
+| **50-Level Undo/Redo** | Deep history stack with intelligent state snapshots |
+| **Find & Replace** | Full-workbook search with result navigation |
+| **Cell Formatting** | Bold, italic, underline, font size, colors, alignment, borders, number formats |
+| **Merged Cells** | Merge and unmerge cell ranges across rows and columns |
+| **Freeze Panes** | Freeze rows/columns for header pinning during scroll |
+| **Column/Row Resizing** | Drag-to-resize with auto-fit support |
+| **Sort & Filter** | Ascending/descending sort per column with row hiding |
+| **Excel Import/Export** | Drag-and-drop `.xlsx`/`.xls`/`.csv`/`.tsv` import; export to `.xlsx` |
+| **Version History** | Auto-snapshots every 5 minutes + manual save points with restore |
+| **Virtual Scrolling** | Handles 1000+ rows × 100+ columns with constant rendering performance |
+| **Format Painter** | Copy formatting from one cell and apply to others (single or persistent mode) |
+| **Context Menu** | Right-click menu with cut/copy/paste, insert/delete rows/columns |
+| **Keyboard Shortcuts** | Ctrl+Z, Ctrl+Y, Ctrl+C/V/X, Ctrl+O, Alt+C, and more |
 
 ---
 
-## 🏗 Architecture
+## 🏗️ System Architecture
+
+```mermaid
+graph TB
+    subgraph Client["🖥️ Frontend — React 19 + Vite"]
+        UI["Grid / Toolbar / Ribbon"]
+        Store["Zustand State Store"]
+        Socket["Socket.IO Client"]
+        Worker["Web Worker<br/>HyperFormula Engine"]
+        AI_Panel["AI Chat Panel"]
+        LiveKit_C["LiveKit Client<br/>Video/Voice"]
+    end
+
+    subgraph Server["⚙️ Backend — Express + Node.js"]
+        API["REST API<br/>/api/v1/*"]
+        WS["Socket.IO Server<br/>Real-Time Engine"]
+        Auth["JWT Auth +<br/>RBAC Middleware"]
+        AI_Svc["AI Service<br/>OpenRouter / GPT-4o-mini"]
+        Snap["Snapshot Service<br/>Auto-save @ 5min"]
+        File_Svc["File Service<br/>PDF/Image Upload"]
+    end
+
+    subgraph Data["🗄️ Data Layer"]
+        PG["PostgreSQL 16<br/>Prisma ORM"]
+        Redis["Redis 7<br/>Pub/Sub + Locks"]
+    end
+
+    subgraph External["🌐 External Services"]
+        OpenRouter["OpenRouter API<br/>LLM Gateway"]
+        LK["LiveKit Cloud<br/>WebRTC SFU"]
+        Vercel["Vercel<br/>Frontend CDN"]
+        Render["Render<br/>Backend Host"]
+    end
+
+    UI --> Store
+    Store <--> Socket
+    UI --> Worker
+    AI_Panel --> Socket
+    Socket <--> WS
+    API --> Auth
+    Auth --> PG
+    WS --> Redis
+    WS --> PG
+    API --> AI_Svc
+    AI_Svc --> OpenRouter
+    Snap --> PG
+    LiveKit_C --> LK
+    File_Svc --> AI_Svc
+    Client --> Vercel
+    Server --> Render
+```
+
+### Request Flow — Cell Edit Propagation
+
+```mermaid
+sequenceDiagram
+    participant U as User A
+    participant S as Zustand Store
+    participant W as Web Worker
+    participant SK as Socket.IO
+    participant SV as Server
+    participant DB as PostgreSQL
+    participant U2 as User B
+
+    U->>S: Edit cell (keystroke)
+    S->>S: Push to undo history
+    S->>W: Send formula to Web Worker
+    W-->>S: Return computed value
+    S->>SK: Emit cell_update
+    SK->>SV: WebSocket frame
+    SV->>DB: Persist cell (async)
+    SV->>U2: Broadcast cell_updated
+    U2->>S: applyRemoteUpdate()
+```
+
+---
+
+## 📁 Project Structure
 
 ```
 dora-sheet/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    # GitHub Actions: lint → test → build
 ├── apps/
-│   ├── api/                    # Express + Socket.IO backend
+│   ├── api/                          # 🔧 Express.js Backend
+│   │   ├── prisma/
+│   │   │   └── schema.prisma         # Database schema (7 models)
 │   │   ├── src/
-│   │   │   ├── config/         # Environment, Prisma, Redis, Logger (Winston)
-│   │   │   ├── middleware/     # Auth, RBAC, Rate Limiting, Error Handler
+│   │   │   ├── index.ts              # Server entrypoint + auto-snapshot scheduler
+│   │   │   ├── config/
+│   │   │   │   ├── env.ts            # Zod-validated environment config
+│   │   │   │   ├── logger.ts         # Winston structured logging
+│   │   │   │   ├── prisma.ts         # Prisma client singleton
+│   │   │   │   └── redis.ts          # Redis/IORedis connection
+│   │   │   ├── middleware/
+│   │   │   │   ├── auth.middleware.ts # JWT authentication guard
+│   │   │   │   ├── rbac.middleware.ts # Role-based access control
+│   │   │   │   ├── rateLimiter.ts    # API + Auth rate limiting
+│   │   │   │   └── error.middleware.ts# Global error handler
 │   │   │   ├── modules/
-│   │   │   │   ├── ai/        # GPT-4o-mini with 10 function tools
-│   │   │   │   ├── auth/      # JWT signup/login/refresh
-│   │   │   │   ├── call/      # LiveKit token generation
-│   │   │   │   ├── file/      # Excel/CSV/PDF/Image parsing (Multer + Puppeteer)
-│   │   │   │   ├── workbook/  # CRUD + snapshot management
-│   │   │   │   └── workspace/ # Multi-tenant workspace management
-│   │   │   └── sockets/       # Real-time event engine (13+ event types)
-│   │   └── prisma/            # PostgreSQL schema (7 models)
+│   │   │   │   ├── ai/               # AI chat, tool-calling, prompt engineering
+│   │   │   │   ├── auth/             # Registration, login, JWT refresh
+│   │   │   │   ├── call/             # LiveKit video/voice token generation
+│   │   │   │   ├── file/             # File upload (Multer) + PDF/image processing
+│   │   │   │   ├── workbook/         # Workbook + Sheet CRUD + Snapshots
+│   │   │   │   └── workspace/        # Workspace + Member management
+│   │   │   └── sockets/
+│   │   │       └── socket.server.ts  # Real-time WebSocket engine (362 lines)
+│   │   └── tests/
+│   │       ├── setup.ts              # Test harness setup
+│   │       └── api.test.ts           # Integration tests
 │   │
-│   └── web/                    # React 19 + Vite frontend
-│       └── src/
-│           ├── components/
-│           │   ├── Grid/       # Virtualized grid, headers, selection, remote cursors
-│           │   ├── Collaboration/ # Join requests, room lock, identity modal
-│           │   └── Modals/     # Share, Templates, Active Call, Incoming Call
-│           ├── store/          # Zustand stores (Sheet, Call, Toast)
-│           ├── services/       # Socket.IO client, Auth service
-│           └── hooks/          # Virtualizer wrapper
+│   └── web/                          # 🎨 React 19 Frontend
+│       ├── public/                   # Static assets (favicon, icons)
+│       ├── src/
+│       │   ├── App.tsx               # Root orchestrator (420 lines)
+│       │   ├── components/
+│       │   │   ├── Grid.tsx          # Virtual-scrolling spreadsheet grid
+│       │   │   ├── Cell.tsx          # Individual cell renderer + editor
+│       │   │   ├── Toolbar.tsx       # Classic toolbar (bold, italic, etc.)
+│       │   │   ├── TopNav.tsx        # Top navigation bar
+│       │   │   ├── FormulaBar.tsx    # Excel-style formula bar
+│       │   │   ├── AIChatPanel.tsx   # AI assistant chat interface
+│       │   │   ├── SheetTabs.tsx     # Multi-sheet tab bar
+│       │   │   ├── FindReplace.tsx   # Find & Replace dialog
+│       │   │   ├── ContextMenu.tsx   # Right-click context menu
+│       │   │   ├── ChartOverlay.tsx  # Chart rendering overlay
+│       │   │   ├── DashboardOverlay.tsx # Cinematic dashboard view
+│       │   │   ├── VersionHistory.tsx   # Snapshot timeline viewer
+│       │   │   ├── DropdownMenu.tsx  # Reusable dropdown component
+│       │   │   ├── AboutPage.tsx     # About / landing page
+│       │   │   ├── ToastContainer.tsx# Toast notification system
+│       │   │   ├── Ribbon/
+│       │   │   │   └── Ribbon.tsx    # Office-style ribbon with tabs
+│       │   │   ├── Grid/
+│       │   │   │   ├── GridHeaders.tsx      # Row/column headers
+│       │   │   │   ├── RemoteCursorsLayer.tsx # Live cursor rendering
+│       │   │   │   └── SelectionOverlay.tsx  # Selection highlight
+│       │   │   ├── Collaboration/
+│       │   │   │   ├── JoinIdentityModal.tsx # User identity prompt
+│       │   │   │   ├── JoinRequestStack.tsx  # Join request notifications
+│       │   │   │   └── RoomLockedModal.tsx   # Room lock gate
+│       │   │   └── Modals/
+│       │   │       ├── ShareModal.tsx        # Share link + room controls
+│       │   │       ├── ChartModal.tsx        # Chart creation wizard
+│       │   │       ├── TemplatesModal.tsx    # Template gallery
+│       │   │       ├── CalculatorModal.tsx   # Built-in calculator
+│       │   │       ├── IncomingCallOverlay.tsx # Call notification
+│       │   │       └── ActiveCallOverlay.tsx  # Active call HUD
+│       │   ├── hooks/
+│       │   │   ├── useSEOMetadata.ts    # Dynamic meta tag injection
+│       │   │   └── useVirtualizerWrapper.ts # Virtual scroll hook
+│       │   ├── services/
+│       │   │   ├── socket.service.ts    # Socket.IO client (singleton, 385 lines)
+│       │   │   ├── auth.service.ts      # Auth API client
+│       │   │   └── formulaService.ts    # Formula engine bridge
+│       │   ├── store/
+│       │   │   ├── useSheetStore.ts     # Core state machine (1769 lines)
+│       │   │   ├── useCallStore.ts      # Call/video state
+│       │   │   └── useToastStore.ts     # Toast notification state
+│       │   └── utils/
+│       │       ├── excelImporter.ts     # XLSX/CSV/TSV import parser
+│       │       └── workbookUrl.ts       # URL ↔ Workbook ID utilities
+│       ├── index.html                   # SEO-optimized entry (JSON-LD, OG tags)
+│       ├── tailwind.config.js           # Custom dark theme + design tokens
+│       └── vite.config.ts               # Vite + manual chunk splitting
 │
-└── packages/
-    ├── formula-engine/         # Web Worker formula processor
-    └── types/                  # Shared TypeScript interfaces
+├── packages/
+│   ├── formula-engine/               # 📐 HyperFormula Web Worker
+│   │   ├── src/
+│   │   │   ├── index.ts              # EngineWrapper (async message bridge)
+│   │   │   └── formula.worker.ts     # Worker thread (HyperFormula instance)
+│   │   └── tests/
+│   │       └── formula.test.ts       # Formula engine unit tests
+│   │
+│   └── types/                        # 📦 Shared TypeScript Types
+│       └── src/
+│           ├── index.ts              # Barrel export
+│           ├── cell.types.ts         # CellData, CellFormat, SheetData, SheetMeta
+│           ├── api.types.ts          # APIResponse, APIError, JWTPayload
+│           └── socket.types.ts       # CellUpdateEvent, CursorMoveEvent, CellLockEvent
+│
+├── docker-compose.yml                # PostgreSQL 16 + Redis 7 services
+├── vercel.json                       # Vercel SPA rewrite rules
+├── package.json                      # Root monorepo (npm workspaces)
+└── .env.example                      # Environment variable template
 ```
-
-### Tech Stack
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Frontend** | React 19, Vite, TypeScript | SPA with HMR |
-| **State** | Zustand | High-performance immutable stores |
-| **Styling** | Tailwind CSS v4, GSAP | Utility-first CSS + premium animations |
-| **Grid** | @tanstack/virtual | DOM virtualization (1000 rows × 26 cols) |
-| **Charts** | Apache ECharts | SVG-rendered interactive charts |
-| **Backend** | Express.js, TypeScript | RESTful API server |
-| **Real-Time** | Socket.IO | Bi-directional WebSocket communication |
-| **Database** | PostgreSQL 16, Prisma ORM | Relational data with type-safe queries |
-| **Cache** | Redis 7 | Session state, cell locks, rate limiting |
-| **AI** | OpenRouter (GPT-4o-mini) | Function calling with 10 tools |
-| **Calling** | LiveKit (WebRTC SFU) | Voice, video, and screen sharing |
-| **File Parsing** | SheetJS, Multer, Puppeteer | Excel/CSV import + PDF/image OCR |
-| **Auth** | JWT, bcrypt | Token-based auth with refresh rotation |
-| **Logging** | Winston | Structured production logging |
-| **API Docs** | Swagger/OpenAPI 3.0 | Auto-generated REST documentation |
-| **DevOps** | Docker Compose, Vercel, Render | Container orchestration + cloud deploy |
 
 ---
 
-## ⚙️ Core Engine Deep-Dive
+## 🛠️ Tech Stack
 
-The heart of Dora Sheet is a **custom-built spreadsheet engine** — no libraries like Handsontable or AG Grid. Here's how it works:
+### Frontend
+| Technology | Purpose |
+|------------|---------|
+| **React 19** | UI framework with hooks, suspense, and concurrent rendering |
+| **Vite 8** | Next-gen build tool with HMR and optimized chunking |
+| **TypeScript 6** | End-to-end type safety |
+| **Zustand 5** | Lightweight state management with selector pattern |
+| **Tailwind CSS 4** | Utility-first styling with custom design tokens |
+| **Socket.IO Client** | WebSocket transport with auto-reconnection |
+| **TanStack Virtual** | Virtualized scrolling for massive grids |
+| **ECharts 6** | Interactive charts and data visualization |
+| **GSAP 3** | Premium animations (toasts, overlays, transitions) |
+| **LiveKit Client** | WebRTC-based voice and video calls |
+| **Lucide React** | Beautiful icon library |
+| **SheetJS (xlsx)** | Excel file import/export |
+| **Howler.js** | Sound effects and audio feedback |
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    React Component Tree                  │
-│  ┌──────────┐  ┌──────────┐  ┌────────────────────────┐ │
-│  │  TopNav   │  │ Toolbar  │  │   AIChatPanel (400px)  │ │
-│  └──────────┘  └──────────┘  │  ┌──────────────────┐  │ │
-│  ┌─────────────────────────┐ │  │  AI Messages     │  │ │
-│  │         Grid            │ │  │  Tool Results     │  │ │
-│  │  ┌───────────────────┐  │ │  │  Approve/Apply    │  │ │
-│  │  │ @tanstack/virtual  │  │ │  └──────────────────┘  │ │
-│  │  │ 1000 rows × 26 col│  │ │  ┌──────────────────┐  │ │
-│  │  │ Only renders ~40   │  │ │  │  Team Chat        │  │ │
-│  │  │ visible rows       │  │ │  │  Voice/Video Call  │  │ │
-│  │  └───────────────────┘  │ │  └──────────────────┘  │ │
-│  │  ┌─────────┐ ┌───────┐  │ └────────────────────────┘ │
-│  │  │Cursors  │ │Select │  │                            │
-│  │  │Layer    │ │Overlay│  │                            │
-│  │  └─────────┘ └───────┘  │                            │
-│  └─────────────────────────┘                            │
-│  ┌─────────────────────────┐                            │
-│  │      SheetTabs          │                            │
-│  └─────────────────────────┘                            │
-└─────────────────────────────────────────────────────────┘
-         │                              │
-    ┌────▼────┐                   ┌─────▼──────┐
-    │ Zustand │◄──── Socket.IO ──►│  Express   │
-    │  Store  │    (real-time)    │  API + WS  │
-    └────┬────┘                   └─────┬──────┘
-         │                              │
-    ┌────▼────┐                   ┌─────▼──────┐
-    │ Formula │                   │ PostgreSQL │
-    │ Worker  │                   │  + Redis   │
-    │ (thread)│                   └────────────┘
-    └─────────┘
-```
+### Backend
+| Technology | Purpose |
+|------------|---------|
+| **Node.js 20** | JavaScript runtime |
+| **Express 4** | HTTP framework with middleware pipeline |
+| **Socket.IO 4** | Real-time bidirectional event-based communication |
+| **Prisma 5** | Type-safe ORM with migration support |
+| **PostgreSQL 16** | Primary relational database |
+| **Redis 7** | Session state, cell locks, room management, pub/sub |
+| **OpenRouter (GPT-4o-mini)** | LLM gateway for AI assistant |
+| **LiveKit Server SDK** | Video/voice room token generation |
+| **Puppeteer** | Server-side rendering for PDF processing |
+| **Winston** | Structured logging with file transports |
+| **Zod** | Runtime schema validation (env vars, request bodies) |
+| **Helmet** | HTTP security headers |
+| **express-rate-limit** | API throttling and abuse prevention |
+| **bcrypt.js** | Password hashing |
+| **jsonwebtoken** | JWT access + refresh token management |
+| **Swagger / OpenAPI** | Auto-generated API documentation |
 
-### Key Design Decisions
+### Shared Packages
+| Package | Purpose |
+|---------|---------|
+| **@smartsheet-ai/types** | Shared TypeScript interfaces (CellData, APIResponse, SocketEvents) |
+| **@smartsheet-ai/formula-engine** | HyperFormula-based formula computation in a Web Worker |
 
-| Decision | Why |
-|----------|-----|
-| **Virtualized rendering** | Only ~40 rows + ~10 cols are in the DOM at any time. Scrolling dynamically swaps elements — the grid holds 26,000 cells but renders ~400. |
-| **Web Worker formula engine** | Formula computation (`=SUM`, `=AVERAGE`, etc.) runs in a dedicated thread via `packages/formula-engine`, keeping the UI at 60fps even during heavy calculations. |
-| **Zustand over Redux** | Selector-based subscriptions mean only the cells that change re-render. The store handles 50-level undo history, remote updates, cursor tracking, and sheet tabs without performance degradation. |
-| **Pessimistic cell locking** | Redis `SET NX EX 30` gives atomic lock acquisition with auto-expiry. On disconnect, all user locks are bulk-released via `SMEMBERS` + `DEL`. |
-| **Socket.IO over raw WS** | Built-in room management, automatic reconnection, and the Redis adapter for horizontal scaling made Socket.IO the pragmatic choice. |
+### Infrastructure
+| Technology | Purpose |
+|------------|---------|
+| **Vercel** | Frontend hosting with edge CDN |
+| **Render** | Backend hosting with managed PostgreSQL |
+| **GitHub Actions** | CI/CD pipeline (lint → test → build) |
+| **Docker Compose** | Local development (Postgres + Redis) |
 
 ---
 
-## 🚀 Getting Started
+## ⚡ Quick Start
 
 ### Prerequisites
 
-- **Node.js** ≥ 18
-- **npm** ≥ 9
-- **Docker** (optional, for PostgreSQL + Redis)
+- **Node.js** ≥ 20.x
+- **npm** ≥ 10.x
+- **Docker** & **Docker Compose** (for local databases)
+- **Git**
 
 ### 1. Clone the Repository
 
@@ -259,49 +367,27 @@ cd dora-sheet
 npm install
 ```
 
-### 3. Set Up Environment Variables
-
-```bash
-cp .env.example apps/api/.env
-```
-
-Edit `apps/api/.env` with your credentials:
-
-```env
-# Database
-DATABASE_URL="postgresql://postgres:password@localhost:5432/smartsheet"
-REDIS_URL="redis://localhost:6379"
-
-# Authentication
-JWT_SECRET="your-32-char-secret"
-JWT_REFRESH_SECRET="different-32-char-secret"
-
-# AI (OpenRouter)
-OPENAI_API_KEY="sk-or-..."
-
-# Server
-PORT=3001
-NODE_ENV=development
-CORS_ORIGIN="http://localhost:5173"
-```
-
-Create `apps/web/.env`:
-
-```env
-VITE_API_URL="http://localhost:3001"
-VITE_WS_URL="ws://localhost:3001"
-VITE_LIVEKIT_URL="wss://your-livekit-instance.livekit.cloud"
-```
-
-### 4. Start Infrastructure
+### 3. Start Local Databases
 
 ```bash
 docker compose up -d
 ```
 
-This starts **PostgreSQL 16** and **Redis 7** with persistent volumes.
+This starts:
+- **PostgreSQL 16** on `localhost:5432`
+- **Redis 7** on `localhost:6379`
 
-### 5. Initialize Database
+### 4. Configure Environment
+
+```bash
+# Copy the example env file
+cp .env.example apps/api/.env
+cp .env.example apps/web/.env
+```
+
+Edit `apps/api/.env` with your actual keys (see [Environment Variables](#-environment-variables)).
+
+### 5. Initialize the Database
 
 ```bash
 cd apps/api
@@ -310,265 +396,484 @@ npx prisma generate
 cd ../..
 ```
 
-### 6. Start Development Servers
+### 6. Build Shared Packages
 
 ```bash
-npm run dev
+npm run build --workspace=packages/types
+npm run build --workspace=packages/formula-engine
 ```
 
-This concurrently starts:
-- **API** → `http://localhost:3001`
-- **Web** → `http://localhost:5173`
-- **Swagger Docs** → `http://localhost:3001/api/docs`
+### 7. Start Development Servers
+
+```bash
+# Terminal 1 — API Server (port 3002)
+npm run dev --workspace=apps/api
+
+# Terminal 2 — Web Client (port 5173)
+npm run dev --workspace=apps/web
+```
+
+### 8. Open in Browser
+
+```
+http://localhost:5173
+```
+
+> **Tip:** Share the URL `http://localhost:5173/workbook/<any-id>` with another browser tab to test real-time collaboration.
 
 ---
 
-## 📚 API Documentation
+## 🔧 Environment Variables
 
-Interactive Swagger documentation is available at `/api/docs` when the server is running.
+### Backend (`apps/api/.env`)
 
-### Core Endpoints
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | ✅ | — | PostgreSQL connection string |
+| `REDIS_URL` | ❌ | — | Redis connection string (in-memory mock if absent) |
+| `JWT_SECRET` | ✅ | — | Secret for signing access tokens (≥ 32 chars) |
+| `JWT_REFRESH_SECRET` | ✅ | — | Secret for refresh tokens (≥ 32 chars) |
+| `OPENAI_API_KEY` | ❌ | — | OpenRouter API key for AI features |
+| `GEMINI_API_KEY` | ❌ | — | Google Gemini API key (alternative AI) |
+| `LIVEKIT_API_KEY` | ❌ | — | LiveKit key for video/voice calls |
+| `LIVEKIT_API_SECRET` | ❌ | — | LiveKit secret for token signing |
+| `LIVEKIT_URL` | ❌ | — | LiveKit WebSocket URL |
+| `PORT` | ❌ | `3001` | API server port |
+| `NODE_ENV` | ❌ | `development` | Runtime environment |
+| `CORS_ORIGIN` | ❌ | `*` | Allowed CORS origin |
+| `PUPPETEER_EXECUTABLE_PATH` | ❌ | auto-detect | Chrome binary path for Puppeteer |
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/auth/register` | Create a new account |
-| `POST` | `/api/v1/auth/login` | Authenticate and receive JWT |
-| `POST` | `/api/v1/auth/refresh` | Rotate access token |
-| `GET` | `/api/v1/workbooks/:id` | Fetch workbook with sheets |
-| `POST` | `/api/v1/ai/chat` | Send prompt to AI assistant |
-| `POST` | `/api/v1/upload` | Upload Excel/CSV/PDF/Image |
-| `GET` | `/api/v1/call/token` | Generate LiveKit room token |
-| `GET` | `/api/v1/workbooks/:id/snapshots` | List version history |
-| `POST` | `/api/v1/workbooks/:id/snapshots` | Create manual snapshot |
-| `GET` | `/api/v1/health` | Server health check |
+### Frontend (`apps/web/.env`)
 
-### Socket.IO Events
-
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `join_workbook` | Client → Server | Join a workbook room |
-| `cell_update` | Bi-directional | Single cell change sync |
-| `bulk_cell_update` | Bi-directional | Multi-cell batch sync |
-| `cursor_move` | Bi-directional | Live cursor position broadcast |
-| `cell_lock` / `cell_locked` | Bi-directional | Pessimistic cell locking |
-| `chat_message` | Bi-directional | Team chat messaging |
-| `sheet_action` | Bi-directional | Structural mutations (insert/delete rows/cols) |
-| `toggle_room_lock` | Client → Server | Host lock/unlock room |
-| `request_to_join` | Client → Server | Request access to locked room |
-| `start_call` | Bi-directional | Initiate voice/video call |
-| `user_joined` / `user_left` | Server → Client | Presence tracking |
-| `host_changed` | Server → Client | Automatic host handover |
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `VITE_API_URL` | ❌ | `http://localhost:3002` | Backend API URL |
+| `VITE_WS_URL` | ❌ | `ws://localhost:3002` | WebSocket URL |
+| `VITE_LIVEKIT_URL` | ❌ | — | LiveKit cloud WebSocket URL |
 
 ---
 
-## 📐 Database Schema
+## 🗄️ Database Schema
 
-```prisma
-User ──< WorkspaceMember >── Workspace ──< Workbook ──< Sheet
-                                              │           │
-                                              ├── Snapshot ├── Comment
-                                              │
-User ──< AIUsageLog
-User ──< Comment
-User ──< Snapshot
+The application uses **7 Prisma models** backed by PostgreSQL:
+
+```mermaid
+erDiagram
+    User ||--o{ WorkspaceMember : "belongs to"
+    User ||--o{ Snapshot : "creates"
+    User ||--o{ Comment : "writes"
+    User ||--o{ AIUsageLog : "tracked"
+    Workspace ||--o{ WorkspaceMember : "has"
+    Workspace ||--o{ Workbook : "contains"
+    Workbook ||--o{ Sheet : "contains"
+    Workbook ||--o{ Snapshot : "versioned"
+    Sheet ||--o{ Comment : "has"
+
+    User {
+        string id PK
+        string email UK
+        string passwordHash
+        string name
+        string role "ADMIN | EDITOR | VIEWER"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Workspace {
+        string id PK
+        string name
+        datetime createdAt
+    }
+
+    WorkspaceMember {
+        string userId PK,FK
+        string workspaceId PK,FK
+        string role
+    }
+
+    Workbook {
+        string id PK
+        string name
+        string workspaceId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Sheet {
+        string id PK
+        string name
+        string workbookId FK
+        int order
+        string data "JSON cell map"
+        int rowCount "default: 100"
+        int colCount "default: 26"
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Snapshot {
+        string id PK
+        string workbookId FK
+        string userId FK
+        string data "Full sheet snapshot"
+        string label
+        datetime createdAt
+    }
+
+    Comment {
+        string id PK
+        string sheetId FK
+        string cellRef "e.g. A1"
+        string userId FK
+        string content
+        boolean resolved
+        datetime createdAt
+    }
+
+    AIUsageLog {
+        string id PK
+        string userId FK
+        string date "YYYY-MM-DD"
+        int count
+    }
 ```
 
-**7 Models:** `User` · `Workspace` · `WorkspaceMember` · `Workbook` · `Sheet` · `Snapshot` · `Comment` · `AIUsageLog`
+### Cell Data Format
+
+Each cell is stored as a JSON object within the sheet's `data` field:
+
+```typescript
+// Key pattern: "r_{row}_c_{col}"
+{
+  "r_0_c_0": {
+    "v": "Revenue",              // Raw displayed value
+    "f": null,                   // Formula (e.g., "=SUM(B2:B10)")
+    "fmt": {                     // Formatting
+      "bold": true,
+      "backgroundColor": "#107c41",
+      "color": "#ffffff",
+      "align": "center"
+    }
+  }
+}
+```
+
+---
+
+## 🔌 API Reference
+
+The API is versioned at `/api/v1` with full Swagger documentation available at [`/api/docs`](https://dora-sheet-api.onrender.com/api/docs).
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/v1/health` | ❌ | Health check + uptime |
+| **Auth** | | | |
+| `POST` | `/api/v1/auth/register` | ❌ | User registration |
+| `POST` | `/api/v1/auth/login` | ❌ | Login → JWT tokens |
+| `POST` | `/api/v1/auth/refresh` | 🔑 | Refresh access token |
+| **Workspaces** | | | |
+| `GET` | `/api/v1/workspaces` | 🔑 | List user workspaces |
+| `POST` | `/api/v1/workspaces` | 🔑 | Create workspace |
+| `POST` | `/api/v1/workspaces/:id/members` | 🔑 | Add member (RBAC) |
+| **Workbooks** | | | |
+| `GET` | `/api/v1/workbooks` | 🔑 | List workbooks |
+| `POST` | `/api/v1/workbooks` | 🔑 | Create workbook |
+| `GET` | `/api/v1/workbooks/:id` | 🔑 | Get workbook + sheets |
+| `GET` | `/api/v1/workbooks/:id/snapshots` | 🔑 | Version history |
+| `POST` | `/api/v1/workbooks/:id/snapshots` | 🔑 | Create snapshot |
+| `POST` | `/api/v1/workbooks/:id/restore` | 🔑 | Restore from snapshot |
+| **AI** | | | |
+| `POST` | `/api/v1/ai/chat` | 🔑 | AI assistant (tool-calling) |
+| **Files** | | | |
+| `POST` | `/api/v1/upload` | 🔑 | Upload PDF/image for extraction |
+| **Calls** | | | |
+| `POST` | `/api/v1/call/token` | 🔑 | Generate LiveKit room token |
+
+### Rate Limits
+
+| Scope | Window | Max Requests |
+|-------|--------|-------------|
+| General API | 15 minutes | 100 |
+| Auth endpoints | 1 hour | 100 |
+| WebSocket connections | 1 minute | 50 per IP |
+
+---
+
+## 🌐 Real-Time Protocol
+
+The WebSocket layer handles all collaborative features through a structured event system:
+
+### Client → Server Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `join_workbook` | `{ workbookId, name }` | Join a collaboration room |
+| `cell_update` | `{ sheetId, cellKey, cell }` | Single cell change |
+| `bulk_cell_update` | `{ sheetId, updates }` | Batch cell changes |
+| `cursor_move` | `{ sheetId, row, col, color, selectionRange }` | Cursor position broadcast |
+| `cell_lock` | `{ cellKey, action }` | Lock/unlock cell for editing |
+| `chat_message` | `{ message, userName }` | Team chat message |
+| `sheet_action` | `{ action, index, ... }` | Structural changes (insert/delete/sort/rename) |
+| `toggle_room_lock` | `{ workbookId, locked }` | Lock/unlock room (host only) |
+| `request_to_join` | `{ targetRoomId, userInfo }` | Request access to locked room |
+| `respond_to_join` | `{ requesterSocketId, approved }` | Accept/deny join request (host only) |
+| `start_call` | `{ callerName, video, audio }` | Initiate video/voice call |
+| `update_user_name` | `{ name }` | Update display name |
+
+### Server → Client Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `cell_updated` | `{ sheetId, cellKey, cell, userId }` | Remote cell change |
+| `bulk_cell_updated` | `{ updates, sheetId }` | Remote batch changes |
+| `cursor_moved` | `{ userId, row, col, color, selectionRange }` | Remote cursor position |
+| `cell_locked` | `{ userId, cellKey, action }` | Lock status changed |
+| `user_joined` | `{ userId, name, color, isHost }` | New user joined |
+| `user_left` | `{ userId }` | User disconnected |
+| `host_changed` | `{ newHostId }` | Host reassignment |
+| `room_lock_status` | `{ locked }` | Room lock toggled |
+| `chat_message_received` | `{ userName, message, timestamp }` | Incoming chat |
+| `incoming_call` | `{ callerName, video, audio }` | Incoming call notification |
+| `sheet_action_received` | `{ action, ... }` | Remote structural change |
+
+### Security Measures
+
+- **Connection Rate Limiting:** Max 50 connections per IP per minute
+- **JWT Authentication:** Token verified on socket handshake (guest fallback supported)
+- **Input Sanitization:** All string payloads HTML-escaped; max 500 chars per field
+- **Payload Size Limits:** Configurable caps on grid updates, chat messages, and join requests
+- **Structured Security Logging:** All sensitive actions logged with `[SHIELD]` prefix
+- **Atomic Host Assignment:** Redis `SET NX` prevents race conditions in host election
+
+---
+
+## 🤖 AI Engine
+
+The AI assistant ("Dora AI") is powered by **GPT-4o-mini** via the **OpenRouter** gateway and uses OpenAI's **function calling** (tool use) to interact with the spreadsheet.
+
+### Available AI Tools
+
+| Tool | Description |
+|------|-------------|
+| `apply_formula` | Generate and place a spreadsheet formula |
+| `fill_data` | Insert structured data (vertical/horizontal layout) |
+| `format_cells` | Apply formatting (bold, colors, alignment) |
+| `clear_data` | Clear cells atomically (full sheet, range, or selection) |
+| `modify_structure` | Insert/delete rows and columns |
+| `organize_data` | Sort and filter operations |
+| `semantic_search` | Natural language data search |
+| `generate_dashboard` | Create KPI + chart dashboards |
+| `extract_to_table` | Extract data from PDF/images into grid |
+| `analyze_data` | Deep data analysis with suggestions |
+
+### AI Decision Hierarchy
+
+The AI follows a strict 20-step decision hierarchy to route every user message:
+
+```
+1. Bug report?        → Error Handling Mode
+2. Casual talk?       → Conversation Mode (NO tool calls)
+3. Explain formula?   → Explain Mode (text only)
+4. Undo request?      → "Press Ctrl+Z" (NO tool calls)
+5. Math/formula?      → apply_formula
+6. File attached?     → extract_to_table
+7. Clear/reset?       → clear_data (ask scope first)
+8. Rename column?     → fill_data (header only)
+9. Find & replace?    → fill_data (targeted updates)
+10. Duplicates?       → analyze_data → confirm → clear_data
+11. Template?         → fill_data + apply_formula
+12. Bulk formula?     → fill_data (per-row formulas)
+13. Insert data?      → fill_data
+14. Format cells?     → format_cells
+15. Sort/filter?      → organize_data
+16. Dashboard?        → generate_dashboard
+17. Add/remove rows?  → modify_structure
+18. Inventory cmd?    → fill_data (structured)
+19. Ambiguous?        → Infer + proceed
+20. None of above     → Conversational response
+```
+
+---
+
+## 📐 Formula Engine
+
+The formula engine runs in a **dedicated Web Worker** to keep the main thread completely free:
+
+```mermaid
+sequenceDiagram
+    participant Main as Main Thread
+    participant W as Web Worker
+    participant HF as HyperFormula
+
+    Main->>W: postMessage({ type: 'INIT' })
+    W->>HF: HyperFormula.buildEmpty()
+    HF-->>W: Instance ready
+    W-->>Main: INIT_SUCCESS
+
+    Main->>W: postMessage({ type: 'SET_DATA', r, c, value })
+    W->>HF: setCellContents()
+    HF-->>W: Computed value + dependency changes
+    W-->>Main: { v: computedValue, changes: [...] }
+```
+
+### Architecture
+
+| Component | File | Role |
+|-----------|------|------|
+| **EngineWrapper** | `packages/formula-engine/src/index.ts` | Async message bridge with Promise-based API |
+| **Worker Thread** | `packages/formula-engine/src/formula.worker.ts` | HyperFormula instance running off-thread |
+
+### Supported Operations
+
+| Operation | Method | Description |
+|-----------|--------|-------------|
+| Initialize | `init()` | Create HyperFormula instance with sheet |
+| Set Cell | `setData(r, c, value)` | Set a value/formula; returns computed result + cascading changes |
+| Bulk Load | `setSheetData(items[])` | Load entire sheet data into the engine |
+| Get Value | `getValue(r, c)` | Retrieve computed cell value |
 
 ---
 
 ## 🧪 Testing
 
+### Running Tests
+
 ```bash
-# Run all tests across workspaces
+# Run all workspace tests
 npm test
 
 # Run API tests only
-cd apps/api; npm test
+npm test --workspace=apps/api
 
-# Run formula engine tests only
-cd packages/formula-engine; npm test
+# Run formula engine tests
+npm test --workspace=packages/formula-engine
 ```
 
-Testing stack: **Jest** + **Supertest** + **ts-jest**
+### Test Infrastructure
+
+- **Framework:** Jest 30 with ts-jest for TypeScript support
+- **API Testing:** Supertest for HTTP endpoint testing
+- **CI Database:** GitHub Actions spins up PostgreSQL 16 + Redis 7 as service containers
+- **Coverage:** Tests run against a dedicated `smartsheet_test` database
+
+### CI/CD Pipeline
+
+```mermaid
+flowchart LR
+    A["Push / PR"] --> B["Lint"]
+    A --> C["Test"]
+    B --> D["Build"]
+    C --> D
+    C --> E["PostgreSQL 16<br/>Service Container"]
+    C --> F["Redis 7<br/>Service Container"]
+```
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs:
+1. **Lint** — ESLint across all workspaces
+2. **Test** — Jest with real PostgreSQL + Redis service containers
+3. **Build** — Full TypeScript compilation + Vite production build
 
 ---
 
-## 📜 Available Scripts
+## 🚀 Deployment
 
-### Root (Monorepo)
+### Frontend → Vercel
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start all workspaces in development mode concurrently |
-| `npm run build` | Build all workspaces for production |
-| `npm test` | Run test suites across all workspaces |
-
-### `apps/api`
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start API with hot-reload (`ts-node-dev --respawn`) |
-| `npm run build` | Generate Prisma client + compile TypeScript |
-| `npm start` | Run compiled production server (`node dist/index.js`) |
-| `npm test` | Run Jest test suite |
-| `npm run db:push` | Push Prisma schema to PostgreSQL |
-| `npm run db:studio` | Open Prisma Studio GUI for database inspection |
-| `npm run db:generate` | Regenerate Prisma client after schema changes |
-
-### `apps/web`
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Vite dev server with HMR (`localhost:5173`) |
-| `npm run build` | Production build with TypeScript check + Vite bundle |
-| `npm run preview` | Preview production build locally |
-
----
-
-## 🚢 Deployment
-
-### Frontend (Vercel)
-
-```bash
-# Deployed automatically via Vercel Git integration
-# vercel.json handles SPA rewrites
-```
-
-### Backend (Render)
-
-```bash
-# Build: prisma generate && tsc
-# Start: node dist/index.js
-# Environment: Set all .env variables in Render dashboard
-```
-
-### Infrastructure
-
-| Service | Provider | Notes |
-|---------|----------|-------|
-| Frontend | Vercel | Auto-deploy from `main` branch |
-| API | Render | Free-tier with auto-sleep |
-| Database | Render PostgreSQL | Managed instance |
-| Redis | Render Redis | Session + lock store |
-| LiveKit | LiveKit Cloud | WebRTC SFU for calls |
-| AI | OpenRouter | GPT-4o-mini endpoint |
-
----
-
-## 🧩 Monorepo Structure
-
-This project uses **npm workspaces** for dependency management across packages:
+The frontend is deployed to **Vercel** with SPA routing configured in `vercel.json`:
 
 ```json
 {
-  "workspaces": ["apps/*", "packages/*"]
+  "rewrites": [
+    {
+      "source": "/((?!api/|assets/|favicon.svg|icons.svg).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
 ```
 
-| Package | Description |
-|---------|-------------|
-| `apps/web` | React frontend application |
-| `apps/api` | Express backend server |
-| `packages/formula-engine` | Web Worker-based formula processor |
-| `packages/types` | Shared TypeScript interfaces (`CellData`, `SocketEvent`, `ApiResponse`) |
+**Build command:** `tsc -b && vite build`
+
+### Backend → Render
+
+The API server is deployed to **Render** with:
+- **Build:** `prisma generate && tsc`
+- **Start:** `node dist/index.js`
+- **Health endpoint:** `/api/v1/health` (used for auto-wake pings)
+
+### Docker (Self-Hosted)
+
+```bash
+# Start all services
+docker compose up -d
+
+# The docker-compose.yml provides:
+# - PostgreSQL 16 Alpine (port 5432)
+# - Redis 7 Alpine (port 6379, AOF persistence)
+```
 
 ---
 
-## ✅ Full Feature Checklist
+## 📊 Performance
 
-### Spreadsheet Core
-- [x] Custom virtualized grid (1000×26) with `@tanstack/virtual`
-- [x] Web Worker formula engine (`SUM`, `AVERAGE`, `IF`, `VLOOKUP`)
-- [x] Cell formatting (bold, italic, strikethrough, colors, alignment)
-- [x] Multi-sheet tabs (add, rename, delete, switch)
-- [x] 50-level undo/redo history stack
-- [x] Find & Replace with regex support
-- [x] Column/row drag-to-resize + auto-fit
-- [x] Right-click context menu
-- [x] Multi-cell click-and-drag selection
-- [x] Excel `.xlsx` export via SheetJS
-- [x] Number formatting (currency `$`, percentage `%`)
+### Optimizations
 
-### AI Assistant
-- [x] 10 function-calling tools via GPT-4o-mini
-- [x] Document attachment (Excel, CSV, PDF, Image)
-- [x] Approve/Apply workflow for all AI actions
-- [x] 12-step deterministic decision hierarchy
-- [x] Multilingual auto-detection + translation
-- [x] Inventory/stock natural language commands
-- [x] AI-generated cinematic dashboards
-- [x] Semantic search across cell data
-- [x] Data analysis with actionable suggestions
-
-### Real-Time Collaboration
-- [x] Live multiplayer cursors (color-coded)
-- [x] Real-time cell sync via Socket.IO
-- [x] Pessimistic cell locking with Redis
-- [x] Room system with 6-digit join codes
-- [x] Host lock/unlock + join approval flow
-- [x] Automatic host handover on disconnect
-- [x] Live workbook rename sync
-- [x] Built-in team chat
-
-### Voice & Video
-- [x] LiveKit SFU integration
-- [x] One-click voice/video call initiation
-- [x] Screen sharing
-- [x] Floating minimizable call overlay
-- [x] Incoming call notifications
-- [x] Live call duration timer
-
-### Dashboards & Visualization
-- [x] AI-generated KPI cards with trend indicators
-- [x] Bar, line, area, and pie charts (ECharts SVG)
-- [x] Collaborative dashboard broadcasting
-- [x] GSAP staggered entrance animations
-
-### Security & Infrastructure
-- [x] JWT dual-token auth (access + refresh)
-- [x] bcrypt password hashing
-- [x] Guest mode with stable identifiers
-- [x] RBAC middleware (Admin/Editor/Viewer)
-- [x] Bodyguard™ rate limiting (IP-based)
-- [x] XSS input sanitization
-- [x] Auto-snapshots every 5 minutes
-- [x] Helmet.js security headers
-- [x] Swagger/OpenAPI documentation
-
-### UI/UX
-- [x] Dark & light mode toggle
-- [x] 9 professional starter templates
-- [x] GSAP micro-animations throughout
-- [x] Fully responsive (mobile + desktop)
-- [x] Glassmorphism design language
-- [x] Toast notification system
+| Area | Technique | Impact |
+|------|-----------|--------|
+| **Rendering** | TanStack Virtual windowed rendering | Handles 1000+ rows × 100+ cols |
+| **State** | Zustand with selector pattern | Re-renders only affected cells |
+| **Formulas** | Web Worker off-thread computation | Zero main-thread blocking |
+| **Network** | Cursor throttling at 60fps (16ms) | Minimizes WebSocket bandwidth |
+| **Network** | Cursor deduplication (position check) | Eliminates redundant emits |
+| **Bundling** | Vite manual chunks (ECharts split) | Faster initial load |
+| **Collaboration** | Redis pub/sub + Socket.IO adapter | Horizontal scaling ready |
+| **Database** | Async cell persistence | Non-blocking DB writes |
+| **History** | 50-entry sliding window | Bounded memory usage |
+| **Animations** | GSAP hardware-accelerated transforms | 60fps UI transitions |
+| **SEO** | JSON-LD structured data + OG tags | Rich search engine presence |
 
 ---
 
 ## 🤝 Contributing
 
+Contributions are welcome! Here's how to get started:
+
 1. **Fork** the repository
-2. **Create** your feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'feat: add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request with a clear description
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** changes: `git commit -m 'feat: add amazing feature'`
+4. **Push** to the branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request
+
+### Development Guidelines
+
+- Follow the existing project structure (modular controller → service → router pattern)
+- Write tests for new API endpoints
+- Use Zod schemas for request validation
+- Keep WebSocket events documented in this README
+- Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`)
+
+---
+
+## 👨‍💻 Author
+
+**Pranjal Narwal**
+
+- GitHub: [@narwal4421](https://github.com/narwal4421)
+- Twitter: [@narwal4421](https://twitter.com/narwal4421)
+- Website: [dora-sheet.vercel.app](https://dora-sheet.vercel.app)
 
 ---
 
 ## 📄 License
 
-This project is private and proprietary. All rights reserved.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-<p align="center">
-  <strong>Built with ❤️ by <a href="https://github.com/narwal4421">Pranjal Narwal</a></strong><br/>
-  <em>Full-Stack Engineer • AI Enthusiast • Open Source Contributor</em>
-</p>
+<div align="center">
 
-<p align="center">
-  <a href="https://dora-sheet.vercel.app">
-    <img src="https://img.shields.io/badge/Try_Dora_Sheet-Live_Demo-6366f1?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo" />
-  </a>
-</p>
+**Built with ❤️ by [Pranjal Narwal](https://github.com/narwal4421)**
+
+⭐ Star this repo if you found it useful!
+
+</div>
